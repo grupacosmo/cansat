@@ -10,5 +10,4 @@ cansat = { path = "../cansat" }
 cortex-m = { version = "0.7.6", features = ["critical-section-single-core"] }
 cortex-m-rt = "0.7.2"
 panic-halt = "0.2.0"
-rtt-target = { version = "0.3.1", features = ["cortex-m"] }
 stm32f4xx-hal = { version = "0.14.0", features = ["stm32f446"] }

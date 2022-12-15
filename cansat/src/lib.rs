@@ -1,5 +1,4 @@
+#![deny(unsafe_code)]
 #![no_std]
 
-pub fn add(left: usize, right: usize) -> usize {
-    left + right
-}
+pub use rtt_target;
