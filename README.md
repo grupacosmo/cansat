@@ -1,19 +1,24 @@
 # CanSat
-## Prerequisites
- 1. You will need **libusb** <br>
- check out [cargo-embed](https://crates.io/crates/cargo-embed) for instructions
- 2. Add your board target:
-```
-rustup target add thumbv7em-none-eabihf
-```
+Software for the sounding rocket payload.
 
-## Setup
+## Prerequisites
+* [cargo-make](https://github.com/sagiegurari/cargo-make) - Requires `libusb`, see `cargo-make`'s `README.md` for instructions.
+* [cargo-embed](https://github.com/probe-rs/cargo-embed)
+* `thumbv7em-none-eabihf` platform target
 ```
-cargo install cargo-embed
+cargo install cargo-make cargo-embed
+rustup target add thumbv7em-none-eabihf
 ```
 
 ## Run
 ```
 cd cansat-stm32f446
-cargo embed
+cargo make embed
 ```
+
+## Log filters
+You can specify log levels using `DEFMT_LOG` environment variable.
+```
+cargo make --env DEFMT_LOG=debug embed
+```
+See https://defmt.ferrous-systems.com/filtering.html for details.

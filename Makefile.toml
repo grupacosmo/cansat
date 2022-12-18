@@ -1,0 +1,7 @@
+[env]
+CARGO_MAKE_EXTEND_WORKSPACE_MAKEFILE = true
+DEFMT_LOG="info"
+
+[tasks.clippy]
+command = "cargo"
+args = ["clippy", "${@}"]
