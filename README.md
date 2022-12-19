@@ -2,8 +2,8 @@
 Software for the sounding rocket payload.
 
 ## Prerequisites
-* [cargo-make](https://github.com/sagiegurari/cargo-make) - Requires `libusb`, see `cargo-make`'s `README.md` for instructions.
-* [cargo-embed](https://github.com/probe-rs/cargo-embed)
+* [cargo-make](https://github.com/sagiegurari/cargo-make)
+* [cargo-embed](https://github.com/probe-rs/cargo-embed) - Requires `libusb`, see `cargo-embed`'s `README.md` for instructions.
 * `thumbv7em-none-eabihf` platform target
 ```
 cargo install cargo-make cargo-embed
