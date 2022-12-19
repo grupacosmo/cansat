@@ -1,5 +1,0 @@
-extend = "../Makefile.toml"
-
-[tasks.embed]
-command = "cargo"
-args = ["embed"]

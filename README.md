@@ -12,13 +12,12 @@ rustup target add thumbv7em-none-eabihf
 
 ## Run
 ```
-cd cansat-stm32f446
-cargo make embed
+cargo make embed cansat-stm32f446
 ```
 
 ## Log filters
 You can specify log levels using `DEFMT_LOG` environment variable.
 ```
-cargo make --env DEFMT_LOG=debug embed
+cargo make --env DEFMT_LOG=debug embed cansat-stm32f446
 ```
 See https://defmt.ferrous-systems.com/filtering.html for details.

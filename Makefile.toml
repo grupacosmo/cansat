@@ -5,3 +5,23 @@ DEFMT_LOG="info"
 [tasks.clippy]
 command = "cargo"
 args = ["clippy", "${@}"]
+
+[tasks.embed]
+workspace = false
+private = false
+extend = "subcommand"
+env = { SUBCOMMAND_PREFIX = "embed" }
+
+[tasks.embed_cansat-stm32f446]
+private = true
+script = '''
+cd cansat-stm32f446 && cargo embed
+'''
+
+[tasks.subcommand]
+private = true
+script = '''
+#!@duckscript
+
+cm_run_task ${SUBCOMMAND_PREFIX}_${1}
+'''
