@@ -30,7 +30,7 @@ mod app {
 
     #[idle]
     fn idle(_: idle::Context) -> ! {
-        #[warn(clippy::empty_loop)]
+        #[allow(clippy::empty_loop)]
         loop {}
     }
 }
