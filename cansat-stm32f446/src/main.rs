@@ -2,11 +2,12 @@
 #![no_main]
 #![no_std]
 
-use panic_halt as _;
+use defmt_rtt as _;
+use panic_probe as _;
 
 #[rtic::app(device = stm32f4xx_hal::pac)]
 mod app {
-    use cansat::rtt_target::{rprintln, rtt_init_print};
+    use cansat::defmt;
     use stm32f4xx_hal::{pac, prelude::*, timer::monotonic::MonoTimerUs};
 
     #[shared]
@@ -20,8 +21,7 @@ mod app {
 
     #[init]
     fn init(ctx: init::Context) -> (Shared, Local, init::Monotonics) {
-        rtt_init_print!();
-        rprintln!("Initialization");
+        defmt::info!("Initializing");
         let rcc = ctx.device.RCC.constrain();
         let clocks = rcc.cfgr.sysclk(48.MHz()).freeze();
         let mono = ctx.device.TIM2.monotonic_us(&clocks);
@@ -30,6 +30,7 @@ mod app {
 
     #[idle]
     fn idle(_: idle::Context) -> ! {
+        defmt::info!("Started idle task");
         #[allow(clippy::empty_loop)]
         loop {}
     }
