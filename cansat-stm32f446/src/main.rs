@@ -8,9 +8,10 @@ use panic_probe as _;
 #[rtic::app(device = stm32f4xx_hal::pac)]
 mod app {
     use cansat::defmt;
-    use heapless::Vec;
-    use once_cell::unsync::Lazy;
-    use ringbuf::{StaticConsumer, StaticProducer, StaticRb};
+    use heapless::{
+        spsc::{Consumer, Producer, Queue},
+        Vec,
+    };
     use stm32f4xx_hal::{
         pac::{self, USART3},
         prelude::*,
@@ -24,14 +25,14 @@ mod app {
     #[local]
     struct Local {
         gps_rx: serial::Rx<USART3>,
-        gps_buf_prod: StaticProducer<'static, u8, 512>,
-        gps_buf_cons: StaticConsumer<'static, u8, 512>,
+        gps_buf_prod: Producer<'static, u8, 512>,
+        gps_buf_cons: Consumer<'static, u8, 512>,
     }
 
     #[monotonic(binds = TIM2, default = true)]
     type MicrosecMono = MonoTimerUs<pac::TIM2>;
 
-    #[init(local = [gps_buf: Lazy<StaticRb<u8, 512>> = Lazy::new(StaticRb::default)])]
+    #[init(local = [gps_buf: Queue<u8, 512> = Queue::new()])]
     fn init(ctx: init::Context) -> (Shared, Local, init::Monotonics) {
         defmt::info!("Initializing");
 
@@ -56,7 +57,7 @@ mod app {
         gps_rx.listen();
 
         let gps_buf = ctx.local.gps_buf;
-        let (gps_buf_prod, gps_buf_cons) = gps_buf.split_ref();
+        let (gps_buf_prod, gps_buf_cons) = gps_buf.split();
 
         let local = Local {
             gps_rx,
@@ -75,7 +76,7 @@ mod app {
 
         let mut msg_buf: Vec<u8, 128> = Vec::new();
         loop {
-            if let Some(b) = gps_buf_cons.pop() {
+            if let Some(b) = gps_buf_cons.dequeue() {
                 msg_buf.push(b).expect("Message buffer overflow");
 
                 if b == b'\n' {
@@ -93,6 +94,6 @@ mod app {
         let gps_buf_prod = ctx.local.gps_buf_prod;
 
         let b = gps_rx.read().unwrap();
-        gps_buf_prod.push(b).unwrap();
+        gps_buf_prod.enqueue(b).unwrap();
     }
 }
