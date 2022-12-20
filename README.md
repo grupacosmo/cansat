@@ -11,7 +11,7 @@ rustup target add thumbv7em-none-eabihf
 ```
 
 ## Run
-```
+```bash
 cargo make embed cansat-stm32f446
 ```
 

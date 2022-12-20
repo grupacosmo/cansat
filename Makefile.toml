@@ -1,5 +1,4 @@
 [env]
-CARGO_MAKE_EXTEND_WORKSPACE_MAKEFILE = true
 DEFMT_LOG="info"
 
 [tasks.clippy]
@@ -8,7 +7,5 @@ args = ["clippy", "${@}"]
 
 [tasks.embed]
 workspace = false
-script_runner = "@shell"
-script = '''
-cd ${1} && cargo embed
-'''
+script_runner = "@rust"
+script = { file = "scripts/tasks/embed.rs" }
