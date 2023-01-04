@@ -6,7 +6,7 @@ use std::path::PathBuf;
 fn main() {
     let out_path = PathBuf::from(env::var_os("OUT_DIR").unwrap());
     let linker_script_path = out_path.join("memory.x");
-    File::create(&linker_script_path)
+    File::create(linker_script_path)
         .unwrap()
         .write_all(include_bytes!("memory.x"))
         .unwrap();

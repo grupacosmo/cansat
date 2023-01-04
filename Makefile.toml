@@ -1,0 +1,11 @@
+[env]
+DEFMT_LOG="info"
+
+[tasks.clippy]
+command = "cargo"
+args = ["clippy", "${@}"]
+
+[tasks.embed]
+workspace = false
+script_runner = "@rust"
+script = { file = "scripts/tasks/embed.rs" }
