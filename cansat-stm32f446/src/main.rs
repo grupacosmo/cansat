@@ -8,17 +8,15 @@ use panic_probe as _;
 #[rtic::app(device = stm32f4xx_hal::pac, dispatchers = [EXTI0])]
 mod app {
     use cansat::defmt;
-
     use heapless::{
         spsc::{Consumer, Producer, Queue},
         Vec,
     };
     use stm32f4xx_hal::{
-        gpio::*,
+        gpio::{Output, PA5},
         pac::{self, USART3},
         prelude::*,
         serial,
-        timer::monotonic::fugit::Duration,
         timer::monotonic::MonoTimerUs,
     };
 
@@ -30,7 +28,7 @@ mod app {
         gps_rx: serial::Rx<USART3>,
         gps_buf_prod: Producer<'static, u8, 512>,
         gps_buf_cons: Consumer<'static, u8, 512>,
-        led: Pin<'A', 5, Output>,
+        led: PA5<Output>,
     }
 
     #[monotonic(binds = TIM2, default = true)]
@@ -45,8 +43,10 @@ mod app {
         let clocks = rcc.cfgr.sysclk(84.MHz()).freeze();
         let mono = device.TIM2.monotonic_us(&clocks);
 
-        let gpioc = device.GPIOC.split();
         let gpioa = device.GPIOA.split();
+        let led = gpioa.pa5.into_push_pull_output();
+
+        let gpioc = device.GPIOC.split();
         let usart3_tx_pin = gpioc.pc10.into_alternate();
         let usart3_rx_pin = gpioc.pc11.into_alternate();
 
@@ -63,7 +63,9 @@ mod app {
 
         let gps_buf = ctx.local.gps_buf;
         let (gps_buf_prod, gps_buf_cons) = gps_buf.split();
-        let led = gpioa.pa5.into_push_pull_output();
+
+        blink::spawn().unwrap();
+
         let local = Local {
             gps_rx,
             gps_buf_prod,
@@ -71,7 +73,6 @@ mod app {
             led,
         };
         let shared = Shared {};
-        blink::spawn_after(Duration::<u32, 1, 1000000>::from_ticks(0)).unwrap();
         let monotonics = init::Monotonics(mono);
         (shared, local, monotonics)
     }
@@ -104,12 +105,12 @@ mod app {
         gps_buf_prod.enqueue(b).unwrap();
     }
 
+    /// Toggles led every second
     #[task(local = [led])]
     fn blink(ctx: blink::Context) {
-        // toggle led every sec
         let led = ctx.local.led;
         led.toggle();
         defmt::info!("Blink");
-        blink::spawn_after(Duration::<u32, 1, 1000000>::from_ticks(1000000)).unwrap();
+        blink::spawn_after(1.secs()).unwrap();
     }
 }
