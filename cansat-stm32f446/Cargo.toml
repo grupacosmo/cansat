@@ -15,3 +15,4 @@ defmt-rtt = "0.4.0"
 panic-probe = { version = "0.3.0", features = ["print-defmt"] }
 once_cell = { version = "1.16.0", default-features = false }
 heapless = { version = "0.7.16", features = ["defmt"] }
+sx127x_lora = "0.3.1"
