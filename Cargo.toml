@@ -1,5 +1,6 @@
 [workspace]
 members = [
     "cansat",
+    "cansat-gps",
     "cansat-stm32f446"
 ]

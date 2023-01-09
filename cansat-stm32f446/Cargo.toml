@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 cansat = { path = "../cansat" }
+cansat-gps = { path = "../cansat-gps" }
 cortex-m = { version = "0.7.6", features = ["critical-section-single-core"] }
 cortex-m-rt = "0.7.2"
 cortex-m-rtic = "1.1.3"
