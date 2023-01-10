@@ -7,7 +7,6 @@ use panic_probe as _;
 
 #[rtic::app(device = stm32f4xx_hal::pac, dispatchers = [EXTI0])]
 mod app {
-    use cansat::defmt;
     use cansat_gps::Gps;
     use stm32f4xx_hal::{
         gpio::{Alternate, Output, PA5, PC10, PC11},
