@@ -53,14 +53,12 @@ checksum = "14c189c53d098945499cdfa7ecc63567cf3886b3332b312a5b4585d8d3a6a610"
 [[package]]
 name = "cansat"
 version = "0.1.0"
-dependencies = [
- "defmt",
-]
 
 [[package]]
 name = "cansat-gps"
 version = "0.1.0"
 dependencies = [
+ "cansat-test-utils",
  "embedded-hal 1.0.0-alpha.8",
  "heapless",
 ]
@@ -74,11 +72,19 @@ dependencies = [
  "cortex-m",
  "cortex-m-rt",
  "cortex-m-rtic",
+ "defmt",
  "defmt-rtt",
  "heapless",
  "once_cell",
  "panic-probe",
  "stm32f4xx-hal",
+]
+
+[[package]]
+name = "cansat-test-utils"
+version = "0.1.0"
+dependencies = [
+ "embedded-hal 1.0.0-alpha.8",
 ]
 
 [[package]]

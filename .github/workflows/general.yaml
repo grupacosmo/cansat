@@ -11,7 +11,7 @@ on:
 
 jobs:
   build:
-    name: build
+    name: test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
@@ -37,6 +37,10 @@ jobs:
         with:
           command: make
           args: build
+      - uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --workspace --exclude cansat-stm32f446
   fmt:
     name: fmt
     runs-on: ubuntu-latest

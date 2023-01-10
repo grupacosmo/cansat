@@ -1,5 +1,5 @@
 [package]
-name = "cansat-gps"
+name = "cansat-test-utils"
 version = "0.1.0"
 edition = "2021"
 
@@ -7,7 +7,3 @@ edition = "2021"
 
 [dependencies]
 embedded-hal = "1.0.0-alpha.8"
-heapless = { version = "0.7.16", default-features = false }
-
-[dev-dependencies]
-cansat-test-utils = { path = "../cansat-test-utils" }
