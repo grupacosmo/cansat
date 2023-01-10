@@ -95,8 +95,8 @@ mod app {
     #[task(binds = USART3, shared = [gps])]
     fn gps_irq(ctx: gps_irq::Context) {
         let mut gps = ctx.shared.gps;
-        let b = gps.lock(|gps| gps.read_uart()).unwrap();
-        if b == b'\n' {
+        let (_, is_terminator) = gps.lock(|gps| gps.read_uart()).unwrap();
+        if is_terminator {
             log_nmea::spawn().unwrap();
         }
     }

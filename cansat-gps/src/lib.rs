@@ -13,15 +13,9 @@ use heapless::Vec;
 
 pub struct Gps<Uart> {
     uart: Uart,
-    buf_1: Vec<u8, 512>,
-    buf_2: Vec<u8, 512>,
-    last_msg_location: LastMsgLocation,
-}
-
-enum LastMsgLocation {
-    None,
-    Buf1,
-    Buf2,
+    bufs: [Vec<u8, 128>; 2],
+    current_buf_idx: usize,
+    has_nmea: bool,
 }
 
 #[derive(Debug)]
@@ -37,19 +31,16 @@ impl<Uart> Gps<Uart> {
     pub fn new(uart: Uart) -> Self {
         Self {
             uart,
-            buf_1: Vec::new(),
-            buf_2: Vec::new(),
-            last_msg_location: LastMsgLocation::None,
+            bufs: Default::default(),
+            current_buf_idx: 0,
+            has_nmea: false,
         }
     }
 
     /// Reads last received NMEA message.
-    pub fn last_nmea(&self) -> Option<Vec<u8, 512>> {
-        match self.last_msg_location {
-            LastMsgLocation::Buf1 => Some(self.buf_1.clone()),
-            LastMsgLocation::Buf2 => Some(self.buf_2.clone()),
-            LastMsgLocation::None => None,
-        }
+    pub fn last_nmea(&self) -> Option<Vec<u8, 128>> {
+        self.has_nmea
+            .then(|| self.bufs[self.current_buf_idx ^ 1].clone())
     }
 }
 
@@ -58,25 +49,23 @@ where
     Uart: Read,
 {
     /// Reads a single character from UART and stores it in an internal buffer.
-    /// On success, returns the read character.
-    pub fn read_uart(&mut self) -> Result<u8, Error<Uart::Error>> {
-        let b = nb::block!(self.uart.read()).map_err(Error::Uart)?;
-        match self.last_msg_location {
-            LastMsgLocation::Buf1 => {
-                self.buf_2.push(b).map_err(Error::Overflow)?;
-                if b == b'\n' {
-                    self.last_msg_location = LastMsgLocation::Buf2;
-                    self.buf_1.clear();
-                }
-            }
-            LastMsgLocation::Buf2 | LastMsgLocation::None => {
-                self.buf_1.push(b).map_err(Error::Overflow)?;
-                if b == b'\n' {
-                    self.last_msg_location = LastMsgLocation::Buf1;
-                    self.buf_2.clear();
-                }
-            }
+    /// On success, returns the read byte and a flag indicating whether a message was terminated.
+    pub fn read_uart(&mut self) -> Result<(u8, bool), Error<Uart::Error>> {
+        let new_b = nb::block!(self.uart.read()).map_err(Error::Uart)?;
+
+        let is_terminated = {
+            let current = &mut self.bufs[self.current_buf_idx];
+            let last_b = current.last().cloned();
+            current.push(new_b).map_err(Error::Overflow)?;
+            last_b == Some(b'\r') && new_b == b'\n'
+        };
+
+        if is_terminated {
+            self.current_buf_idx ^= 1;
+            self.bufs[self.current_buf_idx].clear();
+            self.has_nmea = true;
         }
-        Ok(b)
+
+        Ok((new_b, is_terminated))
     }
 }
