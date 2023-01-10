@@ -1,6 +1,4 @@
-//! Gps device driver.
-//!
-//! It implements double buffering to ensure that you can always read latest message.
+//! Gps device driver using [`embedded-hal`](https://github.com/rust-embedded/embedded-hal) traits.
 #![deny(unsafe_code)]
 #![no_std]
 
@@ -11,6 +9,27 @@ use embedded_hal::{
 };
 use heapless::Vec;
 
+/// Gps driver.
+///
+/// It implements double buffering to ensure that you can always read latest message.
+///
+/// # Examples
+/// ```
+/// # use cansat_test_utils::mock;
+/// # let uart = cansat_test_utils::mock::Serial::new([b'\r', b'\n']);
+/// use cansat_gps::Gps;
+///
+/// let mut gps = Gps::new(uart);
+///
+/// loop {
+///     let (b, is_new_msg) = gps.read_uart().unwrap();
+///     
+///     if is_new_msg {
+///         let msg = gps.last_nmea().unwrap();
+///         break;
+///     }
+/// }
+/// ```
 pub struct Gps<Uart> {
     uart: Uart,
     bufs: [Vec<u8, 128>; 2],
@@ -48,7 +67,7 @@ impl<Uart> Gps<Uart>
 where
     Uart: Read,
 {
-    /// Reads a single character from UART and stores it in an internal buffer.
+    /// Reads a single character from UART in a blocking mode and stores it in an internal buffer.
     /// On success, returns the read byte and a flag indicating whether a message was terminated.
     pub fn read_uart(&mut self) -> Result<(u8, bool), Error<Uart::Error>> {
         let new_b = nb::block!(self.uart.read()).map_err(Error::Uart)?;
