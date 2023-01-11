@@ -56,6 +56,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bef38d45163c2f1dde094a7dfd33ccf595c92905c8f8f4fdc18d06fb1037718a"
 
 [[package]]
+name = "bme280"
+version = "0.4.4"
+source = "git+https://github.com/grupacosmo/bme280-rs#19f4c95db6f86f75fd312a891a7e35bd70b4ef60"
+dependencies = [
+ "defmt",
+ "embedded-hal 1.0.0-alpha.8",
+]
+
+[[package]]
 name = "byteorder"
 version = "1.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -78,6 +87,7 @@ dependencies = [
 name = "cansat-stm32f446"
 version = "0.1.0"
 dependencies = [
+ "bme280",
  "cansat",
  "cansat-gps",
  "cortex-m",
