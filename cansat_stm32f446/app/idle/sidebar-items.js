@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":[["LocalResources","Local resources `idle` has access to"],["SharedResources","Shared resources `idle` has access to"]]};

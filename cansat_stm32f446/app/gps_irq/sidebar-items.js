@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":[["SharedResources","Shared resources `gps_irq` has access to"]]};

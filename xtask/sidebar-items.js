@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":[["Cmd",""]],"fn":[["main",""],["run",""],["workspace_members",""]],"struct":[["Cli",""]]};
