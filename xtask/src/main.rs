@@ -17,21 +17,21 @@ struct Cli {
 enum Cmd {
     /// Run `cargo embed` on a specified package
     Embed {
-        // Package name
+        /// Package name
         pkg_name: String,
-        // Arguments for `cargo embed`
+        /// Arguments for `cargo embed`
         args: Vec<String>,
     },
     /// `cd` and build each package
     Build {
-        // Arguments for `cargo build`
+        /// Arguments for `cargo build`
         args: Vec<String>,
     },
     /// `cd` and test each package
     ///
     /// Packages can be excluded with XTASK_TEST_EXCLUDE environment variable.
     Test {
-        // Arguments for `cargo test`
+        /// Arguments for `cargo test`
         args: Vec<String>,
     },
 }
