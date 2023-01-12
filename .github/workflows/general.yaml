@@ -31,8 +31,6 @@ jobs:
           toolchain: stable
           target: thumbv7em-none-eabihf
           override: true
-      - name: Install cargo-make    
-        uses: davidB/rust-cargo-make@v1
       - uses: actions-rs/cargo@v1
         with:
           command: xtask
@@ -75,7 +73,6 @@ jobs:
           target: thumbv7em-none-eabihf
           override: true
           components: clippy
-      - uses: davidB/rust-cargo-make@v1
       - uses: actions-rs/cargo@v1
         with:
           command: clippy
