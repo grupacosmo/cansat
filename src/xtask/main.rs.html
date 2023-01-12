@@ -101,7 +101,15 @@
 <span id="101">101</span>
 <span id="102">102</span>
 <span id="103">103</span>
-</pre><pre class="rust"><code><span class="kw">use </span>clap::{Parser, Subcommand};
+<span id="104">104</span>
+<span id="105">105</span>
+<span id="106">106</span>
+<span id="107">107</span>
+</pre><pre class="rust"><code><span class="doccomment">//! Custom commands for cargo.
+//! 
+//! See [cargo-xtask](https://github.com/matklad/cargo-xtask) for details.
+
+</span><span class="kw">use </span>clap::{Parser, Subcommand};
 <span class="kw">use </span>colored::<span class="kw-2">*</span>;
 <span class="kw">use </span>eyre::{bail, eyre};
 <span class="kw">use </span>std::{
