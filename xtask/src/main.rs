@@ -1,3 +1,7 @@
+//! Custom commands for cargo.
+//! 
+//! See [cargo-xtask](https://github.com/matklad/cargo-xtask) for details.
+
 use clap::{Parser, Subcommand};
 use colored::*;
 use eyre::{bail, eyre};

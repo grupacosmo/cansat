@@ -1,4 +1,4 @@
-//! Gps device driver using [`embedded-hal`](https://github.com/rust-embedded/embedded-hal) traits.
+//! Gps device driver using [embedded-hal](https://github.com/rust-embedded/embedded-hal) traits.
 #![deny(unsafe_code)]
 #![no_std]
 

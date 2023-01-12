@@ -1,4 +1,6 @@
 //! Mock types.
+//! 
+//! Mock objects are simulated objects that mimic the behaviour of real objects in controlled ways, as part of a software testing initiative.
 
 use embedded_hal::{
     nb,

@@ -1,3 +1,4 @@
+//! Binary crate targeting stm32f4 family microcontrollers.
 #![deny(unsafe_code)]
 #![no_main]
 #![no_std]
