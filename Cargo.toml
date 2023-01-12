@@ -3,5 +3,6 @@ members = [
     "cansat",
     "cansat-gps",
     "cansat-stm32f446",
-    "cansat-test-utils"
+    "cansat-test-utils",
+    "xtask"
 ]
