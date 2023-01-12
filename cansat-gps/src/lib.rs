@@ -3,10 +3,7 @@
 #![no_std]
 
 use core::fmt::Debug;
-use embedded_hal::{
-    nb,
-    serial::{self, nb::Read},
-};
+use embedded_hal::{nb, serial};
 use heapless::Vec;
 
 /// Gps driver.
@@ -65,7 +62,7 @@ impl<Uart> Gps<Uart> {
 
 impl<Uart> Gps<Uart>
 where
-    Uart: Read,
+    Uart: serial::nb::Read,
 {
     /// Reads a single character from UART in a blocking mode and stores it in an internal buffer.
     /// On success, returns the read byte and a flag indicating whether a message was terminated.

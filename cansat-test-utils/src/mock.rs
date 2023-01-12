@@ -1,11 +1,8 @@
 //! Mock types.
-//! 
+//!
 //! Mock objects are simulated objects that mimic the behaviour of real objects in controlled ways, as part of a software testing initiative.
 
-use embedded_hal::{
-    nb,
-    serial::{nb::Read, ErrorType},
-};
+use embedded_hal::{nb, serial};
 use std::convert::Infallible;
 
 /// Mock type implementing `embedded_hal::serial` traits.
@@ -32,11 +29,11 @@ impl<I> Serial<I> {
     }
 }
 
-impl<I> ErrorType for Serial<I> {
+impl<I> serial::ErrorType for Serial<I> {
     type Error = Infallible;
 }
 
-impl<I: Iterator<Item = u8>> Read for Serial<I> {
+impl<I: Iterator<Item = u8>> serial::nb::Read for Serial<I> {
     /// Reads a single byte from the serial.
     ///
     /// # Examples
