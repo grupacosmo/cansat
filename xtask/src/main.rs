@@ -4,8 +4,9 @@
 
 use clap::{Parser, Subcommand};
 use colored::*;
-use eyre::{bail, eyre};
+use eyre::{bail, eyre, Context};
 use std::{
+    env,
     path::Path,
     process::{Command, ExitCode},
 };
@@ -53,7 +54,14 @@ fn run() -> eyre::Result<()> {
         Cmd::Build { args } => {
             let members = workspace_members()?;
             for member in members.iter().filter(|m| m != &"xtask") {
-                let msg = format!("Running `cargo run` for `{member}`").blue().bold();
+                let msg = format!(
+                    "xtask: Running `cargo build{}` in `{member}` package",
+                    format_cmd_args(&args)
+                        .map(|s| " ".to_owned() + &s)
+                        .unwrap_or_else(|| "".to_owned())
+                )
+                .blue()
+                .bold();
                 println!("{msg}");
                 let status = Command::new("cargo")
                     .arg("build")
@@ -66,11 +74,19 @@ fn run() -> eyre::Result<()> {
             }
         }
         Cmd::Test { args } => {
-            let excluded: Vec<_> = env!("XTASK_TEST_EXCLUDE").split(',').collect();
+            let excluded = env::var("XTASK_TEST_EXCLUDE").unwrap_or("".to_owned());
+            let excluded: Vec<_> = excluded.split(',').collect();
             let members = workspace_members()?;
             let members = members.iter().filter(|m| !excluded.contains(&m.as_str()));
             for member in members {
-                let msg = format!("Running `cargo test` for `{member}`").blue().bold();
+                let msg = format!(
+                    "xtask: Running `cargo test{}` in `{member}` package",
+                    format_cmd_args(&args)
+                        .map(|s| " ".to_owned() + &s)
+                        .unwrap_or_else(|| "".to_owned())
+                )
+                .blue()
+                .bold();
                 println!("{msg}");
                 let status = Command::new("cargo")
                     .arg("test")
@@ -87,14 +103,25 @@ fn run() -> eyre::Result<()> {
 }
 
 fn workspace_members() -> eyre::Result<Vec<String>> {
-    let dir = Path::new(env!("CARGO_WORKSPACE_DIR"));
+    let dir = env::var("CARGO_WORKSPACE_DIR")
+        .wrap_err("`CARGO_WORKSPACE_DIR` env variable is missing")?;
+    let dir = Path::new(&dir);
     let path = dir.join("Cargo.toml");
-    let manifest = cargo_toml::Manifest::from_path(path)?;
+    let manifest = cargo_toml::Manifest::from_path(&path)
+        .wrap_err_with(|| format!("Failed to read top-level Cargo.toml: {path:?}"))?;
     let members = manifest
         .workspace
         .ok_or_else(|| eyre!("No `workspace` field in Cargo.toml"))?
         .members;
     Ok(members)
+}
+
+fn format_cmd_args(args: &[String]) -> Option<String> {
+    if args.is_empty() {
+        None
+    } else {
+        Some(args.join(" "))
+    }
 }
 
 fn main() -> ExitCode {
