@@ -105,14 +105,42 @@
 <span id="105">105</span>
 <span id="106">106</span>
 <span id="107">107</span>
+<span id="108">108</span>
+<span id="109">109</span>
+<span id="110">110</span>
+<span id="111">111</span>
+<span id="112">112</span>
+<span id="113">113</span>
+<span id="114">114</span>
+<span id="115">115</span>
+<span id="116">116</span>
+<span id="117">117</span>
+<span id="118">118</span>
+<span id="119">119</span>
+<span id="120">120</span>
+<span id="121">121</span>
+<span id="122">122</span>
+<span id="123">123</span>
+<span id="124">124</span>
+<span id="125">125</span>
+<span id="126">126</span>
+<span id="127">127</span>
+<span id="128">128</span>
+<span id="129">129</span>
+<span id="130">130</span>
+<span id="131">131</span>
+<span id="132">132</span>
+<span id="133">133</span>
+<span id="134">134</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Custom commands for cargo.
 //!
 //! See [cargo-xtask](https://github.com/matklad/cargo-xtask) for details.
 
 </span><span class="kw">use </span>clap::{Parser, Subcommand};
 <span class="kw">use </span>colored::<span class="kw-2">*</span>;
-<span class="kw">use </span>eyre::{bail, eyre};
+<span class="kw">use </span>eyre::{bail, eyre, Context};
 <span class="kw">use </span>std::{
+    env,
     path::Path,
     process::{Command, ExitCode},
 };
@@ -160,7 +188,14 @@
         Cmd::Build { args } =&gt; {
             <span class="kw">let </span>members = workspace_members()<span class="question-mark">?</span>;
             <span class="kw">for </span>member <span class="kw">in </span>members.iter().filter(|m| m != <span class="kw-2">&amp;</span><span class="string">&quot;xtask&quot;</span>) {
-                <span class="kw">let </span>msg = <span class="macro">format!</span>(<span class="string">&quot;Running `cargo run` for `{member}`&quot;</span>).blue().bold();
+                <span class="kw">let </span>msg = <span class="macro">format!</span>(
+                    <span class="string">&quot;xtask: Running `cargo build{}` in `{member}` package&quot;</span>,
+                    format_cmd_args(<span class="kw-2">&amp;</span>args)
+                        .map(|s| <span class="string">&quot; &quot;</span>.to_owned() + <span class="kw-2">&amp;</span>s)
+                        .unwrap_or_else(|| <span class="string">&quot;&quot;</span>.to_owned())
+                )
+                .blue()
+                .bold();
                 <span class="macro">println!</span>(<span class="string">&quot;{msg}&quot;</span>);
                 <span class="kw">let </span>status = Command::new(<span class="string">&quot;cargo&quot;</span>)
                     .arg(<span class="string">&quot;build&quot;</span>)
@@ -173,11 +208,19 @@
             }
         }
         Cmd::Test { args } =&gt; {
-            <span class="kw">let </span>excluded: Vec&lt;<span class="kw">_</span>&gt; = <span class="macro">env!</span>(<span class="string">&quot;XTASK_TEST_EXCLUDE&quot;</span>).split(<span class="string">&#39;,&#39;</span>).collect();
+            <span class="kw">let </span>excluded = env::var(<span class="string">&quot;XTASK_TEST_EXCLUDE&quot;</span>).unwrap_or(<span class="string">&quot;&quot;</span>.to_owned());
+            <span class="kw">let </span>excluded: Vec&lt;<span class="kw">_</span>&gt; = excluded.split(<span class="string">&#39;,&#39;</span>).collect();
             <span class="kw">let </span>members = workspace_members()<span class="question-mark">?</span>;
             <span class="kw">let </span>members = members.iter().filter(|m| !excluded.contains(<span class="kw-2">&amp;</span>m.as_str()));
             <span class="kw">for </span>member <span class="kw">in </span>members {
-                <span class="kw">let </span>msg = <span class="macro">format!</span>(<span class="string">&quot;Running `cargo test` for `{member}`&quot;</span>).blue().bold();
+                <span class="kw">let </span>msg = <span class="macro">format!</span>(
+                    <span class="string">&quot;xtask: Running `cargo test{}` in `{member}` package&quot;</span>,
+                    format_cmd_args(<span class="kw-2">&amp;</span>args)
+                        .map(|s| <span class="string">&quot; &quot;</span>.to_owned() + <span class="kw-2">&amp;</span>s)
+                        .unwrap_or_else(|| <span class="string">&quot;&quot;</span>.to_owned())
+                )
+                .blue()
+                .bold();
                 <span class="macro">println!</span>(<span class="string">&quot;{msg}&quot;</span>);
                 <span class="kw">let </span>status = Command::new(<span class="string">&quot;cargo&quot;</span>)
                     .arg(<span class="string">&quot;test&quot;</span>)
@@ -194,14 +237,25 @@
 }
 
 <span class="kw">fn </span>workspace_members() -&gt; eyre::Result&lt;Vec&lt;String&gt;&gt; {
-    <span class="kw">let </span>dir = Path::new(<span class="macro">env!</span>(<span class="string">&quot;CARGO_WORKSPACE_DIR&quot;</span>));
+    <span class="kw">let </span>dir = env::var(<span class="string">&quot;CARGO_WORKSPACE_DIR&quot;</span>)
+        .wrap_err(<span class="string">&quot;`CARGO_WORKSPACE_DIR` env variable is missing&quot;</span>)<span class="question-mark">?</span>;
+    <span class="kw">let </span>dir = Path::new(<span class="kw-2">&amp;</span>dir);
     <span class="kw">let </span>path = dir.join(<span class="string">&quot;Cargo.toml&quot;</span>);
-    <span class="kw">let </span>manifest = cargo_toml::Manifest::from_path(path)<span class="question-mark">?</span>;
+    <span class="kw">let </span>manifest = cargo_toml::Manifest::from_path(<span class="kw-2">&amp;</span>path)
+        .wrap_err_with(|| <span class="macro">format!</span>(<span class="string">&quot;Failed to read top-level Cargo.toml: {path:?}&quot;</span>))<span class="question-mark">?</span>;
     <span class="kw">let </span>members = manifest
         .workspace
         .ok_or_else(|| <span class="macro">eyre!</span>(<span class="string">&quot;No `workspace` field in Cargo.toml&quot;</span>))<span class="question-mark">?
         </span>.members;
     <span class="prelude-val">Ok</span>(members)
+}
+
+<span class="kw">fn </span>format_cmd_args(args: <span class="kw-2">&amp;</span>[String]) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt; {
+    <span class="kw">if </span>args.is_empty() {
+        <span class="prelude-val">None
+    </span>} <span class="kw">else </span>{
+        <span class="prelude-val">Some</span>(args.join(<span class="string">&quot; &quot;</span>))
+    }
 }
 
 <span class="kw">fn </span>main() -&gt; ExitCode {
