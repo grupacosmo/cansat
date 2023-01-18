@@ -35,7 +35,7 @@ mod app {
     struct Local {
         delay: DelayUs<TIM3>,
         led: PA5<Output>,
-        bme: BME280<I2c<I2C1, (Scl, Sda)>>,
+        bme: BME280<I2c1<(Scl, Sda)>>,
     }
 
     #[monotonic(binds = TIM2, default = true)]
@@ -55,7 +55,6 @@ mod app {
         let gpiob = device.GPIOB.split();
         let gpioc = device.GPIOC.split();
         
-        // I2C config
         let i2c_scl = gpiob
             .pb6
             .into_alternate()
@@ -76,15 +75,11 @@ mod app {
             },
             &clocks,
         );
-         //Initialize the sensor
         
          let mut bme = BME280::new_primary(i2c);
-         bme.init(&mut delay)
-             .map_err(|_| {
-                 defmt::println!("Could not initialize bme280, Error");
-                 panic!();
-             })
-             .unwrap();
+         if let Err(e) = bme.init(&mut delay) {
+             defmt::panic!("{Failed to initalize bme280: {}", e);
+         }
 
 
         let led = gpioa.pa5.into_push_pull_output();
@@ -112,7 +107,8 @@ mod app {
 
         (shared, local, monotonics)
     }
-    #[idle()]
+
+    #[idle]
     fn idle(ctx: idle::Context) -> ! {
         defmt::info!("Started idle task");
         loop {
@@ -138,27 +134,28 @@ mod app {
     }
 
     /// Toggles led every second
-    #[task(priority= 1 , local = [led])]
+    #[task(local = [led])]
     fn blink(ctx: blink::Context) {
         let led = ctx.local.led;
         led.toggle();
         defmt::info!("Blink");
         blink::spawn_after(1.secs()).unwrap();
     }
-    #[task(priority=1, local = [delay,bme])]
+    
+    #[task(local = [delay, bme])]
     fn bme_measure(ctx: bme_measure::Context) {
         let bme = ctx.local.bme;
         let delay = ctx.local.delay;
-        match bme.measure(delay) {
-            Ok(measurements) => {
-                defmt::info!("Relative Humidity = {}%", measurements.humidity);
-                defmt::info!("Temperature = {} deg C", measurements.temperature);
-                defmt::info!("Pressure = {} pascals", measurements.pressure);
+        let measurements = match bme.measure(delay) {
+            Ok(m) => m,
+            Err(e) => {
+                defmt::error!("Could not read bme280 measurements: {}", e);
+                return;
             }
-            Err(_) => {
-                defmt::info!("Could not read bme280 due to error");
-            }
-        }
+        };
+        defmt::info!("Relative Humidity = {}%", measurements.humidity);
+        defmt::info!("Temperature = {} deg C", measurements.temperature);
+        defmt::info!("Pressure = {} pascals", measurements.pressure);
         bme_measure::spawn_after(5.secs()).unwrap();
     }
     
