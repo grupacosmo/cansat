@@ -74,7 +74,7 @@ fn run() -> eyre::Result<()> {
             }
         }
         Cmd::Test { args } => {
-            let excluded = env::var("XTASK_TEST_EXCLUDE").unwrap_or("".to_owned());
+            let excluded = env::var("XTASK_TEST_EXCLUDE").unwrap_or_else(|_| "".to_owned());
             let excluded: Vec<_> = excluded.split(',').collect();
             let members = workspace_members()?;
             let members = members.iter().filter(|m| !excluded.contains(&m.as_str()));
