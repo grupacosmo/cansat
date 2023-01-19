@@ -8,10 +8,10 @@ use panic_probe as _;
 
 #[rtic::app(device = stm32f4xx_hal::pac, dispatchers = [EXTI0])]
 mod app {
+
     use bme280::i2c::BME280;
     use cansat_gps::Gps;
     use cortex_m::asm::nop;
-
     use defmt::Debug2Format;
     use stm32f4xx_hal::{
         gpio::{Alternate, OpenDrain, Output, PA5, PB6, PB7, PC10, PC11},
