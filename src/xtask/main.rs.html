@@ -208,7 +208,7 @@
             }
         }
         Cmd::Test { args } =&gt; {
-            <span class="kw">let </span>excluded = env::var(<span class="string">&quot;XTASK_TEST_EXCLUDE&quot;</span>).unwrap_or(<span class="string">&quot;&quot;</span>.to_owned());
+            <span class="kw">let </span>excluded = env::var(<span class="string">&quot;XTASK_TEST_EXCLUDE&quot;</span>).unwrap_or_else(|<span class="kw">_</span>| <span class="string">&quot;&quot;</span>.to_owned());
             <span class="kw">let </span>excluded: Vec&lt;<span class="kw">_</span>&gt; = excluded.split(<span class="string">&#39;,&#39;</span>).collect();
             <span class="kw">let </span>members = workspace_members()<span class="question-mark">?</span>;
             <span class="kw">let </span>members = members.iter().filter(|m| !excluded.contains(<span class="kw-2">&amp;</span>m.as_str()));
