@@ -110,6 +110,58 @@
 <span id="110">110</span>
 <span id="111">111</span>
 <span id="112">112</span>
+<span id="113">113</span>
+<span id="114">114</span>
+<span id="115">115</span>
+<span id="116">116</span>
+<span id="117">117</span>
+<span id="118">118</span>
+<span id="119">119</span>
+<span id="120">120</span>
+<span id="121">121</span>
+<span id="122">122</span>
+<span id="123">123</span>
+<span id="124">124</span>
+<span id="125">125</span>
+<span id="126">126</span>
+<span id="127">127</span>
+<span id="128">128</span>
+<span id="129">129</span>
+<span id="130">130</span>
+<span id="131">131</span>
+<span id="132">132</span>
+<span id="133">133</span>
+<span id="134">134</span>
+<span id="135">135</span>
+<span id="136">136</span>
+<span id="137">137</span>
+<span id="138">138</span>
+<span id="139">139</span>
+<span id="140">140</span>
+<span id="141">141</span>
+<span id="142">142</span>
+<span id="143">143</span>
+<span id="144">144</span>
+<span id="145">145</span>
+<span id="146">146</span>
+<span id="147">147</span>
+<span id="148">148</span>
+<span id="149">149</span>
+<span id="150">150</span>
+<span id="151">151</span>
+<span id="152">152</span>
+<span id="153">153</span>
+<span id="154">154</span>
+<span id="155">155</span>
+<span id="156">156</span>
+<span id="157">157</span>
+<span id="158">158</span>
+<span id="159">159</span>
+<span id="160">160</span>
+<span id="161">161</span>
+<span id="162">162</span>
+<span id="163">163</span>
+<span id="164">164</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Binary crate targeting stm32f4 family microcontrollers.
 </span><span class="attribute">#![deny(unsafe_code)]
 #![no_main]
@@ -120,14 +172,21 @@
 
 <span class="attribute">#[rtic::app(device = stm32f4xx_hal::pac, dispatchers = [EXTI0]</span>)]
 <span class="kw">mod </span>app {
+
+    <span class="kw">use </span>bme280::i2c::BME280;
     <span class="kw">use </span>cansat_gps::Gps;
+    <span class="kw">use </span>cortex_m::asm::nop;
+    <span class="kw">use </span>defmt::Debug2Format;
     <span class="kw">use </span>stm32f4xx_hal::{
-        gpio::{Alternate, Output, PA5, PC10, PC11},
+        gpio::{Alternate, OpenDrain, Output, PA5, PB6, PB7, PC10, PC11},
+        i2c::{DutyCycle, I2c1, Mode},
         pac::{<span class="self">self</span>, TIM3},
         prelude::<span class="kw-2">*</span>,
         serial::{<span class="self">self</span>, Event, Serial3},
         timer::{monotonic::MonoTimerUs, DelayUs},
     };
+    <span class="kw">type </span>Scl = PB6&lt;Alternate&lt;<span class="number">4</span>, OpenDrain&gt;&gt;;
+    <span class="kw">type </span>Sda = PB7&lt;Alternate&lt;<span class="number">4</span>, OpenDrain&gt;&gt;;
 
     <span class="kw">type </span>Rx3 = PC10&lt;Alternate&lt;<span class="number">7</span>&gt;&gt;;
     <span class="kw">type </span>Tx3 = PC11&lt;Alternate&lt;<span class="number">7</span>&gt;&gt;;
@@ -141,6 +200,7 @@
     </span><span class="kw">struct </span>Local {
         delay: DelayUs&lt;TIM3&gt;,
         led: PA5&lt;Output&gt;,
+        bme: BME280&lt;I2c1&lt;(Scl, Sda)&gt;&gt;,
     }
 
     <span class="attribute">#[monotonic(binds = TIM2, default = <span class="bool-val">true</span>)]
@@ -154,10 +214,37 @@
         <span class="kw">let </span>rcc = device.RCC.constrain();
         <span class="kw">let </span>clocks = rcc.cfgr.sysclk(<span class="number">84</span>.MHz()).freeze();
         <span class="kw">let </span>mono = device.TIM2.monotonic_us(<span class="kw-2">&amp;</span>clocks);
-        <span class="kw">let </span>delay = device.TIM3.delay_us(<span class="kw-2">&amp;</span>clocks);
+        <span class="kw">let </span><span class="kw-2">mut </span>delay = device.TIM3.delay_us(<span class="kw-2">&amp;</span>clocks);
 
         <span class="kw">let </span>gpioa = device.GPIOA.split();
+        <span class="kw">let </span>gpiob = device.GPIOB.split();
         <span class="kw">let </span>gpioc = device.GPIOC.split();
+
+        <span class="kw">let </span>i2c_scl = gpiob
+            .pb6
+            .into_alternate()
+            .internal_pull_up(<span class="bool-val">false</span>)
+            .set_open_drain();
+        <span class="kw">let </span>i2c_sda = gpiob
+            .pb7
+            .into_alternate()
+            .internal_pull_up(<span class="bool-val">false</span>)
+            .set_open_drain();
+
+        <span class="kw">let </span>i2c = I2c1::new(
+            device.I2C1,
+            (i2c_scl, i2c_sda),
+            Mode::Fast {
+                frequency: <span class="number">400000</span>.Hz(),
+                duty_cycle: DutyCycle::Ratio2to1,
+            },
+            <span class="kw-2">&amp;</span>clocks,
+        );
+
+        <span class="kw">let </span><span class="kw-2">mut </span>bme = BME280::new_primary(i2c);
+        <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = bme.init(<span class="kw-2">&amp;mut </span>delay) {
+            <span class="macro">defmt::panic!</span>(<span class="string">&quot;Failed to initalize bme280: {}&quot;</span>, Debug2Format(<span class="kw-2">&amp;</span>e));
+        }
 
         <span class="kw">let </span>led = gpioa.pa5.into_push_pull_output();
 
@@ -177,22 +264,19 @@
         };
 
         <span class="kw">let </span>shared = Shared { gps };
-        <span class="kw">let </span>local = Local { delay, led };
+        <span class="kw">let </span>local = Local { delay, led, bme };
         <span class="kw">let </span>monotonics = init::Monotonics(mono);
-
+        bme_measure::spawn().unwrap();
         blink::spawn().unwrap();
 
         (shared, local, monotonics)
     }
 
-    <span class="attribute">#[idle(local = [delay]</span>, shared = [gps])]
-    <span class="kw">fn </span>idle(ctx: idle::Context) -&gt; ! {
+    <span class="attribute">#[idle]
+    </span><span class="kw">fn </span>idle(_ctx: idle::Context) -&gt; ! {
         <span class="macro">defmt::info!</span>(<span class="string">&quot;Started idle task&quot;</span>);
-
-        <span class="kw">let </span>_delay = ctx.local.delay;
-
         <span class="kw">loop </span>{
-            rtic::export::nop()
+            nop();
         }
     }
 
@@ -218,8 +302,28 @@
     <span class="kw">fn </span>blink(ctx: blink::Context) {
         <span class="kw">let </span>led = ctx.local.led;
         led.toggle();
-        <span class="macro">defmt::info!</span>(<span class="string">&quot;Blink&quot;</span>);
+        <span class="macro">defmt::debug!</span>(<span class="string">&quot;Blink&quot;</span>);
         blink::spawn_after(<span class="number">1</span>.secs()).unwrap();
+    }
+
+    <span class="attribute">#[task(local = [delay, bme]</span>)]
+    <span class="kw">fn </span>bme_measure(ctx: bme_measure::Context) {
+        <span class="kw">let </span>bme = ctx.local.bme;
+        <span class="kw">let </span>delay = ctx.local.delay;
+        <span class="kw">let </span>measurements = <span class="kw">match </span>bme.measure(delay) {
+            <span class="prelude-val">Ok</span>(m) =&gt; m,
+            <span class="prelude-val">Err</span>(e) =&gt; {
+                <span class="macro">defmt::error!</span>(<span class="string">&quot;Could not read bme280 measurements: {}&quot;</span>, Debug2Format(<span class="kw-2">&amp;</span>e));
+                <span class="kw">return</span>;
+            }
+        };
+        <span class="kw">let </span>altitude = cansat::calculate_altitude(measurements.pressure);
+        <span class="macro">defmt::info!</span>(<span class="string">&quot;Altitude = {} meters above sea level&quot;</span>, altitude);
+        <span class="macro">defmt::info!</span>(<span class="string">&quot;Relative Humidity = {}%&quot;</span>, measurements.humidity);
+        <span class="macro">defmt::info!</span>(<span class="string">&quot;Temperature = {} deg C&quot;</span>, measurements.temperature);
+        <span class="macro">defmt::info!</span>(<span class="string">&quot;Pressure = {} pascals&quot;</span>, measurements.pressure);
+
+        bme_measure::spawn_after(<span class="number">5</span>.secs()).unwrap();
     }
 }
 </code></pre></div>
