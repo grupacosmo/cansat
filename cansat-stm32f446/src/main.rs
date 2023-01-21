@@ -103,6 +103,56 @@ mod app {
         let shared = Shared { gps };
         let local = Local { delay, led, bme };
         let monotonics = init::Monotonics(mono);
+        ////////////////SDMMC//////////////////////////////////
+        use embedded_sdmmc::{Controller, SdMmcSpi, TimeSource, Timestamp, VolumeIdx};
+        use stm32f4xx_hal::spi::{Phase, Polarity, Spi};
+
+        let sdmmc_spi = Spi::new(
+            device.SPI2,
+            (gpiob.pb13, gpiob.pb14, gpiob.pb15),
+            stm32f4xx_hal::spi::Mode {
+                polarity: Polarity::IdleLow,
+                phase: Phase::CaptureOnFirstTransition,
+            },
+            400.kHz(),
+            &clocks,
+        );
+
+        let sdmmc_cs = gpiob.pb12.into_push_pull_output();
+        let mut controller = Controller::new(SdMmcSpi::new(sdmmc_spi, sdmmc_cs), FakeTime {});
+
+        defmt::info!("Init SD card...\r");
+        match controller.device().init() {
+            Ok(_) => {
+                defmt::info!("Card size... ");
+                match controller.device().card_size_bytes() {
+                    Ok(size) => defmt::info!("{}\r", size),
+                    Err(e) => defmt::error!("Err: {:?}", Debug2Format(&e)),
+                }
+                defmt::info!("Volume 0:\r");
+                match controller.get_volume(VolumeIdx(0)) {
+                    Ok(volume) => {
+                        let root_dir = controller.open_root_dir(&volume);
+                        defmt::info!("Listing root directory:\r");
+                        controller
+                            .iterate_dir(&volume, &root_dir, |x| {
+                                defmt::info!("Found: {:?}\r", x.name);
+                            })
+                            .unwrap;
+                        defmt::info!("End of listing\r");
+                    }
+                    Err(e) => defmt::error!("Err: {:?}", Debug2Format(&e)),
+                }
+            }
+            Err(e) => defmt::error!("{:?}!", Debug2Format(&e)),
+        }
+        struct FakeTime;
+        impl TimeSource for FakeTime {
+            fn get_timestamp(&self) -> Timestamp {
+                Timestamp::from_calendar(1019, 11, 24, 3, 40, 31).unwrap()
+            }
+        }
+        /////////END-OF SDMMC////////////////////////////////////
         bme_measure::spawn().unwrap();
         blink::spawn().unwrap();
 

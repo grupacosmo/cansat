@@ -98,6 +98,7 @@ dependencies = [
  "cortex-m-rtic",
  "defmt",
  "defmt-rtt",
+ "embedded-sdmmc",
  "heapless",
  "once_cell",
  "panic-probe",
@@ -126,6 +127,12 @@ name = "cc"
 version = "1.0.78"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a20104e2335ce8a659d6dd92a51a767a0c062599c73b343fd152cb401e828c3d"
+
+[[package]]
+name = "cfg-if"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
 name = "clap"
@@ -307,6 +314,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c3babfc7fd332142a0b11aebf592992f211f4e01b6222fb04b03aba1bd80018d"
 dependencies = [
  "nb 1.0.0",
+]
+
+[[package]]
+name = "embedded-sdmmc"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3b4ae38d27afe8ffb1c31f82ebe4960f099ac55bbdc35e813a45cade676f2600"
+dependencies = [
+ "byteorder",
+ "embedded-hal 0.2.7",
+ "log",
 ]
 
 [[package]]
@@ -494,6 +512,15 @@ checksum = "435011366fe56583b16cf956f9df0095b405b82d76425bc8981c0e22e60ec4df"
 dependencies = [
  "autocfg",
  "scopeguard",
+]
+
+[[package]]
+name = "log"
+version = "0.4.17"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "abb12e687cfb44aa40f41fc3978ef76448f9b6038cad6aef4259d3c095a2382e"
+dependencies = [
+ "cfg-if",
 ]
 
 [[package]]
