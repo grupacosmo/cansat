@@ -1,4 +1,4 @@
-//! Binary crate targeting stm32f4 family microcontrollers.
+//! Binary crate targeting stm32f4 family microspi_devs.
 #![deny(unsafe_code)]
 #![no_main]
 #![no_std]
@@ -9,7 +9,7 @@ use panic_probe as _;
 #[rtic::app(device = stm32f4xx_hal::pac, dispatchers = [EXTI0])]
 mod app {
 
-    use bme280::i2c::BME280;
+    ///use bme280::i2c::BME280;
     use cansat_gps::Gps;
     use cortex_m::asm::nop;
     use defmt::Debug2Format;
@@ -21,8 +21,8 @@ mod app {
         serial::{self, Event, Serial3},
         timer::{monotonic::MonoTimerUs, DelayUs},
     };
-    type Scl = PB6<Alternate<4, OpenDrain>>;
-    type Sda = PB7<Alternate<4, OpenDrain>>;
+    //type Scl = PB6<Alternate<4, OpenDrain>>;
+    //type Sda = PB7<Alternate<4, OpenDrain>>;
 
     type Rx3 = PC10<Alternate<7>>;
     type Tx3 = PC11<Alternate<7>>;
@@ -36,7 +36,7 @@ mod app {
     struct Local {
         delay: DelayUs<TIM3>,
         led: PA5<Output>,
-        bme: BME280<I2c1<(Scl, Sda)>>,
+       //// bme: BME280<I2c1<(Scl, Sda)>>,
     }
 
     #[monotonic(binds = TIM2, default = true)]
@@ -101,59 +101,70 @@ mod app {
         };
 
         let shared = Shared { gps };
-        let local = Local { delay, led, bme };
+        let local = Local { delay, led };
         let monotonics = init::Monotonics(mono);
         ////////////////SDMMC//////////////////////////////////
         use embedded_sdmmc::{Controller, SdMmcSpi, TimeSource, Timestamp, VolumeIdx};
         use stm32f4xx_hal::spi::{Phase, Polarity, Spi};
-
-        let sdmmc_spi = Spi::new(
-            device.SPI2,
-            (gpiob.pb13, gpiob.pb14, gpiob.pb15),
+        use stm32f4xx_hal::pac::SPI1;
+        use stm32f4xx_hal::gpio::Pin;
+        use cortex_m_rt::entry;
+        use stm32f4xx_hal::{
+            pac::{self},
+            //prelude::*,
+            timer::Channel,
+        };
+       
+        let sdmmc_spi = device.SPI1.spi(
+            (
+                gpiob.pb3.into_alternate(),
+                gpioa.pa6.into_alternate(),
+                gpioa.pa7.into_alternate(),
+            ),
             stm32f4xx_hal::spi::Mode {
                 polarity: Polarity::IdleLow,
                 phase: Phase::CaptureOnFirstTransition,
             },
-            400.kHz(),
+            
+            400000.Hz(),
             &clocks,
         );
+        struct Clock;
 
-        let sdmmc_cs = gpiob.pb12.into_push_pull_output();
-        let mut controller = Controller::new(SdMmcSpi::new(sdmmc_spi, sdmmc_cs), FakeTime {});
-
-        defmt::info!("Init SD card...\r");
-        match controller.device().init() {
-            Ok(_) => {
-                defmt::info!("Card size... ");
-                match controller.device().card_size_bytes() {
-                    Ok(size) => defmt::info!("{}\r", size),
-                    Err(e) => defmt::error!("Err: {:?}", Debug2Format(&e)),
-                }
-                defmt::info!("Volume 0:\r");
-                match controller.get_volume(VolumeIdx(0)) {
-                    Ok(volume) => {
-                        let root_dir = controller.open_root_dir(&volume);
-                        defmt::info!("Listing root directory:\r");
-                        controller
-                            .iterate_dir(&volume, &root_dir, |x| {
-                                defmt::info!("Found: {:?}\r", x.name);
-                            })
-                            .unwrap;
-                        defmt::info!("End of listing\r");
-                    }
-                    Err(e) => defmt::error!("Err: {:?}", Debug2Format(&e)),
-                }
-            }
-            Err(e) => defmt::error!("{:?}!", Debug2Format(&e)),
-        }
-        struct FakeTime;
-        impl TimeSource for FakeTime {
+        impl TimeSource for Clock {
             fn get_timestamp(&self) -> Timestamp {
-                Timestamp::from_calendar(1019, 11, 24, 3, 40, 31).unwrap()
+                Timestamp {
+                    year_since_1970: 0,
+                    zero_indexed_month: 0,
+                    zero_indexed_day: 0,
+                    hours: 0,
+                    minutes: 0,
+                    seconds: 0,
+                }
             }
         }
+        let sdmmc_cs = gpioa.pa15.into_push_pull_output();
+        let mut spi_dev = embedded_sdmmc::SdMmcSpi::new(sdmmc_spi, sdmmc_cs);
+        
+        defmt::info!("Init SD card...");
+        match spi_dev.acquire() {
+            Ok(sdmmc_spi) => {
+                let mut cont = Controller::new(sdmmc_spi, Clock);
+                defmt::info!("OK!\nCard size...");
+                match cont.device().card_size_bytes() {
+                    Ok(size) => defmt::info!("{}", size),
+                    Err(e) => defmt::info!("Err: {:?}", e),
+                }
+                defmt::info!("Volume 0...");
+                match cont.get_volume(embedded_sdmmc::VolumeIdx(0)) {
+                    Ok(v) => defmt::info!("{}",v),
+                    Err(e) => defmt::info!("Err: {:?}", e),
+                }
+            }
+            Err(e) => defmt::info!("{:?}!", e)
+        };
         /////////END-OF SDMMC////////////////////////////////////
-        bme_measure::spawn().unwrap();
+       
         blink::spawn().unwrap();
 
         (shared, local, monotonics)
@@ -183,6 +194,7 @@ mod app {
             log_nmea::spawn().unwrap();
         }
     }
+   
 
     /// Toggles led every second
     #[task(local = [led])]
