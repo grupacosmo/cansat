@@ -18,4 +18,4 @@ panic-probe = { version = "0.3.0", features = ["print-defmt"] }
 once_cell = { version = "1.16.0", default-features = false }
 heapless = { version = "0.7.16", features = ["defmt"] }
 bme280 = { git = "https://github.com/grupacosmo/bme280-rs", default-features = false, features = ["defmt"] }
-embedded-sdmmc = "0.4.0"
+embedded-sdmmc = { version = "0.4.0", default-features = false, features = ["defmt-log"] }
