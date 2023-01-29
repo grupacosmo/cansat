@@ -76,8 +76,8 @@ mod app {
             },
             &clocks,
         );
-
         let mut bme = BME280::new_primary(i2c);
+        #[cfg(feature = "bme")]
         if let Err(e) = bme.init(&mut delay) {
             defmt::panic!("Failed to initalize bme280: {}", Debug2Format(&e));
         }
@@ -100,7 +100,11 @@ mod app {
         };
 
         let shared = Shared { gps };
-        let local = Local { delay, led, bme };
+        let local = Local { 
+            delay,
+            led, 
+            bme 
+        };
         let monotonics = init::Monotonics(mono);
         bme_measure::spawn().unwrap();
         blink::spawn().unwrap();
@@ -141,9 +145,11 @@ mod app {
         defmt::debug!("Blink");
         blink::spawn_after(1.secs()).unwrap();
     }
-
+    
     #[task(local = [delay, bme])]
     fn bme_measure(ctx: bme_measure::Context) {
+        #[cfg(feature = "bme")]
+        {
         let bme = ctx.local.bme;
         let delay = ctx.local.delay;
         let measurements = match bme.measure(delay) {
@@ -158,7 +164,8 @@ mod app {
         defmt::info!("Relative Humidity = {}%", measurements.humidity);
         defmt::info!("Temperature = {} deg C", measurements.temperature);
         defmt::info!("Pressure = {} pascals", measurements.pressure);
-
+        
         bme_measure::spawn_after(5.secs()).unwrap();
-    }
+        }
+}
 }
