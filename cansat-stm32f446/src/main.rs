@@ -152,17 +152,51 @@ mod app {
                 let mut cont = Controller::new(sdmmc_spi, Clock);
                 defmt::info!("OK!\nCard size...");
                 match cont.device().card_size_bytes() {
-                    Ok(size) => defmt::info!("{}", size),
+                    Ok(size) => {
+                        defmt::info!("{}", size);
+            
+
+                    },
                     Err(e) => defmt::info!("Err: {:?}", e),
                 }
                 defmt::info!("Volume 0...");
                 match cont.get_volume(embedded_sdmmc::VolumeIdx(0)) {
-                    Ok(v) => defmt::info!("{}",v),
+                    Ok(v) => {
+                        defmt::info!("{}",v);
+                        let root_dir = cont.open_root_dir(&v).unwrap();
+                        defmt::info!("\tListing root directory:");
+                        cont.iterate_dir(&v, &root_dir, |x| {
+                        defmt::info!("\t\tFound: {:?}", x.name);
+                        //defmt::info!("\t\tFound: {:?}", x.name.contents);
+                        }).unwrap();
+                        let filename = "test.txt";
+                        defmt::info!("Opening {:?}", filename);
+                        let mut f = cont.open_file_in_dir(&mut v, &root_dir, FILE_TO_WRITE, embedded_sdmmc::Mode::ReadOnly)
+                        .unwrap();
+                        while !f.eof() {
+                            let mut buffer = [0u8; 32];
+                            let num_read = controller.read(&v, &mut f, &mut buffer).unwrap();
+                            for b in &buffer[0..num_read] {
+                                if *b == 10 {
+                                    defmt::info!("\\n");
+                                }
+                                defmt::info!("{}", *b as char);
+                            }
+                        }
+
+
+
+                    },
                     Err(e) => defmt::info!("Err: {:?}", e),
                 }
+                
             }
             Err(e) => defmt::info!("{:?}!", e)
         };
+        //////
+        
+        //let file = controller.open_file(&volume, filename, embedded_sdmmc::FileMode::Write).unwrap();
+
         /////////END-OF SDMMC////////////////////////////////////
        
         blink::spawn().unwrap();
