@@ -8,21 +8,24 @@ use panic_probe as _;
 
 #[rtic::app(device = stm32f4xx_hal::pac, dispatchers = [EXTI0])]
 mod app {
-
-    use bme280::i2c::BME280;
+ 
+    use cortex_m_rt::entry;
+    use bme280::i2c::BME280;    
     use cansat_gps::Gps;
     use cortex_m::asm::nop;
     use cortex_m_rt::entry;
     use defmt::Debug2Format;
-    use embedded_sdmmc::{BlockSpi, Controller, SdMmcSpi, TimeSource, Timestamp};
+    use embedded_sdmmc::{Controller, SdMmcSpi, TimeSource, Timestamp, BlockSpi};
     use stm32f4xx_hal::{
-        gpio::{Alternate, OpenDrain, Output, Pin, PA5, PB6, PB7, PC10, PC11},
+        gpio::{Alternate, OpenDrain, Output, PA5, PB6, PB7, PC10, PC11, Pin},
         i2c::{self, DutyCycle, I2c1},
-        pac::{self, SPI1, TIM3},
+        spi::{Phase, Polarity, Spi},
+        pac::{self, TIM3, SPI1},
         prelude::*,
         serial::{self, Event, Serial3},
         spi::{Phase, Polarity, Spi},
         timer::{monotonic::MonoTimerUs, DelayUs},
+        
     };
 
     pub struct Clock;
@@ -45,15 +48,7 @@ mod app {
     type Rx3 = PC10<Alternate<7>>;
     type Tx3 = PC11<Alternate<7>>;
 
-    type SPI = Spi<
-        SPI1,
-        (
-            Pin<'B', 3, Alternate<5>>,
-            Pin<'A', 6, Alternate<5>>,
-            Pin<'A', 7, Alternate<5>>,
-        ),
-        false,
-    >;
+    type SPI = Spi<SPI1, (Pin<'B', 3, Alternate<5>>, Pin<'A', 6, Alternate<5>>, Pin<'A', 7, Alternate<5>>), false>;
     type CS = Pin<'A', 15, Output>;
     #[shared]
     struct Shared {
@@ -65,7 +60,8 @@ mod app {
         delay: DelayUs<TIM3>,
         led: PA5<Output>,
         bme: BME280<I2c1<(Scl, Sda)>>,
-        controller: Controller<BlockSpi<'static, SPI, CS>, Clock, 4, 4>,
+        controller: Controller<BlockSpi<'static, SPI,  CS >, Clock, 4, 4>
+        
     }
 
     #[monotonic(binds = TIM2, default = true)]
@@ -129,6 +125,7 @@ mod app {
             Gps::new(gps_serial)
         };
 
+        
         let sdmmc_cs = gpioa.pa15.into_push_pull_output();
         let sdmmc_spi = device.SPI1.spi(
             (
@@ -146,7 +143,9 @@ mod app {
 
         *ctx.local.spi_dev = Some(embedded_sdmmc::SdMmcSpi::new(sdmmc_spi, sdmmc_cs));
         let mut controller = match ctx.local.spi_dev.as_mut().unwrap().acquire() {
-            Ok(sdmmc_spi) => Controller::new(sdmmc_spi, Clock),
+            Ok(sdmmc_spi) => {
+                Controller::new(sdmmc_spi, Clock)
+            }
             Err(e) => {
                 defmt::panic!(":)");
             }
@@ -154,16 +153,13 @@ mod app {
 
         let volume = match controller.get_volume(embedded_sdmmc::VolumeIdx(0)) {
             Ok(volume) => volume,
-            Err(e) => defmt::panic!(":) {}", e),
+            Err(e) => defmt::panic!(":) {}", e)
         };
 
+
+       
         let shared = Shared { gps };
-        let local = Local {
-            delay,
-            led,
-            bme,
-            controller,
-        };
+        let local = Local { delay, led, bme, controller };
         let monotonics = init::Monotonics(mono);
         blink::spawn().unwrap();
 
@@ -194,6 +190,8 @@ mod app {
             log_nmea::spawn().unwrap();
         }
     }
+   
+    
 
     /// Toggles led every second
     #[task(local = [led])]
