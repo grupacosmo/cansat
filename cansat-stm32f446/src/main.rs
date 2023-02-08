@@ -13,7 +13,6 @@ mod app {
     use bme280::i2c::BME280;    
     use cansat_gps::Gps;
     use cortex_m::asm::nop;
-    use cortex_m_rt::entry;
     use defmt::Debug2Format;
     use embedded_sdmmc::{Controller, SdMmcSpi, TimeSource, Timestamp, BlockSpi};
     use stm32f4xx_hal::{
@@ -23,7 +22,6 @@ mod app {
         pac::{self, TIM3, SPI1},
         prelude::*,
         serial::{self, Event, Serial3},
-        spi::{Phase, Polarity, Spi},
         timer::{monotonic::MonoTimerUs, DelayUs},
         
     };
