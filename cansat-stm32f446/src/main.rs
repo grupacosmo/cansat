@@ -9,24 +9,52 @@ use panic_probe as _;
 #[rtic::app(device = stm32f4xx_hal::pac, dispatchers = [EXTI0])]
 mod app {
 
-    ///use bme280::i2c::BME280;
+    use bme280::i2c::BME280;
     use cansat_gps::Gps;
     use cortex_m::asm::nop;
+    use cortex_m_rt::entry;
     use defmt::Debug2Format;
+    use embedded_sdmmc::{BlockSpi, Controller, SdMmcSpi, TimeSource, Timestamp};
     use stm32f4xx_hal::{
-        gpio::{Alternate, OpenDrain, Output, PA5, PB6, PB7, PC10, PC11},
-        i2c::{DutyCycle, I2c1, Mode},
-        pac::{self, TIM3},
+        gpio::{Alternate, OpenDrain, Output, Pin, PA5, PB6, PB7, PC10, PC11},
+        i2c::{self, DutyCycle, I2c1},
+        pac::{self, SPI1, TIM3},
         prelude::*,
         serial::{self, Event, Serial3},
+        spi::{Phase, Polarity, Spi},
         timer::{monotonic::MonoTimerUs, DelayUs},
     };
-    //type Scl = PB6<Alternate<4, OpenDrain>>;
-    //type Sda = PB7<Alternate<4, OpenDrain>>;
+
+    pub struct Clock;
+    impl TimeSource for Clock {
+        fn get_timestamp(&self) -> Timestamp {
+            Timestamp {
+                year_since_1970: 0,
+                zero_indexed_month: 0,
+                zero_indexed_day: 0,
+                hours: 0,
+                minutes: 0,
+                seconds: 0,
+            }
+        }
+    }
+
+    type Scl = PB6<Alternate<4, OpenDrain>>;
+    type Sda = PB7<Alternate<4, OpenDrain>>;
 
     type Rx3 = PC10<Alternate<7>>;
     type Tx3 = PC11<Alternate<7>>;
 
+    type SPI = Spi<
+        SPI1,
+        (
+            Pin<'B', 3, Alternate<5>>,
+            Pin<'A', 6, Alternate<5>>,
+            Pin<'A', 7, Alternate<5>>,
+        ),
+        false,
+    >;
+    type CS = Pin<'A', 15, Output>;
     #[shared]
     struct Shared {
         gps: Gps<Serial3<(Rx3, Tx3)>>,
@@ -36,13 +64,14 @@ mod app {
     struct Local {
         delay: DelayUs<TIM3>,
         led: PA5<Output>,
-       //// bme: BME280<I2c1<(Scl, Sda)>>,
+        bme: BME280<I2c1<(Scl, Sda)>>,
+        controller: Controller<BlockSpi<'static, SPI, CS>, Clock, 4, 4>,
     }
 
     #[monotonic(binds = TIM2, default = true)]
     type MicrosecMono = MonoTimerUs<pac::TIM2>;
 
-    #[init]
+    #[init(local = [spi_dev: Option<SdMmcSpi<SPI,  CS >> = None])]
     fn init(ctx: init::Context) -> (Shared, Local, init::Monotonics) {
         defmt::info!("Initializing");
 
@@ -70,7 +99,7 @@ mod app {
         let i2c = I2c1::new(
             device.I2C1,
             (i2c_scl, i2c_sda),
-            Mode::Fast {
+            i2c::Mode::Fast {
                 frequency: 400000.Hz(),
                 duty_cycle: DutyCycle::Ratio2to1,
             },
@@ -100,21 +129,7 @@ mod app {
             Gps::new(gps_serial)
         };
 
-        let shared = Shared { gps };
-        let local = Local { delay, led };
-        let monotonics = init::Monotonics(mono);
-        ////////////////SDMMC//////////////////////////////////
-        use embedded_sdmmc::{Controller, SdMmcSpi, TimeSource, Timestamp, VolumeIdx};
-        use stm32f4xx_hal::spi::{Phase, Polarity, Spi};
-        use stm32f4xx_hal::pac::SPI1;
-        use stm32f4xx_hal::gpio::Pin;
-        use cortex_m_rt::entry;
-        use stm32f4xx_hal::{
-            pac::{self},
-            //prelude::*,
-            timer::Channel,
-        };
-       
+        let sdmmc_cs = gpioa.pa15.into_push_pull_output();
         let sdmmc_spi = device.SPI1.spi(
             (
                 gpiob.pb3.into_alternate(),
@@ -125,80 +140,31 @@ mod app {
                 polarity: Polarity::IdleLow,
                 phase: Phase::CaptureOnFirstTransition,
             },
-            
             400000.Hz(),
             &clocks,
         );
-        struct Clock;
 
-        impl TimeSource for Clock {
-            fn get_timestamp(&self) -> Timestamp {
-                Timestamp {
-                    year_since_1970: 0,
-                    zero_indexed_month: 0,
-                    zero_indexed_day: 0,
-                    hours: 0,
-                    minutes: 0,
-                    seconds: 0,
-                }
+        *ctx.local.spi_dev = Some(embedded_sdmmc::SdMmcSpi::new(sdmmc_spi, sdmmc_cs));
+        let mut controller = match ctx.local.spi_dev.as_mut().unwrap().acquire() {
+            Ok(sdmmc_spi) => Controller::new(sdmmc_spi, Clock),
+            Err(e) => {
+                defmt::panic!(":)");
             }
-        }
-        let sdmmc_cs = gpioa.pa15.into_push_pull_output();
-        let mut spi_dev = embedded_sdmmc::SdMmcSpi::new(sdmmc_spi, sdmmc_cs);
-        
-        defmt::info!("Init SD card...");
-        match spi_dev.acquire() {
-            Ok(sdmmc_spi) => {
-                let mut cont = Controller::new(sdmmc_spi, Clock);
-                defmt::info!("OK!\nCard size...");
-                match cont.device().card_size_bytes() {
-                    Ok(size) => {
-                        defmt::info!("{}", size);
-            
-
-                    },
-                    Err(e) => defmt::info!("Err: {:?}", e),
-                }
-                defmt::info!("Volume 0...");
-                match cont.get_volume(embedded_sdmmc::VolumeIdx(0)) {
-                    Ok(v) => {
-                        defmt::info!("{}",v);
-                        let root_dir = cont.open_root_dir(&v).unwrap();
-                        defmt::info!("\tListing root directory:");
-                        cont.iterate_dir(&v, &root_dir, |x| {
-                        defmt::info!("\t\tFound: {:?}", x.name);
-                        //defmt::info!("\t\tFound: {:?}", x.name.contents);
-                        }).unwrap();
-                        let filename = "test.txt";
-                        defmt::info!("Opening {:?}", filename);
-                        let mut f = cont.open_file_in_dir(&mut v, &root_dir, FILE_TO_WRITE, embedded_sdmmc::Mode::ReadOnly)
-                        .unwrap();
-                        while !f.eof() {
-                            let mut buffer = [0u8; 32];
-                            let num_read = controller.read(&v, &mut f, &mut buffer).unwrap();
-                            for b in &buffer[0..num_read] {
-                                if *b == 10 {
-                                    defmt::info!("\\n");
-                                }
-                                defmt::info!("{}", *b as char);
-                            }
-                        }
-
-
-
-                    },
-                    Err(e) => defmt::info!("Err: {:?}", e),
-                }
-                
-            }
-            Err(e) => defmt::info!("{:?}!", e)
         };
-        //////
-        
-        //let file = controller.open_file(&volume, filename, embedded_sdmmc::FileMode::Write).unwrap();
 
-        /////////END-OF SDMMC////////////////////////////////////
-       
+        let volume = match controller.get_volume(embedded_sdmmc::VolumeIdx(0)) {
+            Ok(volume) => volume,
+            Err(e) => defmt::panic!(":) {}", e),
+        };
+
+        let shared = Shared { gps };
+        let local = Local {
+            delay,
+            led,
+            bme,
+            controller,
+        };
+        let monotonics = init::Monotonics(mono);
         blink::spawn().unwrap();
 
         (shared, local, monotonics)
@@ -228,7 +194,6 @@ mod app {
             log_nmea::spawn().unwrap();
         }
     }
-   
 
     /// Toggles led every second
     #[task(local = [led])]
