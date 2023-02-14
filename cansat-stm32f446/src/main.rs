@@ -8,22 +8,23 @@ use panic_probe as _;
 
 #[rtic::app(device = stm32f4xx_hal::pac, dispatchers = [EXTI0])]
 mod app {
- 
-    use cortex_m_rt::entry;
-    use bme280::i2c::BME280;    
+
+    use bme280::i2c::BME280;
     use cansat_gps::Gps;
+    use core::fmt::Write;
     use cortex_m::asm::nop;
+    use cortex_m_rt::entry;
     use defmt::Debug2Format;
-    use embedded_sdmmc::{Controller, SdMmcSpi, TimeSource, Timestamp, BlockSpi};
+    use embedded_sdmmc::{BlockSpi, Controller, SdMmcSpi, TimeSource, Timestamp};
+    use heapless::String;
     use stm32f4xx_hal::{
-        gpio::{Alternate, OpenDrain, Output, PA5, PB6, PB7, PC10, PC11, Pin},
+        gpio::{Alternate, OpenDrain, Output, Pin, PA5, PB6, PB7, PC10, PC11},
         i2c::{self, DutyCycle, I2c1},
-        spi::{Phase, Polarity, Spi},
-        pac::{self, TIM3, SPI1},
+        pac::{self, SPI1, TIM3},
         prelude::*,
         serial::{self, Event, Serial3},
+        spi::{Phase, Polarity, Spi},
         timer::{monotonic::MonoTimerUs, DelayUs},
-        
     };
 
     pub struct Clock;
@@ -46,7 +47,15 @@ mod app {
     type Rx3 = PC10<Alternate<7>>;
     type Tx3 = PC11<Alternate<7>>;
 
-    type SPI = Spi<SPI1, (Pin<'B', 3, Alternate<5>>, Pin<'A', 6, Alternate<5>>, Pin<'A', 7, Alternate<5>>), false>;
+    type SPI = Spi<
+        SPI1,
+        (
+            Pin<'B', 3, Alternate<5>>,
+            Pin<'A', 6, Alternate<5>>,
+            Pin<'A', 7, Alternate<5>>,
+        ),
+        false,
+    >;
     type CS = Pin<'A', 15, Output>;
     #[shared]
     struct Shared {
@@ -58,8 +67,8 @@ mod app {
         delay: DelayUs<TIM3>,
         led: PA5<Output>,
         bme: BME280<I2c1<(Scl, Sda)>>,
-        controller: Controller<BlockSpi<'static, SPI,  CS >, Clock, 4, 4>
-        
+        controller: Controller<BlockSpi<'static, SPI, CS>, Clock, 4, 4>,
+        filename: String<11>,
     }
 
     #[monotonic(binds = TIM2, default = true)]
@@ -123,7 +132,6 @@ mod app {
             Gps::new(gps_serial)
         };
 
-        
         let sdmmc_cs = gpioa.pa15.into_push_pull_output();
         let sdmmc_spi = device.SPI1.spi(
             (
@@ -141,25 +149,40 @@ mod app {
 
         *ctx.local.spi_dev = Some(embedded_sdmmc::SdMmcSpi::new(sdmmc_spi, sdmmc_cs));
         let mut controller = match ctx.local.spi_dev.as_mut().unwrap().acquire() {
-            Ok(sdmmc_spi) => {
-                Controller::new(sdmmc_spi, Clock)
-            }
-            Err(e) => {
+            Ok(sdmmc_spi) => Controller::new(sdmmc_spi, Clock),
+            Err(_e) => {
                 defmt::panic!(":)");
             }
         };
 
         let volume = match controller.get_volume(embedded_sdmmc::VolumeIdx(0)) {
             Ok(volume) => volume,
-            Err(e) => defmt::panic!(":) {}", e)
+            Err(e) => defmt::panic!(":) {}", e),
         };
+        let root_dir = controller.open_root_dir(&volume).unwrap();
 
+        let mut log_count = 0;
+        controller
+            .iterate_dir(&volume, &root_dir, |_| {
+                log_count += 1;
+            })
+            .unwrap();
+        let mut filename = String::from(log_count);
+        write!(filename, "_log.txt").unwrap();
+        defmt::info!("Filename: {}", filename.as_str());
+        controller.close_dir(&volume, root_dir);
 
-       
         let shared = Shared { gps };
-        let local = Local { delay, led, bme, controller };
+        let local = Local {
+            delay,
+            led,
+            bme,
+            controller,
+            filename,
+        };
         let monotonics = init::Monotonics(mono);
         blink::spawn().unwrap();
+        sdmmc_log::spawn("Logs dump here ".into()).unwrap();
 
         (shared, local, monotonics)
     }
@@ -188,8 +211,6 @@ mod app {
             log_nmea::spawn().unwrap();
         }
     }
-   
-    
 
     /// Toggles led every second
     #[task(local = [led])]
@@ -221,5 +242,28 @@ mod app {
 
             bme_measure::spawn_after(5.secs()).unwrap();
         }
+    }
+    #[task(local = [controller, filename])]
+    fn sdmmc_log(ctx: sdmmc_log::Context, log_string: String<11>) {
+        let controller = ctx.local.controller;
+        let filename = ctx.local.filename;
+        let mut volume = match controller.get_volume(embedded_sdmmc::VolumeIdx(0)) {
+            Ok(volume) => volume,
+            Err(e) => defmt::panic!(":) {}", e),
+        };
+
+        let root_dir = controller.open_root_dir(&volume).unwrap();
+
+        let mut f = controller
+            .open_file_in_dir(
+                &mut volume,
+                &root_dir,
+                filename,
+                embedded_sdmmc::Mode::ReadWriteCreateOrAppend,
+            )
+            .unwrap();
+        let num_written = controller
+            .write(&mut volume, &mut f, log_string.as_bytes()).unwrap();
+        defmt::info!("Written: {} bytes\n", num_written);
     }
 }
