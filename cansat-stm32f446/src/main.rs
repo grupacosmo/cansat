@@ -1,4 +1,4 @@
-//! Binary crate targeting stm32f4 family microspi_devs.
+//! Binary crate targeting stm32f4 family microcontrollers.
 #![deny(unsafe_code)]
 #![no_main]
 #![no_std]
@@ -13,17 +13,16 @@ mod app {
     use cansat_gps::Gps;
     use core::fmt::Write;
     use cortex_m::asm::nop;
-    use cortex_m_rt::entry;
     use defmt::Debug2Format;
     use embedded_sdmmc::{BlockSpi, Controller, SdMmcSpi, TimeSource, Timestamp};
     use heapless::String;
     use stm32f4xx_hal::{
         gpio::{Alternate, OpenDrain, Output, Pin, PA5, PB6, PB7, PC10, PC11},
         i2c::{self, DutyCycle, I2c1},
-        pac::{self, SPI1, TIM3},
+        pac::{self, TIM3},
         prelude::*,
         serial::{self, Event, Serial3},
-        spi::{Phase, Polarity, Spi},
+        spi::{Phase, Polarity, Spi1},
         timer::{monotonic::MonoTimerUs, DelayUs},
     };
 
@@ -47,16 +46,12 @@ mod app {
     type Rx3 = PC10<Alternate<7>>;
     type Tx3 = PC11<Alternate<7>>;
 
-    type SPI = Spi<
-        SPI1,
-        (
-            Pin<'B', 3, Alternate<5>>,
-            Pin<'A', 6, Alternate<5>>,
-            Pin<'A', 7, Alternate<5>>,
-        ),
-        false,
-    >;
-    type CS = Pin<'A', 15, Output>;
+    type Sck1 = Pin<'B', 3, Alternate<5>>;
+    type Miso1 = Pin<'A', 6, Alternate<5>>;
+    type Mosi1 = Pin<'A', 7, Alternate<5>>;
+    type Cs1 = Pin<'A', 15, Output>;
+    type BlockSpi1<'a> = BlockSpi<'a, Spi1<(Sck1, Miso1, Mosi1)>, Cs1>;
+
     #[shared]
     struct Shared {
         gps: Gps<Serial3<(Rx3, Tx3)>>,
@@ -67,14 +62,14 @@ mod app {
         delay: DelayUs<TIM3>,
         led: PA5<Output>,
         bme: BME280<I2c1<(Scl, Sda)>>,
-        controller: Controller<BlockSpi<'static, SPI, CS>, Clock, 4, 4>,
+        controller: Controller<BlockSpi1<'static>, Clock, 4, 4>,
         filename: String<11>,
     }
 
     #[monotonic(binds = TIM2, default = true)]
     type MicrosecMono = MonoTimerUs<pac::TIM2>;
 
-    #[init(local = [spi_dev: Option<SdMmcSpi<SPI,  CS >> = None])]
+    #[init(local = [spi_dev: Option<SdMmcSpi<Spi1<(Sck1, Miso1, Mosi1)>,  Cs1 >> = None])]
     fn init(ctx: init::Context) -> (Shared, Local, init::Monotonics) {
         defmt::info!("Initializing");
 
