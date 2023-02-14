@@ -263,7 +263,8 @@ mod app {
             )
             .unwrap();
         let num_written = controller
-            .write(&mut volume, &mut f, log_string.as_bytes()).unwrap();
+            .write(&mut volume, &mut f, log_string.as_bytes())
+            .unwrap();
         defmt::info!("Written: {} bytes\n", num_written);
     }
 }
