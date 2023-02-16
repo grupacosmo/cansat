@@ -364,6 +364,7 @@ version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7ab17bb279def6720d058cb6c052249938e7f99260ab534879281a95367a87e5"
 dependencies = [
+ "defmt",
  "gcd",
 ]
 
@@ -733,6 +734,7 @@ dependencies = [
  "bitflags",
  "cortex-m",
  "cortex-m-rt",
+ "defmt",
  "embedded-dma",
  "embedded-hal 0.2.7",
  "embedded-hal 1.0.0-alpha.8",
