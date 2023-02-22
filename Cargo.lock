@@ -937,6 +937,5 @@ dependencies = [
  "cargo_toml",
  "clap",
  "colored",
- "cortex-m",
  "eyre",
 ]

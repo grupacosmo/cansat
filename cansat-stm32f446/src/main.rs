@@ -8,7 +8,6 @@ use panic_probe as _;
 
 #[rtic::app(device = stm32f4xx_hal::pac, dispatchers = [EXTI0])]
 mod app {
-
     use bme280::i2c::BME280;
     use cansat_gps::Gps;
     use core::fmt::Write;
@@ -27,6 +26,7 @@ mod app {
     };
 
     pub struct Clock;
+
     impl TimeSource for Clock {
         fn get_timestamp(&self) -> Timestamp {
             Timestamp {
@@ -52,6 +52,9 @@ mod app {
     type Cs1 = Pin<'A', 15, Output>;
     type BlockSpi1<'a> = BlockSpi<'a, Spi1<(Sck1, Miso1, Mosi1)>, Cs1>;
 
+    /// Maximal length supported by embedded_sdmmc
+    const MAX_FILENAME_LEN: usize = 11;
+
     #[shared]
     struct Shared {
         gps: Gps<Serial3<(Rx3, Tx3)>>,
@@ -63,13 +66,13 @@ mod app {
         led: PA5<Output>,
         bme: BME280<I2c1<(Scl, Sda)>>,
         controller: Controller<BlockSpi1<'static>, Clock, 4, 4>,
-        filename: String<11>,
+        filename: String<MAX_FILENAME_LEN>,
     }
 
     #[monotonic(binds = TIM2, default = true)]
     type MicrosecMono = MonoTimerUs<pac::TIM2>;
 
-    #[init(local = [spi_dev: Option<SdMmcSpi<Spi1<(Sck1, Miso1, Mosi1)>,  Cs1 >> = None])]
+    #[init(local = [spi_dev: Option<SdMmcSpi<Spi1<(Sck1, Miso1, Mosi1)>, Cs1>> = None])]
     fn init(ctx: init::Context) -> (Shared, Local, init::Monotonics) {
         defmt::info!("Initializing");
 
@@ -127,32 +130,34 @@ mod app {
             Gps::new(gps_serial)
         };
 
-        let sdmmc_cs = gpioa.pa15.into_push_pull_output();
-        let sdmmc_spi = device.SPI1.spi(
-            (
-                gpiob.pb3.into_alternate(),
-                gpioa.pa6.into_alternate(),
-                gpioa.pa7.into_alternate(),
-            ),
-            stm32f4xx_hal::spi::Mode {
-                polarity: Polarity::IdleLow,
-                phase: Phase::CaptureOnFirstTransition,
-            },
-            400000.Hz(),
-            &clocks,
-        );
+        let spi1_device = {
+            let sck1 = gpiob.pb3.into_alternate();
+            let miso1 = gpioa.pa6.into_alternate();
+            let mosi1 = gpioa.pa7.into_alternate();
+            let cs1 = gpioa.pa15.into_push_pull_output();
+            let spi1 = device.SPI1.spi(
+                (sck1, miso1, mosi1),
+                stm32f4xx_hal::spi::Mode {
+                    polarity: Polarity::IdleLow,
+                    phase: Phase::CaptureOnFirstTransition,
+                },
+                400000.Hz(),
+                &clocks,
+            );
+            embedded_sdmmc::SdMmcSpi::new(spi1, cs1)
+        };
 
-        *ctx.local.spi_dev = Some(embedded_sdmmc::SdMmcSpi::new(sdmmc_spi, sdmmc_cs));
+        *ctx.local.spi_dev = Some(spi1_device);
         let mut controller = match ctx.local.spi_dev.as_mut().unwrap().acquire() {
             Ok(sdmmc_spi) => Controller::new(sdmmc_spi, Clock),
-            Err(_e) => {
-                defmt::panic!(":)");
+            Err(e) => {
+                defmt::panic!("Failed to create sdmmc controller: {}", e);
             }
         };
 
         let volume = match controller.get_volume(embedded_sdmmc::VolumeIdx(0)) {
             Ok(volume) => volume,
-            Err(e) => defmt::panic!(":) {}", e),
+            Err(e) => defmt::panic!("Failed to get volume: {}", e),
         };
         let root_dir = controller.open_root_dir(&volume).unwrap();
 
@@ -239,12 +244,12 @@ mod app {
         }
     }
     #[task(local = [controller, filename])]
-    fn sdmmc_log(ctx: sdmmc_log::Context, log_string: String<11>) {
+    fn sdmmc_log(ctx: sdmmc_log::Context, log_string: String<MAX_FILENAME_LEN>) {
         let controller = ctx.local.controller;
         let filename = ctx.local.filename;
         let mut volume = match controller.get_volume(embedded_sdmmc::VolumeIdx(0)) {
             Ok(volume) => volume,
-            Err(e) => defmt::panic!(":) {}", e),
+            Err(e) => defmt::panic!("Failed to get volume: {}", e),
         };
 
         let root_dir = controller.open_root_dir(&volume).unwrap();
@@ -261,5 +266,8 @@ mod app {
             .write(&mut volume, &mut f, log_string.as_bytes())
             .unwrap();
         defmt::info!("Written: {} bytes\n", num_written);
+        if let Err(e) = controller.close_file(&volume, f) {
+            defmt::panic!("Failed to close file: {}", e);
+        }
     }
 }
