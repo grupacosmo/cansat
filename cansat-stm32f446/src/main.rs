@@ -3,15 +3,18 @@
 #![no_main]
 #![no_std]
 
+mod error;
+
 use defmt_rtt as _;
 use panic_probe as _;
 
 #[rtic::app(device = stm32f4xx_hal::pac, dispatchers = [EXTI0])]
 mod app {
+    use super::error::{Report, WrapErr};
     use bme280::i2c::BME280;
     use cansat_gps::Gps;
     use core::fmt::Write;
-    use cortex_m::asm::nop;
+    use cortex_m::asm;
     use defmt::Debug2Format;
     use embedded_sdmmc::{BlockSpi, Controller, SdMmcSpi, TimeSource, Timestamp};
     use heapless::String;
@@ -64,7 +67,7 @@ mod app {
     struct Local {
         delay: DelayUs<TIM3>,
         led: PA5<Output>,
-        bme: BME280<I2c1<(Scl, Sda)>>,
+        bme280: BME280<I2c1<(Scl, Sda)>>,
         controller: Controller<BlockSpi1<'static>, Clock, 4, 4>,
         filename: String<MAX_FILENAME_LEN>,
     }
@@ -74,6 +77,12 @@ mod app {
 
     #[init(local = [spi_dev: Option<SdMmcSpi<Spi1<(Sck1, Miso1, Mosi1)>, Cs1>> = None])]
     fn init(ctx: init::Context) -> (Shared, Local, init::Monotonics) {
+        try_init(ctx).unwrap_or_else(|e| {
+            defmt::panic!("Initialization failed: {}", e);
+        })
+    }
+
+    fn try_init(ctx: init::Context) -> Result<(Shared, Local, init::Monotonics), Report> {
         defmt::info!("Initializing");
 
         let device = ctx.device;
@@ -86,34 +95,34 @@ mod app {
         let gpiob = device.GPIOB.split();
         let gpioc = device.GPIOC.split();
 
-        let i2c_scl = gpiob
-            .pb6
-            .into_alternate()
-            .internal_pull_up(false)
-            .set_open_drain();
-        let i2c_sda = gpiob
-            .pb7
-            .into_alternate()
-            .internal_pull_up(false)
-            .set_open_drain();
-
-        let i2c = I2c1::new(
-            device.I2C1,
-            (i2c_scl, i2c_sda),
-            i2c::Mode::Fast {
-                frequency: 400000.Hz(),
-                duty_cycle: DutyCycle::Ratio2to1,
-            },
-            &clocks,
-        );
-
-        let mut bme = BME280::new_primary(i2c);
-        #[cfg(feature = "bme")]
-        if let Err(e) = bme.init(&mut delay) {
-            defmt::panic!("Failed to initalize bme280: {}", Debug2Format(&e));
-        }
-
         let led = gpioa.pa5.into_push_pull_output();
+
+        let bme280 = {
+            let i2c_scl = gpiob
+                .pb6
+                .into_alternate()
+                .internal_pull_up(false)
+                .set_open_drain();
+            let i2c_sda = gpiob
+                .pb7
+                .into_alternate()
+                .internal_pull_up(false)
+                .set_open_drain();
+            let i2c = device.I2C1.i2c(
+                (i2c_scl, i2c_sda),
+                i2c::Mode::Fast {
+                    frequency: 400000.Hz(),
+                    duty_cycle: DutyCycle::Ratio2to1,
+                },
+                &clocks,
+            );
+            let mut bme280 = BME280::new_primary(i2c);
+            #[cfg(feature = "bme")]
+            bme280
+                .init(&mut delay)
+                .wrap_err("Failed to initialize BME280")?;
+            bme280
+        };
 
         let gps = {
             let usart3_tx_pin = gpioc.pc10.into_alternate();
@@ -125,7 +134,7 @@ mod app {
                     serial::Config::default().baudrate(9600.bps()),
                     &clocks,
                 )
-                .expect("Failed to setup usart3");
+                .wrap_err("Failed to create USART3")?;
             gps_serial.listen(Event::Rxne);
             Gps::new(gps_serial)
         };
@@ -176,7 +185,7 @@ mod app {
         let local = Local {
             delay,
             led,
-            bme,
+            bme280,
             controller,
             filename,
         };
@@ -184,14 +193,14 @@ mod app {
         blink::spawn().unwrap();
         sdmmc_log::spawn("Logs dump here ".into()).unwrap();
 
-        (shared, local, monotonics)
+        Ok((shared, local, monotonics))
     }
 
     #[idle]
     fn idle(_ctx: idle::Context) -> ! {
         defmt::info!("Started idle task");
         loop {
-            nop();
+            asm::nop();
         }
     }
 
@@ -221,13 +230,13 @@ mod app {
         blink::spawn_after(1.secs()).unwrap();
     }
 
-    #[task(local = [delay, bme])]
+    #[task(local = [delay, bme280])]
     fn bme_measure(ctx: bme_measure::Context) {
         #[cfg(feature = "bme")]
         {
-            let bme = ctx.local.bme;
+            let bme280 = ctx.local.bme280;
             let delay = ctx.local.delay;
-            let measurements = match bme.measure(delay) {
+            let measurements = match bme280.measure(delay) {
                 Ok(m) => m,
                 Err(e) => {
                     defmt::error!("Could not read bme280 measurements: {}", Debug2Format(&e));
