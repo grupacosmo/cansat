@@ -63,6 +63,7 @@ impl defmt::Format for Report {
 pub enum Error {
     Bme280(bme280::Error<i2c::Error>),
     SerialConfig(InvalidConfig),
+    Sdmmc(embedded_sdmmc::Error<embedded_sdmmc::SdMmcError>),
 }
 
 impl defmt::Format for Error {
@@ -70,6 +71,7 @@ impl defmt::Format for Error {
         match self {
             Error::Bme280(e) => defmt::write!(f, "Bme280 failure - {}", defmt::Debug2Format(e)),
             Error::SerialConfig(_) => defmt::write!(f, "Invalid serial configuration"),
+            Error::Sdmmc(e) => defmt::write!(f, "Sdmmc failure - {}", e),
         }
     }
 }
@@ -83,5 +85,17 @@ impl From<bme280::Error<i2c::Error>> for Error {
 impl From<InvalidConfig> for Error {
     fn from(e: InvalidConfig) -> Self {
         Error::SerialConfig(e)
+    }
+}
+
+impl From<embedded_sdmmc::Error<embedded_sdmmc::SdMmcError>> for Error {
+    fn from(e: embedded_sdmmc::Error<embedded_sdmmc::SdMmcError>) -> Self {
+        Error::Sdmmc(e)
+    }
+}
+
+impl From<embedded_sdmmc::SdMmcError> for Error {
+    fn from(e: embedded_sdmmc::SdMmcError) -> Self {
+        Error::Sdmmc(embedded_sdmmc::Error::DeviceError(e))
     }
 }
