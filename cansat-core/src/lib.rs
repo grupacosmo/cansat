@@ -12,14 +12,17 @@ impl Pressure {
     pub fn from_pascals(_value: f32) -> Pressure {
         Pressure { value: _value }
     }
+
     pub fn from_hectos(value: f32) -> Pressure {
-        Pressure { 
-            value: value * 100., 
+        Pressure {
+            value: value * 100.,
         }
     }
+
     pub fn as_pascals(&self) -> f32 {
         self.value
     }
+
     pub fn as_hectos(&self) -> f32 {
         self.value / 100.
     }
