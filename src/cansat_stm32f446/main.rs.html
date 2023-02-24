@@ -224,106 +224,140 @@
 <a href="#224" id="224">224</a>
 <a href="#225" id="225">225</a>
 <a href="#226" id="226">226</a>
+<a href="#227" id="227">227</a>
+<a href="#228" id="228">228</a>
+<a href="#229" id="229">229</a>
+<a href="#230" id="230">230</a>
+<a href="#231" id="231">231</a>
+<a href="#232" id="232">232</a>
+<a href="#233" id="233">233</a>
+<a href="#234" id="234">234</a>
+<a href="#235" id="235">235</a>
+<a href="#236" id="236">236</a>
+<a href="#237" id="237">237</a>
+<a href="#238" id="238">238</a>
+<a href="#239" id="239">239</a>
+<a href="#240" id="240">240</a>
+<a href="#241" id="241">241</a>
+<a href="#242" id="242">242</a>
+<a href="#243" id="243">243</a>
+<a href="#244" id="244">244</a>
+<a href="#245" id="245">245</a>
+<a href="#246" id="246">246</a>
+<a href="#247" id="247">247</a>
+<a href="#248" id="248">248</a>
+<a href="#249" id="249">249</a>
+<a href="#250" id="250">250</a>
+<a href="#251" id="251">251</a>
+<a href="#252" id="252">252</a>
+<a href="#253" id="253">253</a>
+<a href="#254" id="254">254</a>
+<a href="#255" id="255">255</a>
+<a href="#256" id="256">256</a>
+<a href="#257" id="257">257</a>
+<a href="#258" id="258">258</a>
+<a href="#259" id="259">259</a>
+<a href="#260" id="260">260</a>
+<a href="#261" id="261">261</a>
+<a href="#262" id="262">262</a>
+<a href="#263" id="263">263</a>
+<a href="#264" id="264">264</a>
+<a href="#265" id="265">265</a>
+<a href="#266" id="266">266</a>
+<a href="#267" id="267">267</a>
+<a href="#268" id="268">268</a>
+<a href="#269" id="269">269</a>
+<a href="#270" id="270">270</a>
+<a href="#271" id="271">271</a>
+<a href="#272" id="272">272</a>
+<a href="#273" id="273">273</a>
+<a href="#274" id="274">274</a>
+<a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
+<a href="#278" id="278">278</a>
+<a href="#279" id="279">279</a>
+<a href="#280" id="280">280</a>
+<a href="#281" id="281">281</a>
+<a href="#282" id="282">282</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Binary crate targeting stm32f4 family microcontrollers.
 </span><span class="attr">#![deny(unsafe_code)]
 #![no_main]
 #![no_std]
 
 </span><span class="kw">mod </span>error;
-<span class="kw">mod </span>tasks;
 
 <span class="kw">use </span>defmt_rtt <span class="kw">as _</span>;
-<span class="kw">use </span>error::{Report, WrapErr};
-<span class="kw">use </span>heapless::String;
 <span class="kw">use </span>panic_probe <span class="kw">as _</span>;
-<span class="kw">use </span>stm32f4xx_hal::{
-    gpio, i2c, pac,
-    prelude::<span class="kw-2">*</span>,
-    serial, spi,
-    timer::{monotonic::MonoTimerUs, DelayUs},
-};
-<span class="kw">use </span>tasks::<span class="kw-2">*</span>;
-
-<span class="kw">type </span>Led = gpio::PA5&lt;gpio::Output&gt;;
-
-<span class="kw">type </span>Scl1 = gpio::PB6&lt;gpio::Alternate&lt;<span class="number">4</span>, gpio::OpenDrain&gt;&gt;;
-<span class="kw">type </span>Sda1 = gpio::PB7&lt;gpio::Alternate&lt;<span class="number">4</span>, gpio::OpenDrain&gt;&gt;;
-<span class="kw">type </span>I2c1 = i2c::I2c1&lt;(Scl1, Sda1)&gt;;
-<span class="kw">type </span>Bme280 = bme280::i2c::BME280&lt;I2c1&gt;;
-
-<span class="kw">type </span>Rx3 = gpio::PC10&lt;gpio::Alternate&lt;<span class="number">7</span>&gt;&gt;;
-<span class="kw">type </span>Tx3 = gpio::PC11&lt;gpio::Alternate&lt;<span class="number">7</span>&gt;&gt;;
-<span class="kw">type </span>Serial3 = serial::Serial3&lt;(Rx3, Tx3)&gt;;
-<span class="kw">type </span>Gps = cansat_gps::Gps&lt;Serial3&gt;;
-
-<span class="kw">type </span>Sck1 = gpio::PB3&lt;gpio::Alternate&lt;<span class="number">5</span>&gt;&gt;;
-<span class="kw">type </span>Miso1 = gpio::PA6&lt;gpio::Alternate&lt;<span class="number">5</span>&gt;&gt;;
-<span class="kw">type </span>Mosi1 = gpio::PA7&lt;gpio::Alternate&lt;<span class="number">5</span>&gt;&gt;;
-<span class="kw">type </span>Spi1 = spi::Spi1&lt;(Sck1, Miso1, Mosi1)&gt;;
-<span class="kw">type </span>Cs1 = gpio::PA15&lt;gpio::Output&gt;;
-<span class="kw">type </span>SpiDevice1 = embedded_sdmmc::SdMmcSpi&lt;Spi1, Cs1&gt;;
-<span class="kw">type </span>BlockSpi1 = embedded_sdmmc::BlockSpi&lt;<span class="lifetime">&#39;static</span>, Spi1, Cs1&gt;;
-<span class="kw">const </span>MAX_DIRS: usize = <span class="number">4</span>;
-<span class="kw">const </span>MAX_FILES: usize = <span class="number">4</span>;
-<span class="kw">type </span>SdmmcController = embedded_sdmmc::Controller&lt;BlockSpi1, DummyClock, MAX_DIRS, MAX_FILES&gt;;
-
-<span class="doccomment">/// Maximal length supported by embedded_sdmmc
-</span><span class="kw">const </span>MAX_FILENAME_LEN: usize = <span class="number">11</span>;
-
-<span class="kw">pub struct </span>DummyClock;
-
-<span class="kw">impl </span>embedded_sdmmc::TimeSource <span class="kw">for </span>DummyClock {
-    <span class="kw">fn </span>get_timestamp(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; embedded_sdmmc::Timestamp {
-        embedded_sdmmc::Timestamp {
-            year_since_1970: <span class="number">0</span>,
-            zero_indexed_month: <span class="number">0</span>,
-            zero_indexed_day: <span class="number">0</span>,
-            hours: <span class="number">0</span>,
-            minutes: <span class="number">0</span>,
-            seconds: <span class="number">0</span>,
-        }
-    }
-}
 
 <span class="attr">#[rtic::app(device = stm32f4xx_hal::pac, dispatchers = [EXTI0]</span>)]
 <span class="kw">mod </span>app {
-    <span class="kw">use super</span>::<span class="kw-2">*</span>;
+    <span class="kw">use </span><span class="kw">super</span>::error::{Report, WrapErr};
+    <span class="kw">use </span>bme280::i2c::BME280;
+    <span class="kw">use </span>cansat_gps::Gps;
+    <span class="kw">use </span>core::fmt::Write;
+    <span class="kw">use </span>cortex_m::asm;
+    <span class="kw">use </span>defmt::Debug2Format;
+    <span class="kw">use </span>embedded_sdmmc::{BlockSpi, Controller, SdMmcSpi, TimeSource, Timestamp};
+    <span class="kw">use </span>heapless::String;
+    <span class="kw">use </span>stm32f4xx_hal::{
+        gpio::{Alternate, OpenDrain, Output, Pin, PA5, PB6, PB7, PC10, PC11},
+        i2c::{<span class="self">self</span>, DutyCycle, I2c1},
+        pac::{<span class="self">self</span>, TIM3},
+        prelude::<span class="kw-2">*</span>,
+        serial::{<span class="self">self</span>, Event, Serial3},
+        spi::{Phase, Polarity, Spi1},
+        timer::{monotonic::MonoTimerUs, DelayUs},
+    };
+
+    <span class="kw">pub struct </span>Clock;
+
+    <span class="kw">impl </span>TimeSource <span class="kw">for </span>Clock {
+        <span class="kw">fn </span>get_timestamp(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Timestamp {
+            Timestamp {
+                year_since_1970: <span class="number">0</span>,
+                zero_indexed_month: <span class="number">0</span>,
+                zero_indexed_day: <span class="number">0</span>,
+                hours: <span class="number">0</span>,
+                minutes: <span class="number">0</span>,
+                seconds: <span class="number">0</span>,
+            }
+        }
+    }
+
+    <span class="kw">type </span>Scl = PB6&lt;Alternate&lt;<span class="number">4</span>, OpenDrain&gt;&gt;;
+    <span class="kw">type </span>Sda = PB7&lt;Alternate&lt;<span class="number">4</span>, OpenDrain&gt;&gt;;
+
+    <span class="kw">type </span>Rx3 = PC10&lt;Alternate&lt;<span class="number">7</span>&gt;&gt;;
+    <span class="kw">type </span>Tx3 = PC11&lt;Alternate&lt;<span class="number">7</span>&gt;&gt;;
+
+    <span class="kw">type </span>Sck1 = Pin&lt;<span class="string">&#39;B&#39;</span>, <span class="number">3</span>, Alternate&lt;<span class="number">5</span>&gt;&gt;;
+    <span class="kw">type </span>Miso1 = Pin&lt;<span class="string">&#39;A&#39;</span>, <span class="number">6</span>, Alternate&lt;<span class="number">5</span>&gt;&gt;;
+    <span class="kw">type </span>Mosi1 = Pin&lt;<span class="string">&#39;A&#39;</span>, <span class="number">7</span>, Alternate&lt;<span class="number">5</span>&gt;&gt;;
+    <span class="kw">type </span>Cs1 = Pin&lt;<span class="string">&#39;A&#39;</span>, <span class="number">15</span>, Output&gt;;
+    <span class="kw">type </span>BlockSpi1&lt;<span class="lifetime">&#39;a</span>&gt; = BlockSpi&lt;<span class="lifetime">&#39;a</span>, Spi1&lt;(Sck1, Miso1, Mosi1)&gt;, Cs1&gt;;
+
+    <span class="doccomment">/// Maximal length supported by embedded_sdmmc
+    </span><span class="kw">const </span>MAX_FILENAME_LEN: usize = <span class="number">11</span>;
 
     <span class="attr">#[shared]
     </span><span class="kw">struct </span>Shared {
-        gps: Gps,
+        gps: Gps&lt;Serial3&lt;(Rx3, Tx3)&gt;&gt;,
     }
 
     <span class="attr">#[local]
     </span><span class="kw">struct </span>Local {
-        delay: DelayUs&lt;pac::TIM3&gt;,
-        led: Led,
-        bme280: Bme280,
-        controller: SdmmcController,
+        delay: DelayUs&lt;TIM3&gt;,
+        led: PA5&lt;Output&gt;,
+        bme280: BME280&lt;I2c1&lt;(Scl, Sda)&gt;&gt;,
+        controller: Controller&lt;BlockSpi1&lt;<span class="lifetime">&#39;static</span>&gt;, Clock, <span class="number">4</span>, <span class="number">4</span>&gt;,
         filename: String&lt;MAX_FILENAME_LEN&gt;,
     }
 
     <span class="attr">#[monotonic(binds = TIM2, default = <span class="bool-val">true</span>)]
     </span><span class="kw">type </span>MicrosecMono = MonoTimerUs&lt;pac::TIM2&gt;;
 
-    <span class="kw">extern </span><span class="string">&quot;Rust&quot; </span>{
-        <span class="attr">#[task(shared = [gps]</span>)]
-        <span class="kw">fn </span>log_nmea(ctx: log_nmea::Context);
-
-        <span class="attr">#[task(binds = USART3, shared = [gps]</span>)]
-        <span class="kw">fn </span>gps_irq(ctx: gps_irq::Context);
-
-        <span class="attr">#[task(local = [led]</span>)]
-        <span class="kw">fn </span>blink(ctx: blink::Context);
-
-        <span class="attr">#[task(local = [delay, bme280]</span>)]
-        <span class="kw">fn </span>bme_measure(ctx: bme_measure::Context);
-
-        <span class="attr">#[task(local = [controller, filename]</span>)]
-        <span class="kw">fn </span>sdmmc_log(ctx: sdmmc_log::Context, filename: String&lt;MAX_FILENAME_LEN&gt;);
-    }
-
-    <span class="attr">#[init(local = [spi_device1: <span class="prelude-ty">Option</span>&lt;SpiDevice1&gt; = <span class="prelude-val">None</span>]</span>)]
+    <span class="attr">#[init(local = [spi_dev: <span class="prelude-ty">Option</span>&lt;SdMmcSpi&lt;Spi1&lt;(Sck1, Miso1, Mosi1)&gt;, Cs1&gt;&gt; = <span class="prelude-val">None</span>]</span>)]
     <span class="kw">fn </span>init(ctx: init::Context) -&gt; (Shared, Local, init::Monotonics) {
         try_init(ctx).unwrap_or_else(|e| {
             <span class="macro">defmt::panic!</span>(<span class="string">&quot;Initialization failed: {}&quot;</span>, e);
@@ -346,24 +380,25 @@
         <span class="kw">let </span>led = gpioa.pa5.into_push_pull_output();
 
         <span class="kw">let </span>bme280 = {
-            <span class="kw">let </span>i2c1 = {
-                <span class="kw">let </span>scl1 = gpiob
-                    .pb6
-                    .into_alternate()
-                    .internal_pull_up(<span class="bool-val">false</span>)
-                    .set_open_drain();
-                <span class="kw">let </span>sda1 = gpiob
-                    .pb7
-                    .into_alternate()
-                    .internal_pull_up(<span class="bool-val">false</span>)
-                    .set_open_drain();
-                <span class="kw">let </span>mode = i2c::Mode::Fast {
+            <span class="kw">let </span>i2c_scl = gpiob
+                .pb6
+                .into_alternate()
+                .internal_pull_up(<span class="bool-val">false</span>)
+                .set_open_drain();
+            <span class="kw">let </span>i2c_sda = gpiob
+                .pb7
+                .into_alternate()
+                .internal_pull_up(<span class="bool-val">false</span>)
+                .set_open_drain();
+            <span class="kw">let </span>i2c = device.I2C1.i2c(
+                (i2c_scl, i2c_sda),
+                i2c::Mode::Fast {
                     frequency: <span class="number">400000</span>.Hz(),
-                    duty_cycle: i2c::DutyCycle::Ratio2to1,
-                };
-                device.I2C1.i2c((scl1, sda1), mode, <span class="kw-2">&amp;</span>clocks)
-            };
-            <span class="kw">let </span><span class="kw-2">mut </span>bme280 = Bme280::new_primary(i2c1);
+                    duty_cycle: DutyCycle::Ratio2to1,
+                },
+                <span class="kw-2">&amp;</span>clocks,
+            );
+            <span class="kw">let </span><span class="kw-2">mut </span>bme280 = BME280::new_primary(i2c);
             <span class="attr">#[cfg(feature = <span class="string">&quot;bme&quot;</span>)]
             </span>bme280
                 .init(<span class="kw-2">&amp;mut </span>delay)
@@ -372,70 +407,61 @@
         };
 
         <span class="kw">let </span>gps = {
-            <span class="kw">let </span><span class="kw-2">mut </span>usart3 = {
-                <span class="kw">let </span>tx3 = gpioc.pc10.into_alternate();
-                <span class="kw">let </span>rx3 = gpioc.pc11.into_alternate();
-                <span class="kw">let </span>config = serial::Config::default().baudrate(<span class="number">9600</span>.bps());
-                device
-                    .USART3
-                    .serial((tx3, rx3), config, <span class="kw-2">&amp;</span>clocks)
-                    .wrap_err(<span class="string">&quot;Failed to create USART3&quot;</span>)<span class="question-mark">?
-            </span>};
-            usart3.listen(serial::Event::Rxne);
-            Gps::new(usart3)
+            <span class="kw">let </span>usart3_tx_pin = gpioc.pc10.into_alternate();
+            <span class="kw">let </span>usart3_rx_pin = gpioc.pc11.into_alternate();
+            <span class="kw">let </span><span class="kw-2">mut </span>gps_serial = device
+                .USART3
+                .serial(
+                    (usart3_tx_pin, usart3_rx_pin),
+                    serial::Config::default().baudrate(<span class="number">9600</span>.bps()),
+                    <span class="kw-2">&amp;</span>clocks,
+                )
+                .wrap_err(<span class="string">&quot;Failed to create USART3&quot;</span>)<span class="question-mark">?</span>;
+            gps_serial.listen(Event::Rxne);
+            Gps::new(gps_serial)
         };
 
-        <span class="kw">let </span><span class="kw-2">mut </span>controller = {
-            <span class="kw">let </span>spi_device1 = ctx.local.spi_device1;
-            <span class="kw-2">*</span>spi_device1 = <span class="prelude-val">Some</span>({
-                <span class="kw">let </span>spi1 = {
-                    <span class="kw">let </span>sck1 = gpiob.pb3.into_alternate();
-                    <span class="kw">let </span>miso1 = gpioa.pa6.into_alternate();
-                    <span class="kw">let </span>mosi1 = gpioa.pa7.into_alternate();
-                    <span class="kw">let </span>mode = spi::Mode {
-                        polarity: spi::Polarity::IdleLow,
-                        phase: spi::Phase::CaptureOnFirstTransition,
-                    };
-                    device
-                        .SPI1
-                        .spi((sck1, miso1, mosi1), mode, <span class="number">400000</span>.Hz(), <span class="kw-2">&amp;</span>clocks)
-                };
-                <span class="kw">let </span>cs1 = gpioa.pa15.into_push_pull_output();
-                embedded_sdmmc::SdMmcSpi::new(spi1, cs1)
-            });
-            <span class="kw">let </span>block_spi1 = spi_device1
-                .as_mut()
-                .unwrap()
-                .acquire()
-                .wrap_err(<span class="string">&quot;Failed to acquire block spi&quot;</span>)<span class="question-mark">?</span>;
-            SdmmcController::new(block_spi1, DummyClock)
+        <span class="kw">let </span>spi1_device = {
+            <span class="kw">let </span>sck1 = gpiob.pb3.into_alternate();
+            <span class="kw">let </span>miso1 = gpioa.pa6.into_alternate();
+            <span class="kw">let </span>mosi1 = gpioa.pa7.into_alternate();
+            <span class="kw">let </span>cs1 = gpioa.pa15.into_push_pull_output();
+            <span class="kw">let </span>spi1 = device.SPI1.spi(
+                (sck1, miso1, mosi1),
+                stm32f4xx_hal::spi::Mode {
+                    polarity: Polarity::IdleLow,
+                    phase: Phase::CaptureOnFirstTransition,
+                },
+                <span class="number">400000</span>.Hz(),
+                <span class="kw-2">&amp;</span>clocks,
+            );
+            embedded_sdmmc::SdMmcSpi::new(spi1, cs1)
         };
 
-        <span class="kw">let </span>filename = {
-            <span class="kw">let </span>volume = controller
-                .get_volume(embedded_sdmmc::VolumeIdx(<span class="number">0</span>))
-                .wrap_err(<span class="string">&quot;Failed to get volume&quot;</span>)<span class="question-mark">?</span>;
-            <span class="kw">let </span>root_dir = controller.open_root_dir(<span class="kw-2">&amp;</span>volume).unwrap();
-
-            <span class="kw">let </span><span class="kw-2">mut </span>log_count = <span class="number">0</span>;
-            controller
-                .iterate_dir(<span class="kw-2">&amp;</span>volume, <span class="kw-2">&amp;</span>root_dir, |<span class="kw">_</span>| {
-                    log_count += <span class="number">1</span>;
-                })
-                .wrap_err(<span class="string">&quot;Failed to iterate directory&quot;</span>)<span class="question-mark">?</span>;
-            controller.close_dir(<span class="kw-2">&amp;</span>volume, root_dir);
-
-            <span class="kw">let </span><span class="kw-2">mut </span>filename = String::from(log_count);
-            filename
-                .push_str(<span class="string">&quot;_log.txt&quot;</span>)
-                .expect(<span class="string">&quot;Filename buffer overflow&quot;</span>);
-            filename
+        <span class="kw-2">*</span>ctx.local.spi_dev = <span class="prelude-val">Some</span>(spi1_device);
+        <span class="kw">let </span><span class="kw-2">mut </span>controller = <span class="kw">match </span>ctx.local.spi_dev.as_mut().unwrap().acquire() {
+            <span class="prelude-val">Ok</span>(sdmmc_spi) =&gt; Controller::new(sdmmc_spi, Clock),
+            <span class="prelude-val">Err</span>(e) =&gt; {
+                <span class="macro">defmt::panic!</span>(<span class="string">&quot;Failed to create sdmmc controller: {}&quot;</span>, e);
+            }
         };
 
+        <span class="kw">let </span>volume = <span class="kw">match </span>controller.get_volume(embedded_sdmmc::VolumeIdx(<span class="number">0</span>)) {
+            <span class="prelude-val">Ok</span>(volume) =&gt; volume,
+            <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">defmt::panic!</span>(<span class="string">&quot;Failed to get volume: {}&quot;</span>, e),
+        };
+        <span class="kw">let </span>root_dir = controller.open_root_dir(<span class="kw-2">&amp;</span>volume).unwrap();
+
+        <span class="kw">let </span><span class="kw-2">mut </span>log_count = <span class="number">0</span>;
+        controller
+            .iterate_dir(<span class="kw-2">&amp;</span>volume, <span class="kw-2">&amp;</span>root_dir, |<span class="kw">_</span>| {
+                log_count += <span class="number">1</span>;
+            })
+            .unwrap();
+        <span class="kw">let </span><span class="kw-2">mut </span>filename = String::from(log_count);
+        <span class="macro">write!</span>(filename, <span class="string">&quot;_log.txt&quot;</span>).unwrap();
         <span class="macro">defmt::info!</span>(<span class="string">&quot;Filename: {}&quot;</span>, filename.as_str());
-
-        blink::spawn().unwrap();
-        sdmmc_log::spawn(<span class="string">&quot;Logs dump here &quot;</span>.into()).unwrap();
+        controller.close_dir(<span class="kw-2">&amp;</span>volume, root_dir);
 
         <span class="kw">let </span>shared = Shared { gps };
         <span class="kw">let </span>local = Local {
@@ -446,8 +472,94 @@
             filename,
         };
         <span class="kw">let </span>monotonics = init::Monotonics(mono);
+        blink::spawn().unwrap();
+        sdmmc_log::spawn(<span class="string">&quot;Logs dump here &quot;</span>.into()).unwrap();
 
         <span class="prelude-val">Ok</span>((shared, local, monotonics))
+    }
+
+    <span class="attr">#[idle]
+    </span><span class="kw">fn </span>idle(_ctx: idle::Context) -&gt; ! {
+        <span class="macro">defmt::info!</span>(<span class="string">&quot;Started idle task&quot;</span>);
+        <span class="kw">loop </span>{
+            asm::nop();
+        }
+    }
+
+    <span class="attr">#[task(shared = [gps]</span>)]
+    <span class="kw">fn </span>log_nmea(ctx: log_nmea::Context) {
+        <span class="kw">let </span><span class="kw-2">mut </span>gps = ctx.shared.gps;
+        <span class="kw">let </span>msg = gps.lock(|gps| gps.last_nmea()).unwrap();
+        <span class="macro">defmt::info!</span>(<span class="string">&quot;{=[u8]:a}&quot;</span>, <span class="kw-2">&amp;</span>msg);
+    }
+
+    <span class="doccomment">/// USART3 interrupt handler that reads data into the gps working buffer
+    </span><span class="attr">#[task(binds = USART3, shared = [gps]</span>)]
+    <span class="kw">fn </span>gps_irq(ctx: gps_irq::Context) {
+        <span class="kw">let </span><span class="kw-2">mut </span>gps = ctx.shared.gps;
+        <span class="kw">let </span>(<span class="kw">_</span>, is_terminator) = gps.lock(|gps| gps.read_uart()).unwrap();
+        <span class="kw">if </span>is_terminator {
+            log_nmea::spawn().unwrap();
+        }
+    }
+
+    <span class="doccomment">/// Toggles led every second
+    </span><span class="attr">#[task(local = [led]</span>)]
+    <span class="kw">fn </span>blink(ctx: blink::Context) {
+        <span class="kw">let </span>led = ctx.local.led;
+        led.toggle();
+        <span class="macro">defmt::debug!</span>(<span class="string">&quot;Blink&quot;</span>);
+        blink::spawn_after(<span class="number">1</span>.secs()).unwrap();
+    }
+
+    <span class="attr">#[task(local = [delay, bme280]</span>)]
+    <span class="kw">fn </span>bme_measure(ctx: bme_measure::Context) {
+        <span class="attr">#[cfg(feature = <span class="string">&quot;bme&quot;</span>)]
+        </span>{
+            <span class="kw">let </span>bme280 = ctx.local.bme280;
+            <span class="kw">let </span>delay = ctx.local.delay;
+            <span class="kw">let </span>measurements = <span class="kw">match </span>bme280.measure(delay) {
+                <span class="prelude-val">Ok</span>(m) =&gt; m,
+                <span class="prelude-val">Err</span>(e) =&gt; {
+                    <span class="macro">defmt::error!</span>(<span class="string">&quot;Could not read bme280 measurements: {}&quot;</span>, Debug2Format(<span class="kw-2">&amp;</span>e));
+                    <span class="kw">return</span>;
+                }
+            };
+            <span class="kw">let </span>altitude = cansat::calculate_altitude(measurements.pressure);
+            <span class="macro">defmt::info!</span>(<span class="string">&quot;Altitude = {} meters above sea level&quot;</span>, altitude);
+            <span class="macro">defmt::info!</span>(<span class="string">&quot;Relative Humidity = {}%&quot;</span>, measurements.humidity);
+            <span class="macro">defmt::info!</span>(<span class="string">&quot;Temperature = {} deg C&quot;</span>, measurements.temperature);
+            <span class="macro">defmt::info!</span>(<span class="string">&quot;Pressure = {} pascals&quot;</span>, measurements.pressure);
+
+            bme_measure::spawn_after(<span class="number">5</span>.secs()).unwrap();
+        }
+    }
+    <span class="attr">#[task(local = [controller, filename]</span>)]
+    <span class="kw">fn </span>sdmmc_log(ctx: sdmmc_log::Context, log_string: String&lt;MAX_FILENAME_LEN&gt;) {
+        <span class="kw">let </span>controller = ctx.local.controller;
+        <span class="kw">let </span>filename = ctx.local.filename;
+        <span class="kw">let </span><span class="kw-2">mut </span>volume = <span class="kw">match </span>controller.get_volume(embedded_sdmmc::VolumeIdx(<span class="number">0</span>)) {
+            <span class="prelude-val">Ok</span>(volume) =&gt; volume,
+            <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">defmt::panic!</span>(<span class="string">&quot;Failed to get volume: {}&quot;</span>, e),
+        };
+
+        <span class="kw">let </span>root_dir = controller.open_root_dir(<span class="kw-2">&amp;</span>volume).unwrap();
+
+        <span class="kw">let </span><span class="kw-2">mut </span>f = controller
+            .open_file_in_dir(
+                <span class="kw-2">&amp;mut </span>volume,
+                <span class="kw-2">&amp;</span>root_dir,
+                filename,
+                embedded_sdmmc::Mode::ReadWriteCreateOrAppend,
+            )
+            .unwrap();
+        <span class="kw">let </span>num_written = controller
+            .write(<span class="kw-2">&amp;mut </span>volume, <span class="kw-2">&amp;mut </span>f, log_string.as_bytes())
+            .unwrap();
+        <span class="macro">defmt::info!</span>(<span class="string">&quot;Written: {} bytes\n&quot;</span>, num_written);
+        <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = controller.close_file(<span class="kw-2">&amp;</span>volume, f) {
+            <span class="macro">defmt::panic!</span>(<span class="string">&quot;Failed to close file: {}&quot;</span>, e);
+        }
     }
 }
 </code></pre></div>
