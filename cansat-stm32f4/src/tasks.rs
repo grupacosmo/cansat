@@ -44,7 +44,8 @@ pub fn bme_measure(ctx: bme_measure::Context) {
             }
         };
 
-        let altitude = cansat_core::calculate_altitude(Pressure::from_pascals(measurements.pressure));
+        let altitude = 
+            cansat_core::calculate_altitude(Pressure::from_pascals(measurements.pressure));
         defmt::info!("Altitude = {} meters above sea level", altitude);
         defmt::info!("Relative Humidity = {}%", measurements.humidity);
         defmt::info!("Temperature = {} deg C", measurements.temperature);
