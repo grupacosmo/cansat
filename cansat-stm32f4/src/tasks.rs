@@ -42,7 +42,7 @@ pub fn bme_measure(ctx: bme_measure::Context) {
                 return;
             }
         };
-        let altitude = cansat::calculate_altitude(measurements.pressure);
+        let altitude = cansat_core::calculate_altitude(measurements.pressure);
         defmt::info!("Altitude = {} meters above sea level", altitude);
         defmt::info!("Relative Humidity = {}%", measurements.humidity);
         defmt::info!("Temperature = {} deg C", measurements.temperature);

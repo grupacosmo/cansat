@@ -1,5 +1,5 @@
 [package]
-name = "cansat-stm32f446"
+name = "cansat-stm32f4"
 version = "0.1.0"
 edition = "2021"
 
@@ -10,7 +10,7 @@ default = ["bme"]
 bme = []
 
 [dependencies]
-cansat = { path = "../cansat" }
+cansat-core = { path = "../cansat-core" }
 cansat-gps = { path = "../cansat-gps" }
 cortex-m = { version = "0.7.6", features = ["critical-section-single-core"] }
 cortex-m-rt = "0.7.2"
