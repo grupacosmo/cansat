@@ -10,15 +10,11 @@ pub struct Pressure {
 
 impl Pressure {
     pub fn from_pascals(_value: f32) -> Pressure {
-        Pressure {
-            value: _value
-        }
+        Pressure { value: _value }
     }
 
     pub fn from_hectos(_value: f32) -> Pressure {
-        Pressure {
-            value: _value * 100.
-        }
+        Pressure { value: _value * 100.}
     }
 
     pub fn as_pascals(&self) -> f32 {
@@ -29,7 +25,6 @@ impl Pressure {
         self.value / 100.
     }
 }
-
 
 // TODO: make it weather dependent
 pub fn calculate_altitude(pressure: Pressure) -> f32 {
