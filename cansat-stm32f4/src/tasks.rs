@@ -2,6 +2,7 @@ use super::{
     app::{blink, bme_measure, gps_irq, log_nmea, sdmmc_log},
     MAX_FILENAME_LEN,
 };
+use cansat_core::Pressure;
 use defmt::Debug2Format;
 use heapless::String;
 use rtic::Mutex;
@@ -42,7 +43,9 @@ pub fn bme_measure(ctx: bme_measure::Context) {
                 return;
             }
         };
-        let altitude = cansat_core::calculate_altitude(measurements.pressure);
+
+        let altitude =
+            cansat_core::calculate_altitude(Pressure::from_pascals(measurements.pressure));
         defmt::info!("Altitude = {} meters above sea level", altitude);
         defmt::info!("Relative Humidity = {}%", measurements.humidity);
         defmt::info!("Temperature = {} deg C", measurements.temperature);
