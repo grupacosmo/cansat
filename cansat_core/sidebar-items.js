@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":[["calculate_altitude",""]]};
+window.SIDEBAR_ITEMS = {"fn":[["calculate_altitude",""]],"struct":[["Pressure",""]]};

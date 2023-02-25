@@ -78,10 +78,14 @@
 <a href="#78" id="78">78</a>
 <a href="#79" id="79">79</a>
 <a href="#80" id="80">80</a>
+<a href="#81" id="81">81</a>
+<a href="#82" id="82">82</a>
+<a href="#83" id="83">83</a>
 </pre><pre class="rust"><code><span class="kw">use super</span>::{
     app::{blink, bme_measure, gps_irq, log_nmea, sdmmc_log},
     MAX_FILENAME_LEN,
 };
+<span class="kw">use </span>cansat_core::Pressure;
 <span class="kw">use </span>defmt::Debug2Format;
 <span class="kw">use </span>heapless::String;
 <span class="kw">use </span>rtic::Mutex;
@@ -122,7 +126,9 @@
                 <span class="kw">return</span>;
             }
         };
-        <span class="kw">let </span>altitude = cansat_core::calculate_altitude(measurements.pressure);
+
+        <span class="kw">let </span>altitude =
+            cansat_core::calculate_altitude(Pressure::from_pascals(measurements.pressure));
         <span class="macro">defmt::info!</span>(<span class="string">&quot;Altitude = {} meters above sea level&quot;</span>, altitude);
         <span class="macro">defmt::info!</span>(<span class="string">&quot;Relative Humidity = {}%&quot;</span>, measurements.humidity);
         <span class="macro">defmt::info!</span>(<span class="string">&quot;Temperature = {} deg C&quot;</span>, measurements.temperature);
