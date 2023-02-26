@@ -223,7 +223,6 @@
 <a href="#223" id="223">223</a>
 <a href="#224" id="224">224</a>
 <a href="#225" id="225">225</a>
-<a href="#226" id="226">226</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Binary crate targeting stm32f4 family microcontrollers.
 </span><span class="attr">#![deny(unsafe_code)]
 #![no_main]
@@ -244,28 +243,28 @@
 };
 <span class="kw">use </span>tasks::<span class="kw-2">*</span>;
 
-<span class="kw">type </span>Led = gpio::PA5&lt;gpio::Output&gt;;
+<span class="kw">type </span>Led = gpio::PC13&lt;gpio::Output&gt;;
 
-<span class="kw">type </span>Scl1 = gpio::PB6&lt;gpio::Alternate&lt;<span class="number">4</span>, gpio::OpenDrain&gt;&gt;;
-<span class="kw">type </span>Sda1 = gpio::PB7&lt;gpio::Alternate&lt;<span class="number">4</span>, gpio::OpenDrain&gt;&gt;;
+<span class="kw">type </span>Scl1 = gpio::PB8&lt;gpio::Alternate&lt;<span class="number">4</span>, gpio::OpenDrain&gt;&gt;;
+<span class="kw">type </span>Sda1 = gpio::PB9&lt;gpio::Alternate&lt;<span class="number">4</span>, gpio::OpenDrain&gt;&gt;;
 <span class="kw">type </span>I2c1 = i2c::I2c1&lt;(Scl1, Sda1)&gt;;
 <span class="kw">type </span>Bme280 = bme280::i2c::BME280&lt;I2c1&gt;;
 
-<span class="kw">type </span>Rx3 = gpio::PC10&lt;gpio::Alternate&lt;<span class="number">7</span>&gt;&gt;;
-<span class="kw">type </span>Tx3 = gpio::PC11&lt;gpio::Alternate&lt;<span class="number">7</span>&gt;&gt;;
-<span class="kw">type </span>Serial3 = serial::Serial3&lt;(Rx3, Tx3)&gt;;
-<span class="kw">type </span>Gps = cansat_gps::Gps&lt;Serial3&gt;;
+<span class="kw">type </span>Rx1 = gpio::PB7&lt;gpio::Alternate&lt;<span class="number">7</span>&gt;&gt;;
+<span class="kw">type </span>Tx1 = gpio::PB6&lt;gpio::Alternate&lt;<span class="number">7</span>&gt;&gt;;
+<span class="kw">type </span>Serial1 = serial::Serial1&lt;(Tx1, Rx1)&gt;;
+<span class="kw">type </span>Gps = cansat_gps::Gps&lt;Serial1&gt;;
 
-<span class="kw">type </span>Sck1 = gpio::PB3&lt;gpio::Alternate&lt;<span class="number">5</span>&gt;&gt;;
-<span class="kw">type </span>Miso1 = gpio::PA6&lt;gpio::Alternate&lt;<span class="number">5</span>&gt;&gt;;
-<span class="kw">type </span>Mosi1 = gpio::PA7&lt;gpio::Alternate&lt;<span class="number">5</span>&gt;&gt;;
-<span class="kw">type </span>Spi1 = spi::Spi1&lt;(Sck1, Miso1, Mosi1)&gt;;
-<span class="kw">type </span>Cs1 = gpio::PA15&lt;gpio::Output&gt;;
-<span class="kw">type </span>SpiDevice1 = embedded_sdmmc::SdMmcSpi&lt;Spi1, Cs1&gt;;
-<span class="kw">type </span>BlockSpi1 = embedded_sdmmc::BlockSpi&lt;<span class="lifetime">&#39;static</span>, Spi1, Cs1&gt;;
+<span class="kw">type </span>Sck2 = gpio::PB13&lt;gpio::Alternate&lt;<span class="number">5</span>&gt;&gt;;
+<span class="kw">type </span>Miso2 = gpio::PB14&lt;gpio::Alternate&lt;<span class="number">5</span>&gt;&gt;;
+<span class="kw">type </span>Mosi2 = gpio::PB15&lt;gpio::Alternate&lt;<span class="number">5</span>&gt;&gt;;
+<span class="kw">type </span>Spi2 = spi::Spi2&lt;(Sck2, Miso2, Mosi2)&gt;;
+<span class="kw">type </span>Cs2 = gpio::PB12&lt;gpio::Output&gt;;
+<span class="kw">type </span>SpiDevice2 = embedded_sdmmc::SdMmcSpi&lt;Spi2, Cs2&gt;;
+<span class="kw">type </span>BlockSpi2 = embedded_sdmmc::BlockSpi&lt;<span class="lifetime">&#39;static</span>, Spi2, Cs2&gt;;
 <span class="kw">const </span>MAX_DIRS: usize = <span class="number">4</span>;
 <span class="kw">const </span>MAX_FILES: usize = <span class="number">4</span>;
-<span class="kw">type </span>SdmmcController = embedded_sdmmc::Controller&lt;BlockSpi1, DummyClock, MAX_DIRS, MAX_FILES&gt;;
+<span class="kw">type </span>SdmmcController = embedded_sdmmc::Controller&lt;BlockSpi2, DummyClock, MAX_DIRS, MAX_FILES&gt;;
 
 <span class="doccomment">/// Maximal length supported by embedded_sdmmc
 </span><span class="kw">const </span>MAX_FILENAME_LEN: usize = <span class="number">11</span>;
@@ -307,23 +306,23 @@
     </span><span class="kw">type </span>MicrosecMono = MonoTimerUs&lt;pac::TIM2&gt;;
 
     <span class="kw">extern </span><span class="string">&quot;Rust&quot; </span>{
-        <span class="attr">#[task(shared = [gps]</span>)]
+        <span class="attr">#[task(shared = [gps]</span>, priority = <span class="number">1</span>)]
         <span class="kw">fn </span>log_nmea(ctx: log_nmea::Context);
 
-        <span class="attr">#[task(binds = USART3, shared = [gps]</span>)]
+        <span class="attr">#[task(binds = USART1, shared = [gps]</span>, priority = <span class="number">2</span>)]
         <span class="kw">fn </span>gps_irq(ctx: gps_irq::Context);
 
-        <span class="attr">#[task(local = [led]</span>)]
+        <span class="attr">#[task(local = [led]</span>, priority = <span class="number">1</span>)]
         <span class="kw">fn </span>blink(ctx: blink::Context);
 
-        <span class="attr">#[task(local = [delay, bme280]</span>)]
+        <span class="attr">#[task(local = [delay, bme280]</span>, priority = <span class="number">1</span>)]
         <span class="kw">fn </span>bme_measure(ctx: bme_measure::Context);
 
-        <span class="attr">#[task(local = [controller, filename]</span>)]
-        <span class="kw">fn </span>sdmmc_log(ctx: sdmmc_log::Context, filename: String&lt;MAX_FILENAME_LEN&gt;);
+        <span class="attr">#[task(local = [controller, filename]</span>, priority = <span class="number">1</span>)]
+        <span class="kw">fn </span>sdmmc_log(ctx: sdmmc_log::Context);
     }
 
-    <span class="attr">#[init(local = [spi_device1: <span class="prelude-ty">Option</span>&lt;SpiDevice1&gt; = <span class="prelude-val">None</span>]</span>)]
+    <span class="attr">#[init(local = [spi_device2: <span class="prelude-ty">Option</span>&lt;SpiDevice2&gt; = <span class="prelude-val">None</span>]</span>)]
     <span class="kw">fn </span>init(ctx: init::Context) -&gt; (Shared, Local, init::Monotonics) {
         try_init(ctx).unwrap_or_else(|e| {
             <span class="macro">defmt::panic!</span>(<span class="string">&quot;Initialization failed: {}&quot;</span>, e);
@@ -339,21 +338,20 @@
         <span class="kw">let </span>mono = device.TIM2.monotonic_us(<span class="kw-2">&amp;</span>clocks);
         <span class="kw">let </span><span class="kw-2">mut </span>delay = device.TIM3.delay_us(<span class="kw-2">&amp;</span>clocks);
 
-        <span class="kw">let </span>gpioa = device.GPIOA.split();
         <span class="kw">let </span>gpiob = device.GPIOB.split();
         <span class="kw">let </span>gpioc = device.GPIOC.split();
 
-        <span class="kw">let </span>led = gpioa.pa5.into_push_pull_output();
+        <span class="kw">let </span>led = gpioc.pc13.into_push_pull_output();
 
         <span class="kw">let </span>bme280 = {
             <span class="kw">let </span>i2c1 = {
                 <span class="kw">let </span>scl1 = gpiob
-                    .pb6
+                    .pb8
                     .into_alternate()
                     .internal_pull_up(<span class="bool-val">false</span>)
                     .set_open_drain();
                 <span class="kw">let </span>sda1 = gpiob
-                    .pb7
+                    .pb9
                     .into_alternate()
                     .internal_pull_up(<span class="bool-val">false</span>)
                     .set_open_drain();
@@ -364,51 +362,50 @@
                 device.I2C1.i2c((scl1, sda1), mode, <span class="kw-2">&amp;</span>clocks)
             };
             <span class="kw">let </span><span class="kw-2">mut </span>bme280 = Bme280::new_primary(i2c1);
-            <span class="attr">#[cfg(feature = <span class="string">&quot;bme&quot;</span>)]
-            </span>bme280
+            bme280
                 .init(<span class="kw-2">&amp;mut </span>delay)
                 .wrap_err(<span class="string">&quot;Failed to initialize BME280&quot;</span>)<span class="question-mark">?</span>;
             bme280
         };
 
         <span class="kw">let </span>gps = {
-            <span class="kw">let </span><span class="kw-2">mut </span>usart3 = {
-                <span class="kw">let </span>tx3 = gpioc.pc10.into_alternate();
-                <span class="kw">let </span>rx3 = gpioc.pc11.into_alternate();
+            <span class="kw">let </span><span class="kw-2">mut </span>usart1 = {
+                <span class="kw">let </span>tx1 = gpiob.pb6.into_alternate();
+                <span class="kw">let </span>rx1 = gpiob.pb7.into_alternate();
                 <span class="kw">let </span>config = serial::Config::default().baudrate(<span class="number">9600</span>.bps());
                 device
-                    .USART3
-                    .serial((tx3, rx3), config, <span class="kw-2">&amp;</span>clocks)
+                    .USART1
+                    .serial((tx1, rx1), config, <span class="kw-2">&amp;</span>clocks)
                     .wrap_err(<span class="string">&quot;Failed to create USART3&quot;</span>)<span class="question-mark">?
             </span>};
-            usart3.listen(serial::Event::Rxne);
-            Gps::new(usart3)
+            usart1.listen(serial::Event::Rxne);
+            Gps::new(usart1)
         };
 
         <span class="kw">let </span><span class="kw-2">mut </span>controller = {
-            <span class="kw">let </span>spi_device1 = ctx.local.spi_device1;
-            <span class="kw-2">*</span>spi_device1 = <span class="prelude-val">Some</span>({
-                <span class="kw">let </span>spi1 = {
-                    <span class="kw">let </span>sck1 = gpiob.pb3.into_alternate();
-                    <span class="kw">let </span>miso1 = gpioa.pa6.into_alternate();
-                    <span class="kw">let </span>mosi1 = gpioa.pa7.into_alternate();
+            <span class="kw">let </span>spi_device2 = ctx.local.spi_device2;
+            <span class="kw-2">*</span>spi_device2 = <span class="prelude-val">Some</span>({
+                <span class="kw">let </span>spi2 = {
+                    <span class="kw">let </span>sck2 = gpiob.pb13.into_alternate();
+                    <span class="kw">let </span>miso2 = gpiob.pb14.into_alternate();
+                    <span class="kw">let </span>mosi2 = gpiob.pb15.into_alternate();
                     <span class="kw">let </span>mode = spi::Mode {
                         polarity: spi::Polarity::IdleLow,
                         phase: spi::Phase::CaptureOnFirstTransition,
                     };
                     device
-                        .SPI1
-                        .spi((sck1, miso1, mosi1), mode, <span class="number">400000</span>.Hz(), <span class="kw-2">&amp;</span>clocks)
+                        .SPI2
+                        .spi((sck2, miso2, mosi2), mode, <span class="number">400000</span>.Hz(), <span class="kw-2">&amp;</span>clocks)
                 };
-                <span class="kw">let </span>cs1 = gpioa.pa15.into_push_pull_output();
-                embedded_sdmmc::SdMmcSpi::new(spi1, cs1)
+                <span class="kw">let </span>cs2 = gpiob.pb12.into_push_pull_output();
+                embedded_sdmmc::SdMmcSpi::new(spi2, cs2)
             });
-            <span class="kw">let </span>block_spi1 = spi_device1
+            <span class="kw">let </span>block_spi2 = spi_device2
                 .as_mut()
                 .unwrap()
                 .acquire()
                 .wrap_err(<span class="string">&quot;Failed to acquire block spi&quot;</span>)<span class="question-mark">?</span>;
-            SdmmcController::new(block_spi1, DummyClock)
+            SdmmcController::new(block_spi2, DummyClock)
         };
 
         <span class="kw">let </span>filename = {
@@ -435,7 +432,8 @@
         <span class="macro">defmt::info!</span>(<span class="string">&quot;Filename: {}&quot;</span>, filename.as_str());
 
         blink::spawn().unwrap();
-        sdmmc_log::spawn(<span class="string">&quot;Logs dump here &quot;</span>.into()).unwrap();
+        sdmmc_log::spawn().unwrap();
+        bme_measure::spawn().unwrap();
 
         <span class="kw">let </span>shared = Shared { gps };
         <span class="kw">let </span>local = Local {
