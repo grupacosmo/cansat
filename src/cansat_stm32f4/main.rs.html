@@ -284,7 +284,7 @@
     }
 }
 
-<span class="attr">#[rtic::app(device = stm32f4xx_hal::pac, dispatchers = [EXTI0]</span>)]
+<span class="attr">#[rtic::app(device = stm32f4xx_hal::pac, dispatchers = [EXTI0, EXTI1]</span>)]
 <span class="kw">mod </span>app {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
 
@@ -306,10 +306,10 @@
     </span><span class="kw">type </span>MicrosecMono = MonoTimerUs&lt;pac::TIM2&gt;;
 
     <span class="kw">extern </span><span class="string">&quot;Rust&quot; </span>{
-        <span class="attr">#[task(shared = [gps]</span>, priority = <span class="number">1</span>)]
+        <span class="attr">#[task(shared = [gps]</span>, priority = <span class="number">2</span>)]
         <span class="kw">fn </span>log_nmea(ctx: log_nmea::Context);
 
-        <span class="attr">#[task(binds = USART1, shared = [gps]</span>, priority = <span class="number">2</span>)]
+        <span class="attr">#[task(binds = USART1, shared = [gps]</span>, priority = <span class="number">3</span>)]
         <span class="kw">fn </span>gps_irq(ctx: gps_irq::Context);
 
         <span class="attr">#[task(local = [led]</span>, priority = <span class="number">1</span>)]
@@ -368,20 +368,6 @@
             bme280
         };
 
-        <span class="kw">let </span>gps = {
-            <span class="kw">let </span><span class="kw-2">mut </span>usart1 = {
-                <span class="kw">let </span>tx1 = gpiob.pb6.into_alternate();
-                <span class="kw">let </span>rx1 = gpiob.pb7.into_alternate();
-                <span class="kw">let </span>config = serial::Config::default().baudrate(<span class="number">9600</span>.bps());
-                device
-                    .USART1
-                    .serial((tx1, rx1), config, <span class="kw-2">&amp;</span>clocks)
-                    .wrap_err(<span class="string">&quot;Failed to create USART3&quot;</span>)<span class="question-mark">?
-            </span>};
-            usart1.listen(serial::Event::Rxne);
-            Gps::new(usart1)
-        };
-
         <span class="kw">let </span><span class="kw-2">mut </span>controller = {
             <span class="kw">let </span>spi_device2 = ctx.local.spi_device2;
             <span class="kw-2">*</span>spi_device2 = <span class="prelude-val">Some</span>({
@@ -430,6 +416,20 @@
         };
 
         <span class="macro">defmt::info!</span>(<span class="string">&quot;Filename: {}&quot;</span>, filename.as_str());
+
+        <span class="kw">let </span>gps = {
+            <span class="kw">let </span><span class="kw-2">mut </span>usart1 = {
+                <span class="kw">let </span>tx1 = gpiob.pb6.into_alternate();
+                <span class="kw">let </span>rx1 = gpiob.pb7.into_alternate();
+                <span class="kw">let </span>config = serial::Config::default().baudrate(<span class="number">9600</span>.bps());
+                device
+                    .USART1
+                    .serial((tx1, rx1), config, <span class="kw-2">&amp;</span>clocks)
+                    .wrap_err(<span class="string">&quot;Failed to create USART3&quot;</span>)<span class="question-mark">?
+            </span>};
+            usart1.listen(serial::Event::Rxne);
+            Gps::new(usart1)
+        };
 
         blink::spawn().unwrap();
         sdmmc_log::spawn().unwrap();
