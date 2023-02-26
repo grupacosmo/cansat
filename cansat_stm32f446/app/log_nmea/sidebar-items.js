@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"mod":[["MicrosecMono",""]],"struct":[["SharedResources","Shared resources `log_nmea` has access to"]]};
