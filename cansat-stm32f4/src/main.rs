@@ -18,28 +18,28 @@ use stm32f4xx_hal::{
 };
 use tasks::*;
 
-type Led = gpio::PA5<gpio::Output>;
+type Led = gpio::PC13<gpio::Output>;
 
-type Scl1 = gpio::PB6<gpio::Alternate<4, gpio::OpenDrain>>;
-type Sda1 = gpio::PB7<gpio::Alternate<4, gpio::OpenDrain>>;
+type Scl1 = gpio::PB8<gpio::Alternate<4, gpio::OpenDrain>>;
+type Sda1 = gpio::PB9<gpio::Alternate<4, gpio::OpenDrain>>;
 type I2c1 = i2c::I2c1<(Scl1, Sda1)>;
 type Bme280 = bme280::i2c::BME280<I2c1>;
 
-type Rx3 = gpio::PC10<gpio::Alternate<7>>;
-type Tx3 = gpio::PC11<gpio::Alternate<7>>;
-type Serial3 = serial::Serial3<(Rx3, Tx3)>;
-type Gps = cansat_gps::Gps<Serial3>;
+type Rx1 = gpio::PB7<gpio::Alternate<7>>;
+type Tx1 = gpio::PB6<gpio::Alternate<7>>;
+type Serial1 = serial::Serial1<(Tx1, Rx1)>;
+type Gps = cansat_gps::Gps<Serial1>;
 
-type Sck1 = gpio::PB3<gpio::Alternate<5>>;
-type Miso1 = gpio::PA6<gpio::Alternate<5>>;
-type Mosi1 = gpio::PA7<gpio::Alternate<5>>;
-type Spi1 = spi::Spi1<(Sck1, Miso1, Mosi1)>;
-type Cs1 = gpio::PA15<gpio::Output>;
-type SpiDevice1 = embedded_sdmmc::SdMmcSpi<Spi1, Cs1>;
-type BlockSpi1 = embedded_sdmmc::BlockSpi<'static, Spi1, Cs1>;
+type Sck2 = gpio::PB13<gpio::Alternate<5>>;
+type Miso2 = gpio::PB14<gpio::Alternate<5>>;
+type Mosi2 = gpio::PB15<gpio::Alternate<5>>;
+type Spi2 = spi::Spi2<(Sck2, Miso2, Mosi2)>;
+type Cs2 = gpio::PB12<gpio::Output>;
+type SpiDevice2 = embedded_sdmmc::SdMmcSpi<Spi2, Cs2>;
+type BlockSpi2 = embedded_sdmmc::BlockSpi<'static, Spi2, Cs2>;
 const MAX_DIRS: usize = 4;
 const MAX_FILES: usize = 4;
-type SdmmcController = embedded_sdmmc::Controller<BlockSpi1, DummyClock, MAX_DIRS, MAX_FILES>;
+type SdmmcController = embedded_sdmmc::Controller<BlockSpi2, DummyClock, MAX_DIRS, MAX_FILES>;
 
 /// Maximal length supported by embedded_sdmmc
 const MAX_FILENAME_LEN: usize = 11;
@@ -81,23 +81,23 @@ mod app {
     type MicrosecMono = MonoTimerUs<pac::TIM2>;
 
     extern "Rust" {
-        #[task(shared = [gps])]
+        #[task(shared = [gps], priority = 1)]
         fn log_nmea(ctx: log_nmea::Context);
 
-        #[task(binds = USART3, shared = [gps])]
+        #[task(binds = USART1, shared = [gps], priority = 2)]
         fn gps_irq(ctx: gps_irq::Context);
 
-        #[task(local = [led])]
+        #[task(local = [led], priority = 1)]
         fn blink(ctx: blink::Context);
 
-        #[task(local = [delay, bme280])]
+        #[task(local = [delay, bme280], priority = 1)]
         fn bme_measure(ctx: bme_measure::Context);
 
-        #[task(local = [controller, filename])]
-        fn sdmmc_log(ctx: sdmmc_log::Context, filename: String<MAX_FILENAME_LEN>);
+        #[task(local = [controller, filename], priority = 1)]
+        fn sdmmc_log(ctx: sdmmc_log::Context);
     }
 
-    #[init(local = [spi_device1: Option<SpiDevice1> = None])]
+    #[init(local = [spi_device2: Option<SpiDevice2> = None])]
     fn init(ctx: init::Context) -> (Shared, Local, init::Monotonics) {
         try_init(ctx).unwrap_or_else(|e| {
             defmt::panic!("Initialization failed: {}", e);
@@ -113,21 +113,20 @@ mod app {
         let mono = device.TIM2.monotonic_us(&clocks);
         let mut delay = device.TIM3.delay_us(&clocks);
 
-        let gpioa = device.GPIOA.split();
         let gpiob = device.GPIOB.split();
         let gpioc = device.GPIOC.split();
 
-        let led = gpioa.pa5.into_push_pull_output();
+        let led = gpioc.pc13.into_push_pull_output();
 
         let bme280 = {
             let i2c1 = {
                 let scl1 = gpiob
-                    .pb6
+                    .pb8
                     .into_alternate()
                     .internal_pull_up(false)
                     .set_open_drain();
                 let sda1 = gpiob
-                    .pb7
+                    .pb9
                     .into_alternate()
                     .internal_pull_up(false)
                     .set_open_drain();
@@ -138,7 +137,6 @@ mod app {
                 device.I2C1.i2c((scl1, sda1), mode, &clocks)
             };
             let mut bme280 = Bme280::new_primary(i2c1);
-            #[cfg(feature = "bme")]
             bme280
                 .init(&mut delay)
                 .wrap_err("Failed to initialize BME280")?;
@@ -146,43 +144,43 @@ mod app {
         };
 
         let gps = {
-            let mut usart3 = {
-                let tx3 = gpioc.pc10.into_alternate();
-                let rx3 = gpioc.pc11.into_alternate();
+            let mut usart1 = {
+                let tx1 = gpiob.pb6.into_alternate();
+                let rx1 = gpiob.pb7.into_alternate();
                 let config = serial::Config::default().baudrate(9600.bps());
                 device
-                    .USART3
-                    .serial((tx3, rx3), config, &clocks)
+                    .USART1
+                    .serial((tx1, rx1), config, &clocks)
                     .wrap_err("Failed to create USART3")?
             };
-            usart3.listen(serial::Event::Rxne);
-            Gps::new(usart3)
+            usart1.listen(serial::Event::Rxne);
+            Gps::new(usart1)
         };
 
         let mut controller = {
-            let spi_device1 = ctx.local.spi_device1;
-            *spi_device1 = Some({
-                let spi1 = {
-                    let sck1 = gpiob.pb3.into_alternate();
-                    let miso1 = gpioa.pa6.into_alternate();
-                    let mosi1 = gpioa.pa7.into_alternate();
+            let spi_device2 = ctx.local.spi_device2;
+            *spi_device2 = Some({
+                let spi2 = {
+                    let sck2 = gpiob.pb13.into_alternate();
+                    let miso2 = gpiob.pb14.into_alternate();
+                    let mosi2 = gpiob.pb15.into_alternate();
                     let mode = spi::Mode {
                         polarity: spi::Polarity::IdleLow,
                         phase: spi::Phase::CaptureOnFirstTransition,
                     };
                     device
-                        .SPI1
-                        .spi((sck1, miso1, mosi1), mode, 400000.Hz(), &clocks)
+                        .SPI2
+                        .spi((sck2, miso2, mosi2), mode, 400000.Hz(), &clocks)
                 };
-                let cs1 = gpioa.pa15.into_push_pull_output();
-                embedded_sdmmc::SdMmcSpi::new(spi1, cs1)
+                let cs2 = gpiob.pb12.into_push_pull_output();
+                embedded_sdmmc::SdMmcSpi::new(spi2, cs2)
             });
-            let block_spi1 = spi_device1
+            let block_spi2 = spi_device2
                 .as_mut()
                 .unwrap()
                 .acquire()
                 .wrap_err("Failed to acquire block spi")?;
-            SdmmcController::new(block_spi1, DummyClock)
+            SdmmcController::new(block_spi2, DummyClock)
         };
 
         let filename = {
@@ -209,7 +207,8 @@ mod app {
         defmt::info!("Filename: {}", filename.as_str());
 
         blink::spawn().unwrap();
-        sdmmc_log::spawn("Logs dump here ".into()).unwrap();
+        sdmmc_log::spawn().unwrap();
+        bme_measure::spawn().unwrap();
 
         let shared = Shared { gps };
         let local = Local {
