@@ -16,8 +16,6 @@ jobs:
         with:
           toolchain: stable
           override: true
-      - name: Cache
-        uses: Swatinem/rust-cache@v1
       - name: Run doc command
         uses: actions-rs/cargo@v1
         with:
