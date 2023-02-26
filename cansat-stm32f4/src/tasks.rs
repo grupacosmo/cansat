@@ -1,10 +1,6 @@
-use super::{
-    app::{blink, bme_measure, gps_irq, log_nmea, sdmmc_log},
-    MAX_FILENAME_LEN,
-};
+use super::app::{bme_measure, gps_irq, heartbeat, log_nmea, sdmmc_log};
 use cansat_core::Pressure;
 use defmt::Debug2Format;
-use heapless::String;
 use rtic::Mutex;
 use stm32f4xx_hal::prelude::*;
 
@@ -24,38 +20,34 @@ pub fn gps_irq(ctx: gps_irq::Context) {
 }
 
 /// Toggles led every second
-pub fn blink(ctx: blink::Context) {
+pub fn heartbeat(ctx: heartbeat::Context) {
     let led = ctx.local.led;
     led.toggle();
     defmt::debug!("Blink");
-    blink::spawn_after(1.secs()).unwrap();
+    heartbeat::spawn_after(1.secs()).unwrap();
 }
 
 pub fn bme_measure(ctx: bme_measure::Context) {
-    #[cfg(feature = "bme")]
-    {
-        let bme = ctx.local.bme280;
-        let delay = ctx.local.delay;
-        let measurements = match bme.measure(delay) {
-            Ok(m) => m,
-            Err(e) => {
-                defmt::error!("Could not read bme280 measurements: {}", Debug2Format(&e));
-                return;
-            }
-        };
+    let bme = ctx.local.bme280;
+    let delay = ctx.local.delay;
+    let measurements = match bme.measure(delay) {
+        Ok(m) => m,
+        Err(e) => {
+            defmt::error!("Could not read bme280 measurements: {}", Debug2Format(&e));
+            return;
+        }
+    };
 
-        let altitude =
-            cansat_core::calculate_altitude(Pressure::from_pascals(measurements.pressure));
-        defmt::info!("Altitude = {} meters above sea level", altitude);
-        defmt::info!("Relative Humidity = {}%", measurements.humidity);
-        defmt::info!("Temperature = {} deg C", measurements.temperature);
-        defmt::info!("Pressure = {} pascals", measurements.pressure);
+    let altitude = cansat_core::calculate_altitude(Pressure::from_pascals(measurements.pressure));
+    defmt::info!("Altitude = {} meters above sea level", altitude);
+    defmt::info!("Relative Humidity = {}%", measurements.humidity);
+    defmt::info!("Temperature = {} deg C", measurements.temperature);
+    defmt::info!("Pressure = {} pascals", measurements.pressure);
 
-        bme_measure::spawn_after(5.secs()).unwrap();
-    }
+    bme_measure::spawn_after(5.secs()).unwrap();
 }
 
-pub fn sdmmc_log(ctx: sdmmc_log::Context, log_string: String<MAX_FILENAME_LEN>) {
+pub fn sdmmc_log(ctx: sdmmc_log::Context) {
     let controller = ctx.local.controller;
     let filename = ctx.local.filename;
     let mut volume = match controller.get_volume(embedded_sdmmc::VolumeIdx(0)) {
@@ -74,7 +66,7 @@ pub fn sdmmc_log(ctx: sdmmc_log::Context, log_string: String<MAX_FILENAME_LEN>) 
         )
         .unwrap();
     let num_written = controller
-        .write(&mut volume, &mut f, log_string.as_bytes())
+        .write(&mut volume, &mut f, "test".as_bytes())
         .unwrap();
     defmt::info!("Written: {} bytes\n", num_written);
     if let Err(e) = controller.close_file(&volume, f) {
