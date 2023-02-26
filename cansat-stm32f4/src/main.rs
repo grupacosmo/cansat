@@ -59,7 +59,7 @@ impl embedded_sdmmc::TimeSource for DummyClock {
     }
 }
 
-#[rtic::app(device = stm32f4xx_hal::pac, dispatchers = [EXTI0])]
+#[rtic::app(device = stm32f4xx_hal::pac, dispatchers = [EXTI0, EXTI1])]
 mod app {
     use super::*;
 
@@ -81,10 +81,10 @@ mod app {
     type MicrosecMono = MonoTimerUs<pac::TIM2>;
 
     extern "Rust" {
-        #[task(shared = [gps], priority = 1)]
+        #[task(shared = [gps], priority = 2)]
         fn log_nmea(ctx: log_nmea::Context);
 
-        #[task(binds = USART1, shared = [gps], priority = 2)]
+        #[task(binds = USART1, shared = [gps], priority = 3)]
         fn gps_irq(ctx: gps_irq::Context);
 
         #[task(local = [led], priority = 1)]
@@ -143,20 +143,6 @@ mod app {
             bme280
         };
 
-        let gps = {
-            let mut usart1 = {
-                let tx1 = gpiob.pb6.into_alternate();
-                let rx1 = gpiob.pb7.into_alternate();
-                let config = serial::Config::default().baudrate(9600.bps());
-                device
-                    .USART1
-                    .serial((tx1, rx1), config, &clocks)
-                    .wrap_err("Failed to create USART3")?
-            };
-            usart1.listen(serial::Event::Rxne);
-            Gps::new(usart1)
-        };
-
         let mut controller = {
             let spi_device2 = ctx.local.spi_device2;
             *spi_device2 = Some({
@@ -205,6 +191,20 @@ mod app {
         };
 
         defmt::info!("Filename: {}", filename.as_str());
+
+        let gps = {
+            let mut usart1 = {
+                let tx1 = gpiob.pb6.into_alternate();
+                let rx1 = gpiob.pb7.into_alternate();
+                let config = serial::Config::default().baudrate(9600.bps());
+                device
+                    .USART1
+                    .serial((tx1, rx1), config, &clocks)
+                    .wrap_err("Failed to create USART3")?
+            };
+            usart1.listen(serial::Event::Rxne);
+            Gps::new(usart1)
+        };
 
         blink::spawn().unwrap();
         sdmmc_log::spawn().unwrap();
