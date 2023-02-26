@@ -113,6 +113,7 @@ mod app {
         let mono = device.TIM2.monotonic_us(&clocks);
         let mut delay = device.TIM3.delay_us(&clocks);
 
+        let gpioa = device.GPIOA.split();
         let gpiob = device.GPIOB.split();
         let gpioc = device.GPIOC.split();
 
@@ -205,6 +206,25 @@ mod app {
         };
 
         defmt::info!("Filename: {}", filename.as_str());
+
+        let mut lora = {
+            let tx6 = gpioa.pa11.into_alternate();
+            let rx6 = gpioa.pa12.into_alternate();
+            let config = serial::Config::default().baudrate(9600.bps());
+            device
+                .USART6
+                .serial((tx6, rx6), config, &clocks)
+                .wrap_err("Failed to create USART3")?
+                .with_u8_data()
+        };
+        lora.bwrite_all(b"AT+DR=EU868\n").unwrap();
+        let mut buf: String<64> = String::new();
+        loop {
+            if let Ok(b) = lora.read() {
+                buf.push(b as char).unwrap();
+                defmt::println!("{}", buf.as_str());
+            }
+        }
 
         blink::spawn().unwrap();
         sdmmc_log::spawn().unwrap();
