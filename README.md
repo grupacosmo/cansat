@@ -11,9 +11,20 @@ cargo install cargo-embed
 rustup target add thumbv7em-none-eabihf
 ```
 
+## xtask
+[cargo-xtask](https://github.com/matklad/cargo-xtask) is a way of extending `cargo` with user-defined workflows. 
+```
+cargo xtask --help
+```
+
+## Build
+```
+cargo xtask build
+```
+
 ## Run
 ```bash
-cargo xtask embed cansat-stm32f446
+cargo xtask embed cansat-stm32f4
 ```
 
 ## Log filters
