@@ -88,7 +88,7 @@ mod app {
         fn gps_irq(ctx: gps_irq::Context);
 
         #[task(local = [led], priority = 1)]
-        fn heartbeat(ctx: heartbeat::Context);
+        fn blink(ctx: blink::Context);
 
         #[task(local = [delay, bme280], priority = 1)]
         fn bme_measure(ctx: bme_measure::Context);
@@ -206,7 +206,7 @@ mod app {
 
         defmt::info!("Filename: {}", filename.as_str());
 
-        heartbeat::spawn().unwrap();
+        blink::spawn().unwrap();
         sdmmc_log::spawn().unwrap();
         bme_measure::spawn().unwrap();
 

@@ -1,4 +1,4 @@
-use super::app::{bme_measure, gps_irq, heartbeat, log_nmea, sdmmc_log};
+use super::app::{blink, bme_measure, gps_irq, log_nmea, sdmmc_log};
 use cansat_core::Pressure;
 use defmt::Debug2Format;
 use rtic::Mutex;
@@ -20,11 +20,11 @@ pub fn gps_irq(ctx: gps_irq::Context) {
 }
 
 /// Toggles led every second
-pub fn heartbeat(ctx: heartbeat::Context) {
+pub fn blink(ctx: blink::Context) {
     let led = ctx.local.led;
     led.toggle();
     defmt::debug!("Blink");
-    heartbeat::spawn_after(1.secs()).unwrap();
+    blink::spawn_after(1.secs()).unwrap();
 }
 
 pub fn bme_measure(ctx: bme_measure::Context) {
