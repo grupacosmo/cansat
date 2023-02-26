@@ -9,6 +9,7 @@ mod tasks;
 use defmt_rtt as _;
 use error::{Report, WrapErr};
 use heapless::String;
+use lis3dh::Lis3dh;
 use panic_probe as _;
 use stm32f4xx_hal::{
     gpio, i2c, pac,
@@ -23,7 +24,9 @@ type Led = gpio::PC13<gpio::Output>;
 type Scl1 = gpio::PB8<gpio::Alternate<4, gpio::OpenDrain>>;
 type Sda1 = gpio::PB9<gpio::Alternate<4, gpio::OpenDrain>>;
 type I2c1 = i2c::I2c1<(Scl1, Sda1)>;
-type Bme280 = bme280::i2c::BME280<I2c1>;
+type I2c1Proxy = shared_bus::I2cProxy<'static, shared_bus::AtomicCheckMutex<I2c1>>;
+type Bme280 = bme280::i2c::BME280<I2c1Proxy>;
+type Accelerometer = Lis3dh<lis3dh::Lis3dhI2C<I2c1Proxy>>;
 
 type Rx1 = gpio::PB7<gpio::Alternate<7>>;
 type Tx1 = gpio::PB6<gpio::Alternate<7>>;
@@ -59,6 +62,11 @@ impl embedded_sdmmc::TimeSource for DummyClock {
     }
 }
 
+pub struct I2c1Devices {
+    pub bme280: Bme280,
+    pub accelerometer: Accelerometer,
+}
+
 #[rtic::app(device = stm32f4xx_hal::pac, dispatchers = [EXTI0])]
 mod app {
     use super::*;
@@ -66,13 +74,14 @@ mod app {
     #[shared]
     struct Shared {
         gps: Gps,
+        #[lock_free]
+        i2c1_devices: I2c1Devices,
     }
 
     #[local]
     struct Local {
         delay: DelayUs<pac::TIM3>,
         led: Led,
-        bme280: Bme280,
         controller: SdmmcController,
         filename: String<MAX_FILENAME_LEN>,
     }
@@ -90,7 +99,7 @@ mod app {
         #[task(local = [led], priority = 1)]
         fn blink(ctx: blink::Context);
 
-        #[task(local = [delay, bme280], priority = 1)]
+        #[task(local = [delay], shared = [i2c1_devices], priority = 1)]
         fn bme_measure(ctx: bme_measure::Context);
 
         #[task(local = [controller, filename], priority = 1)]
@@ -118,7 +127,7 @@ mod app {
 
         let led = gpioc.pc13.into_push_pull_output();
 
-        let bme280 = {
+        let i2c1_manager = {
             let i2c1 = {
                 let scl1 = gpiob
                     .pb8
@@ -136,12 +145,19 @@ mod app {
                 };
                 device.I2C1.i2c((scl1, sda1), mode, &clocks)
             };
-            let mut bme280 = Bme280::new_primary(i2c1);
+            shared_bus::new_atomic_check!(I2c1 = i2c1).unwrap()
+        };
+
+        let bme280 = {
+            let mut bme280 = Bme280::new_primary(i2c1_manager.acquire_i2c());
             bme280
                 .init(&mut delay)
                 .wrap_err("Failed to initialize BME280")?;
             bme280
         };
+
+        let accelerometer =
+            Lis3dh::new_i2c(i2c1_manager.acquire_i2c(), lis3dh::SlaveAddr::Default).unwrap();
 
         let gps = {
             let mut usart1 = {
@@ -210,11 +226,14 @@ mod app {
         sdmmc_log::spawn().unwrap();
         bme_measure::spawn().unwrap();
 
-        let shared = Shared { gps };
+        let i2c1_devices = I2c1Devices {
+            bme280,
+            accelerometer,
+        };
+        let shared = Shared { gps, i2c1_devices };
         let local = Local {
             delay,
             led,
-            bme280,
             controller,
             filename,
         };

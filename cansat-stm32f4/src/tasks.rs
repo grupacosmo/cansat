@@ -28,7 +28,7 @@ pub fn blink(ctx: blink::Context) {
 }
 
 pub fn bme_measure(ctx: bme_measure::Context) {
-    let bme = ctx.local.bme280;
+    let bme = &mut ctx.shared.i2c1_devices.bme280;
     let delay = ctx.local.delay;
     let measurements = match bme.measure(delay) {
         Ok(m) => m,

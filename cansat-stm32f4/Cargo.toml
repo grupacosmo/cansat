@@ -22,3 +22,5 @@ once_cell = { version = "1.16.0", default-features = false }
 heapless = { version = "0.7.16", features = ["defmt"] }
 bme280 = { git = "https://github.com/grupacosmo/bme280-rs", default-features = false, features = ["defmt"] }
 embedded-sdmmc = { version = "0.4.0", default-features = false, features = ["defmt-log"] }
+lis3dh = "0.4.2"
+shared-bus = { version = "0.2.4", features = ["cortex-m", "eh-alpha"] }
