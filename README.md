@@ -1,9 +1,9 @@
 # CanSat
 Bare-metal software for the sounding rocket payload.
 
-[Getting Started](https://grupacosmo.github.io/getting-started/index.html)
+[Getting Started](https://grupacosmo.github.io/cansat/getting-started/index.html)
 
-[API Reference](https://grupacosmo.github.io/api/cansat/cansat_stm32f4/index.html)
+[API Reference](https://grupacosmo.github.io/cansat/api/cansat_stm32f4/index.html)
 
 ## Prerequisites
 * [cargo-embed](https://github.com/probe-rs/cargo-embed) - Requires `libusb`. See `cargo-embed`'s `README.md` for instructions.
