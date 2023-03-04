@@ -36,6 +36,12 @@
 </p>
 
 # Connect it all together
+<p align="center">
+<img src="assets/breadboard-columns.png" width="200px">
+<img src="assets/breadboard-rows.png" width="200px">
+<img src="assets/breadboard-mcu.png" width="200px">
+</p>
+
 
 ## Connections schematic
 <p align="center">
