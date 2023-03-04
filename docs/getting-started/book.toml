@@ -1,0 +1,6 @@
+[book]
+authors = ["Vixu"]
+language = "en"
+multilingual = false
+src = "src"
+title = "Getting Started with CanSat Development"
