@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"struct":[["Serial","Mock type implementing `embedded_hal::serial` traits."]]};

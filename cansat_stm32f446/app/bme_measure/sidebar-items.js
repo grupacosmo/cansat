@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"mod":[["MicrosecMono",""]],"struct":[["LocalResources","Local resources `bme_measure` has access to"]]};
