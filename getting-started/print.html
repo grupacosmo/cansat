@@ -173,6 +173,11 @@
 <img src="assets/wio-E5.jpg" width="400px">
 </p>
 <h1 id="connect-it-all-together"><a class="header" href="#connect-it-all-together">Connect it all together</a></h1>
+<p align="center">
+<img src="assets/breadboard-columns.png" width="200px">
+<img src="assets/breadboard-rows.png" width="200px">
+<img src="assets/breadboard-mcu.png" width="200px">
+</p>
 <h2 id="connections-schematic"><a class="header" href="#connections-schematic">Connections schematic</a></h2>
 <p align="center">
 <img src="assets/Schematic_cansat_2023-02-27.png">
@@ -190,15 +195,25 @@
 <img src="assets/stlink-mcu.png">
 </p>
 <ol start="2">
-<li>Connect the first 4 pins of the CN4 connector into the microcontroller:
+<li>Connect the first 4 pins of the CN4 connector to microcontroller:
 <ul>
-<li>VDD from Target - </li>
+<li>VDD   &lt;-&gt; 3V3</li>
+<li>SWCLK &lt;-&gt; SWCLT</li>
+<li>GND   &lt;-&gt; GND</li>
+<li>SWDIO &lt;-&gt; SWDIO</li>
 </ul>
 </li>
 </ol>
 <p align="center">
 <img src="assets/stlink-pinout.png">
 </p>
+<p align="center">
+<img src="assets/mcu-stlink-pins.png">
+</p>
+<p>Connect the ST-Link and the MCU into your PC using USB cables and run the following command from command-line:</p>
+<pre><code>cargo xtask embed cansat-stm32f4
+</code></pre>
+
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
