@@ -2,6 +2,7 @@
 Bare-metal software for the sounding rocket payload.
 
 [Getting Started](https://grupacosmo.github.io/getting-started/index.html)
+
 [API Reference](https://grupacosmo.github.io/api/cansat/cansat_stm32f4/index.html)
 
 ## Prerequisites
