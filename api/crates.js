@@ -1,0 +1,1 @@
+window.ALL_CRATES = ["cansat","cansat_core","cansat_gps","cansat_stm32f4","cansat_stm32f446","cansat_test_utils","xtask"];

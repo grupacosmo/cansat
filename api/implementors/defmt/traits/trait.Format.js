@@ -1,0 +1,4 @@
+(function() {var implementors = {
+"cansat_stm32f4":[["impl Format for <a class=\"struct\" href=\"cansat_stm32f4/error/struct.Report.html\" title=\"struct cansat_stm32f4::error::Report\">Report</a>"],["impl Format for <a class=\"enum\" href=\"cansat_stm32f4/error/enum.Error.html\" title=\"enum cansat_stm32f4::error::Error\">Error</a>"]],
+"cansat_stm32f446":[["impl Format for <a class=\"struct\" href=\"cansat_stm32f446/error/struct.Report.html\" title=\"struct cansat_stm32f446::error::Report\">Report</a>"],["impl Format for <a class=\"enum\" href=\"cansat_stm32f446/error/enum.Error.html\" title=\"enum cansat_stm32f446::error::Error\">Error</a>"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()
