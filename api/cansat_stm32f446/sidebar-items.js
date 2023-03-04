@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":[["app","The RTIC application module"],["error","Error reporting utilities such as [`Report`], [`Error`] and [`WrapErr`]."]]};

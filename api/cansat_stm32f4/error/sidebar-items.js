@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":[["Error","Aggregate for all the possible errors."]],"struct":[["Report","Error report consisting of an description and an [`Error`]."]],"trait":[["WrapErr","Extension trait for [`Result`] that maps the error to [`Report`]."]]};
