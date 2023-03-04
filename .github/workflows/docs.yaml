@@ -31,8 +31,6 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./docs/getting-started/book
           destination_dir: getting-started
-      - name: Cache
-        uses: Swatinem/rust-cache@v1
       - name: Run doc command
         uses: actions-rs/cargo@v1
         with:
