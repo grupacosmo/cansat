@@ -2,9 +2,9 @@
 #![deny(unsafe_code)]
 #![no_std]
 
-pub mod unit;
+pub mod quantity;
 
-use unit::Pressure;
+use quantity::Pressure;
 
 const SEA_LVL_PRESSURE: Pressure = Pressure::from_pascals(101300.0);
 

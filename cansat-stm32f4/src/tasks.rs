@@ -1,5 +1,5 @@
 use crate::app;
-use cansat_core::unit::Pressure;
+use cansat_core::quantity::Pressure;
 use rtic::Mutex;
 use stm32f4xx_hal::prelude::*;
 
