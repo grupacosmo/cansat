@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":[["calculate_altitude",""]],"mod":[["unit",""]]};
+window.SIDEBAR_ITEMS = {"fn":[["calculate_altitude",""]],"mod":[["quantity",""]]};
