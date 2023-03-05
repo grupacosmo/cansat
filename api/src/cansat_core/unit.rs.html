@@ -28,7 +28,7 @@
 <a href="#28" id="28">28</a>
 <a href="#29" id="29">29</a>
 <a href="#30" id="30">30</a>
-</pre><pre class="rust"><code><span class="kw">use </span>derive_more::{Add, Sub, Mul, Div};
+</pre><pre class="rust"><code><span class="kw">use </span>derive_more::{Add, Div, Mul, Sub};
 
 <span class="attr">#[derive(PartialEq, Clone, Copy, PartialOrd, Add, Sub, Mul, Div)]
 </span><span class="kw">pub struct </span>Pressure(f32);
@@ -57,5 +57,6 @@
     <span class="kw">fn </span>div(<span class="self">self</span>, rhs: <span class="self">Self</span>) -&gt; <span class="self">Self</span>::Output {
         <span class="self">self</span>.<span class="number">0 </span>/ rhs.<span class="number">0
     </span>}
-}</code></pre></div>
+}
+</code></pre></div>
 </section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="cansat_core" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.1 (d5a82bbd2 2023-02-07)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>

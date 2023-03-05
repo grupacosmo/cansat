@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":[["init_board",""],["init_drivers",""]],"struct":[["Board",""],["CanSat",""]]};
