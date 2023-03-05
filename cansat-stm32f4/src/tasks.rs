@@ -1,53 +1,52 @@
-use super::app::{blink, bme_measure, gps_irq, log_nmea, sdmmc_log};
+use crate::app;
 use cansat_core::unit::Pressure;
-use defmt::Debug2Format;
 use rtic::Mutex;
 use stm32f4xx_hal::prelude::*;
 
-pub fn log_nmea(ctx: log_nmea::Context) {
+pub fn idle(ctx: app::idle::Context) -> ! {
+    let bme = ctx.local.bme280;
+    let delay = ctx.local.delay;
     let mut gps = ctx.shared.gps;
-    let msg = gps.lock(|gps| gps.last_nmea()).unwrap();
-    defmt::info!("{=[u8]:a}", &msg);
-}
+    loop {
+        match bme.measure(delay) {
+            Ok(m) => {
+                let altitude = cansat_core::calculate_altitude(Pressure::from_pascals(m.pressure));
+                defmt::info!("Altitude = {} meters above sea level", altitude);
+                defmt::info!("Relative Humidity = {}%", m.humidity);
+                defmt::info!("Temperature = {} deg C", m.temperature);
+                defmt::info!("Pressure = {} pascals", m.pressure);
+            }
+            Err(e) => {
+                defmt::error!(
+                    "Could not read bme280 measurements: {}",
+                    defmt::Debug2Format(&e)
+                );
+            }
+        };
 
-/// USART3 interrupt handler that reads data into the gps working buffer
-pub fn gps_irq(ctx: gps_irq::Context) {
-    let mut gps = ctx.shared.gps;
-    let (_, is_terminator) = gps.lock(|gps| gps.read_uart()).unwrap();
-    if is_terminator {
-        log_nmea::spawn().unwrap();
+        if let Some(msg) = gps.lock(|gps| gps.last_nmea()) {
+            defmt::info!("{=[u8]:a}", &msg);
+        }
     }
 }
 
+/// USART3 interrupt handler that reads data into the gps working buffer
+pub fn gps_irq(ctx: app::gps_irq::Context) {
+    let mut gps = ctx.shared.gps;
+    if let Err(e) = gps.lock(|gps| gps.read_uart()) {
+        defmt::error!("Failed to read gps uart: {}", defmt::Debug2Format(&e));
+    };
+}
+
 /// Toggles led every second
-pub fn blink(ctx: blink::Context) {
+pub fn blink(ctx: app::blink::Context) {
     let led = ctx.local.led;
     led.toggle();
     defmt::debug!("Blink");
-    blink::spawn_after(1.secs()).unwrap();
+    app::blink::spawn_after(1.secs()).unwrap();
 }
 
-pub fn bme_measure(ctx: bme_measure::Context) {
-    let bme = ctx.local.bme280;
-    let delay = ctx.local.delay;
-    let measurements = match bme.measure(delay) {
-        Ok(m) => m,
-        Err(e) => {
-            defmt::error!("Could not read bme280 measurements: {}", Debug2Format(&e));
-            return;
-        }
-    };
-
-    let altitude = cansat_core::calculate_altitude(Pressure::from_pascals(measurements.pressure));
-    defmt::info!("Altitude = {} meters above sea level", altitude);
-    defmt::info!("Relative Humidity = {}%", measurements.humidity);
-    defmt::info!("Temperature = {} deg C", measurements.temperature);
-    defmt::info!("Pressure = {} pascals", measurements.pressure);
-
-    bme_measure::spawn_after(5.secs()).unwrap();
-}
-
-pub fn sdmmc_log(ctx: sdmmc_log::Context) {
+pub fn sdmmc_log(ctx: app::sdmmc_log::Context) {
     let controller = ctx.local.controller;
     let filename = ctx.local.filename;
     let mut volume = match controller.get_volume(embedded_sdmmc::VolumeIdx(0)) {

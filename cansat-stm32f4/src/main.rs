@@ -68,26 +68,23 @@ mod app {
     type MicrosecMono = MonoTimerUs<pac::TIM2>;
 
     extern "Rust" {
-        #[task(shared = [gps], priority = 2)]
-        fn log_nmea(ctx: log_nmea::Context);
-
         #[task(binds = USART1, shared = [gps], priority = 3)]
         fn gps_irq(ctx: gps_irq::Context);
 
         #[task(local = [led], priority = 1)]
         fn blink(ctx: blink::Context);
 
-        #[task(local = [delay, bme280], priority = 1)]
-        fn bme_measure(ctx: bme_measure::Context);
-
         #[task(local = [controller, filename], priority = 1)]
         fn sdmmc_log(ctx: sdmmc_log::Context);
     }
 
+    #[idle(local = [bme280, delay], shared = [gps])]
+    fn idle(ctx: idle::Context) -> ! {
+        tasks::idle(ctx)
+    }
+
     #[init(local = [spi2_device: Option<Spi2Device> = None])]
     fn init(ctx: init::Context) -> (Shared, Local, init::Monotonics) {
-        defmt::info!("Initializing");
-
         let board = startup::init_board(ctx.device);
         let cansat = startup::init_drivers(board, ctx.local.spi2_device).unwrap_or_else(|e| {
             defmt::panic!("Drivers initialization failed: {}", e);
@@ -95,7 +92,6 @@ mod app {
 
         blink::spawn().unwrap();
         sdmmc_log::spawn().unwrap();
-        bme_measure::spawn().unwrap();
 
         let shared = Shared { gps: cansat.gps };
         let local = Local {

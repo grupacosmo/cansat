@@ -28,6 +28,8 @@ pub fn init_drivers(
     mut board: Board,
     spi2_device: &'static mut Option<Spi2Device>,
 ) -> Result<CanSat, Report> {
+    defmt::info!("Initializing drivers");
+
     let mut bme280 = crate::Bme280::new_primary(board.i2c1);
     bme280
         .init(&mut board.delay)
@@ -83,6 +85,8 @@ pub fn init_drivers(
 }
 
 pub fn init_board(device: pac::Peripherals) -> Board {
+    defmt::info!("Initializing the board");
+
     let rcc = device.RCC.constrain();
     let clocks = rcc.cfgr.sysclk(84.MHz()).freeze();
     let monotonic = device.TIM2.monotonic_us(&clocks);
