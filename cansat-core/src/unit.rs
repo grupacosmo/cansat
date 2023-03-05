@@ -1,4 +1,4 @@
-use derive_more::{Add, Sub, Mul, Div};
+use derive_more::{Add, Div, Mul, Sub};
 
 #[derive(PartialEq, Clone, Copy, PartialOrd, Add, Sub, Mul, Div)]
 pub struct Pressure(f32);
