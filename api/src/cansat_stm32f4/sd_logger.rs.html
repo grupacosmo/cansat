@@ -62,10 +62,10 @@
 <span class="kw">pub type </span>Error = embedded_sdmmc::Error&lt;embedded_sdmmc::SdMmcError&gt;;
 
 <span class="attr">#[cfg(debug_assertions)]
-</span><span class="kw">const </span>FILENAME: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str = <span class="string">&quot;debug.log&quot;</span>;
+</span><span class="kw">const </span>FILENAME: <span class="kw-2">&amp;</span>str = <span class="string">&quot;debug.log&quot;</span>;
 
 <span class="attr">#[cfg(not(debug_assertions))]
-</span><span class="kw">const </span>FILENAME: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str = <span class="string">&quot;release.log&quot;</span>;
+</span><span class="kw">const </span>FILENAME: <span class="kw-2">&amp;</span>str = <span class="string">&quot;release.log&quot;</span>;
 
 <span class="kw">impl </span>SdLogger {
     <span class="kw">pub fn </span>new(<span class="kw-2">mut </span>controller: SdmmcController) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, Error&gt; {
@@ -74,7 +74,7 @@
         <span class="kw">let </span>file = controller.open_file_in_dir(
             <span class="kw-2">&amp;mut </span>volume,
             <span class="kw-2">&amp;</span>root_dir,
-            <span class="kw-2">&amp;</span>FILENAME,
+            FILENAME,
             embedded_sdmmc::Mode::ReadWriteCreateOrAppend,
         )<span class="question-mark">?</span>;
         controller.close_dir(<span class="kw-2">&amp;</span>volume, root_dir);
