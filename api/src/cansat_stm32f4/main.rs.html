@@ -114,24 +114,19 @@
 <a href="#114" id="114">114</a>
 <a href="#115" id="115">115</a>
 <a href="#116" id="116">116</a>
-<a href="#117" id="117">117</a>
-<a href="#118" id="118">118</a>
-<a href="#119" id="119">119</a>
-<a href="#120" id="120">120</a>
-<a href="#121" id="121">121</a>
-<a href="#122" id="122">122</a>
-<a href="#123" id="123">123</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Binary crate targeting stm32f4 family microcontrollers.
 </span><span class="attr">#![deny(unsafe_code)]
 #![no_main]
 #![no_std]
 
 </span><span class="kw">mod </span>error;
+<span class="kw">mod </span>sd_logger;
 <span class="kw">mod </span>startup;
 <span class="kw">mod </span>tasks;
 
+<span class="kw">pub use </span>sd_logger::SdLogger;
+
 <span class="kw">use </span>defmt_rtt <span class="kw">as _</span>;
-<span class="kw">use </span>heapless::String;
 <span class="kw">use </span>panic_probe <span class="kw">as _</span>;
 <span class="kw">use </span>stm32f4xx_hal::{
     gpio, i2c, pac, serial, spi,
@@ -150,9 +145,6 @@
 <span class="kw">type </span>BlockSpi2 = embedded_sdmmc::BlockSpi&lt;<span class="lifetime">&#39;static</span>, Spi2, Cs2&gt;;
 <span class="kw">const </span>MAX_OPEN_DIRS: usize = <span class="number">4</span>;
 <span class="kw">const </span>MAX_OPEN_FILES: usize = <span class="number">4</span>;
-
-<span class="doccomment">/// Maximal length supported by embedded_sdmmc
-</span><span class="kw">const </span>MAX_FILENAME_LEN: usize = <span class="number">11</span>;
 
 <span class="kw">type </span>I2c1 = i2c::I2c1&lt;(Scl1, Sda1)&gt;;
 <span class="kw">type </span>Scl1 = gpio::PB8&lt;gpio::Alternate&lt;<span class="number">4</span>, gpio::OpenDrain&gt;&gt;;
@@ -183,25 +175,21 @@
         delay: DelayUs&lt;pac::TIM3&gt;,
         led: Led,
         bme280: Bme280,
-        controller: SdmmcController,
-        filename: String&lt;MAX_FILENAME_LEN&gt;,
+        sd_logger: SdLogger,
     }
 
     <span class="attr">#[monotonic(binds = TIM2, default = <span class="bool-val">true</span>)]
     </span><span class="kw">type </span>MicrosecMono = MonoTimerUs&lt;pac::TIM2&gt;;
 
     <span class="kw">extern </span><span class="string">&quot;Rust&quot; </span>{
-        <span class="attr">#[task(binds = USART1, shared = [gps]</span>, priority = <span class="number">3</span>)]
+        <span class="attr">#[task(binds = USART1, shared = [gps]</span>, priority = <span class="number">2</span>)]
         <span class="kw">fn </span>gps_irq(ctx: gps_irq::Context);
 
         <span class="attr">#[task(local = [led]</span>, priority = <span class="number">1</span>)]
         <span class="kw">fn </span>blink(ctx: blink::Context);
-
-        <span class="attr">#[task(local = [controller, filename]</span>, priority = <span class="number">1</span>)]
-        <span class="kw">fn </span>sdmmc_log(ctx: sdmmc_log::Context);
     }
 
-    <span class="attr">#[idle(local = [bme280, delay]</span>, shared = [gps])]
+    <span class="attr">#[idle(local = [bme280, delay, sd_logger]</span>, shared = [gps])]
     <span class="kw">fn </span>idle(ctx: idle::Context) -&gt; ! {
         tasks::idle(ctx)
     }
@@ -214,15 +202,13 @@
         });
 
         blink::spawn().unwrap();
-        sdmmc_log::spawn().unwrap();
 
         <span class="kw">let </span>shared = Shared { gps: cansat.gps };
         <span class="kw">let </span>local = Local {
             delay: cansat.delay,
             led: cansat.led,
             bme280: cansat.bme280,
-            controller: cansat.controller,
-            filename: cansat.filename,
+            sd_logger: cansat.sd_logger,
         };
         <span class="kw">let </span>monotonics = init::Monotonics(cansat.monotonic);
 

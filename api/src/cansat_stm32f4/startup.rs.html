@@ -130,25 +130,6 @@
 <a href="#130" id="130">130</a>
 <a href="#131" id="131">131</a>
 <a href="#132" id="132">132</a>
-<a href="#133" id="133">133</a>
-<a href="#134" id="134">134</a>
-<a href="#135" id="135">135</a>
-<a href="#136" id="136">136</a>
-<a href="#137" id="137">137</a>
-<a href="#138" id="138">138</a>
-<a href="#139" id="139">139</a>
-<a href="#140" id="140">140</a>
-<a href="#141" id="141">141</a>
-<a href="#142" id="142">142</a>
-<a href="#143" id="143">143</a>
-<a href="#144" id="144">144</a>
-<a href="#145" id="145">145</a>
-<a href="#146" id="146">146</a>
-<a href="#147" id="147">147</a>
-<a href="#148" id="148">148</a>
-<a href="#149" id="149">149</a>
-<a href="#150" id="150">150</a>
-<a href="#151" id="151">151</a>
 </pre><pre class="rust"><code><span class="kw">use crate</span>::{
     error::{Report, WrapErr},
     Spi2Device,
@@ -161,8 +142,7 @@
     <span class="kw">pub </span>led: <span class="kw">crate</span>::Led,
     <span class="kw">pub </span>bme280: <span class="kw">crate</span>::Bme280,
     <span class="kw">pub </span>gps: <span class="kw">crate</span>::Gps,
-    <span class="kw">pub </span>controller: <span class="kw">crate</span>::SdmmcController,
-    <span class="kw">pub </span>filename: heapless::String&lt;{ <span class="kw">crate</span>::MAX_FILENAME_LEN }&gt;,
+    <span class="kw">pub </span>sd_logger: <span class="kw">crate</span>::SdLogger,
 }
 
 <span class="kw">pub struct </span>Board {
@@ -181,43 +161,26 @@
 ) -&gt; <span class="prelude-ty">Result</span>&lt;CanSat, Report&gt; {
     <span class="macro">defmt::info!</span>(<span class="string">&quot;Initializing drivers&quot;</span>);
 
+    <span class="kw">let </span><span class="kw-2">mut </span>sd_logger = {
+        <span class="kw">let </span>controller = {
+            <span class="kw-2">*</span>spi2_device = <span class="prelude-val">Some</span>(embedded_sdmmc::SdMmcSpi::new(board.spi2, board.cs2));
+            <span class="kw">let </span>block_spi2 = spi2_device
+                .as_mut()
+                .unwrap()
+                .acquire()
+                .wrap_err(<span class="string">&quot;Failed to acquire block spi&quot;</span>)<span class="question-mark">?</span>;
+            <span class="kw">crate</span>::SdmmcController::new(block_spi2, <span class="kw">crate</span>::DummyClock)
+        };
+
+        <span class="kw">crate</span>::sd_logger::SdLogger::new(controller).wrap_err(<span class="string">&quot;Failed to initialize SdLogger&quot;</span>)<span class="question-mark">?
+    </span>};
+
+    <span class="kw">let _ </span>= sd_logger.write(<span class="string">b&quot;[NEW RUN]&quot;</span>);
+
     <span class="kw">let </span><span class="kw-2">mut </span>bme280 = <span class="kw">crate</span>::Bme280::new_primary(board.i2c1);
     bme280
         .init(<span class="kw-2">&amp;mut </span>board.delay)
         .wrap_err(<span class="string">&quot;Failed to initialize BME280&quot;</span>)<span class="question-mark">?</span>;
-
-    <span class="kw">let </span><span class="kw-2">mut </span>controller = {
-        <span class="kw-2">*</span>spi2_device = <span class="prelude-val">Some</span>(embedded_sdmmc::SdMmcSpi::new(board.spi2, board.cs2));
-        <span class="kw">let </span>block_spi2 = spi2_device
-            .as_mut()
-            .unwrap()
-            .acquire()
-            .wrap_err(<span class="string">&quot;Failed to acquire block spi&quot;</span>)<span class="question-mark">?</span>;
-        <span class="kw">crate</span>::SdmmcController::new(block_spi2, <span class="kw">crate</span>::DummyClock)
-    };
-
-    <span class="kw">let </span>filename = {
-        <span class="kw">let </span>volume = controller
-            .get_volume(embedded_sdmmc::VolumeIdx(<span class="number">0</span>))
-            .wrap_err(<span class="string">&quot;Failed to get volume&quot;</span>)<span class="question-mark">?</span>;
-        <span class="kw">let </span>root_dir = controller.open_root_dir(<span class="kw-2">&amp;</span>volume).unwrap();
-
-        <span class="kw">let </span><span class="kw-2">mut </span>log_count = <span class="number">0</span>;
-        controller
-            .iterate_dir(<span class="kw-2">&amp;</span>volume, <span class="kw-2">&amp;</span>root_dir, |<span class="kw">_</span>| {
-                log_count += <span class="number">1</span>;
-            })
-            .wrap_err(<span class="string">&quot;Failed to iterate directory&quot;</span>)<span class="question-mark">?</span>;
-        controller.close_dir(<span class="kw-2">&amp;</span>volume, root_dir);
-
-        <span class="kw">let </span><span class="kw-2">mut </span>filename = heapless::String::from(log_count);
-        filename
-            .push_str(<span class="string">&quot;_log.txt&quot;</span>)
-            .expect(<span class="string">&quot;Filename buffer overflow&quot;</span>);
-        filename
-    };
-
-    <span class="macro">defmt::info!</span>(<span class="string">&quot;Filename: {}&quot;</span>, filename.as_str());
 
     <span class="kw">let </span>gps = {
         board.serial1.listen(serial::Event::Rxne);
@@ -230,8 +193,7 @@
         led: board.led,
         bme280,
         gps,
-        controller,
-        filename,
+        sd_logger,
     })
 }
 
