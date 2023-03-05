@@ -4,11 +4,13 @@
 #![no_std]
 
 mod error;
+mod sd_logger;
 mod startup;
 mod tasks;
 
+pub use sd_logger::SdLogger;
+
 use defmt_rtt as _;
-use heapless::String;
 use panic_probe as _;
 use stm32f4xx_hal::{
     gpio, i2c, pac, serial, spi,
@@ -27,9 +29,6 @@ type SdmmcController =
 type BlockSpi2 = embedded_sdmmc::BlockSpi<'static, Spi2, Cs2>;
 const MAX_OPEN_DIRS: usize = 4;
 const MAX_OPEN_FILES: usize = 4;
-
-/// Maximal length supported by embedded_sdmmc
-const MAX_FILENAME_LEN: usize = 11;
 
 type I2c1 = i2c::I2c1<(Scl1, Sda1)>;
 type Scl1 = gpio::PB8<gpio::Alternate<4, gpio::OpenDrain>>;
@@ -60,25 +59,21 @@ mod app {
         delay: DelayUs<pac::TIM3>,
         led: Led,
         bme280: Bme280,
-        controller: SdmmcController,
-        filename: String<MAX_FILENAME_LEN>,
+        sd_logger: SdLogger,
     }
 
     #[monotonic(binds = TIM2, default = true)]
     type MicrosecMono = MonoTimerUs<pac::TIM2>;
 
     extern "Rust" {
-        #[task(binds = USART1, shared = [gps], priority = 3)]
+        #[task(binds = USART1, shared = [gps], priority = 2)]
         fn gps_irq(ctx: gps_irq::Context);
 
         #[task(local = [led], priority = 1)]
         fn blink(ctx: blink::Context);
-
-        #[task(local = [controller, filename], priority = 1)]
-        fn sdmmc_log(ctx: sdmmc_log::Context);
     }
 
-    #[idle(local = [bme280, delay], shared = [gps])]
+    #[idle(local = [bme280, delay, sd_logger], shared = [gps])]
     fn idle(ctx: idle::Context) -> ! {
         tasks::idle(ctx)
     }
@@ -91,15 +86,13 @@ mod app {
         });
 
         blink::spawn().unwrap();
-        sdmmc_log::spawn().unwrap();
 
         let shared = Shared { gps: cansat.gps };
         let local = Local {
             delay: cansat.delay,
             led: cansat.led,
             bme280: cansat.bme280,
-            controller: cansat.controller,
-            filename: cansat.filename,
+            sd_logger: cansat.sd_logger,
         };
         let monotonics = init::Monotonics(cansat.monotonic);
 

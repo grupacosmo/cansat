@@ -10,8 +10,7 @@ pub struct CanSat {
     pub led: crate::Led,
     pub bme280: crate::Bme280,
     pub gps: crate::Gps,
-    pub controller: crate::SdmmcController,
-    pub filename: heapless::String<{ crate::MAX_FILENAME_LEN }>,
+    pub sd_logger: crate::SdLogger,
 }
 
 pub struct Board {
@@ -30,43 +29,26 @@ pub fn init_drivers(
 ) -> Result<CanSat, Report> {
     defmt::info!("Initializing drivers");
 
+    let mut sd_logger = {
+        let controller = {
+            *spi2_device = Some(embedded_sdmmc::SdMmcSpi::new(board.spi2, board.cs2));
+            let block_spi2 = spi2_device
+                .as_mut()
+                .unwrap()
+                .acquire()
+                .wrap_err("Failed to acquire block spi")?;
+            crate::SdmmcController::new(block_spi2, crate::DummyClock)
+        };
+
+        crate::sd_logger::SdLogger::new(controller).wrap_err("Failed to initialize SdLogger")?
+    };
+
+    let _ = sd_logger.write(b"[NEW RUN]");
+
     let mut bme280 = crate::Bme280::new_primary(board.i2c1);
     bme280
         .init(&mut board.delay)
         .wrap_err("Failed to initialize BME280")?;
-
-    let mut controller = {
-        *spi2_device = Some(embedded_sdmmc::SdMmcSpi::new(board.spi2, board.cs2));
-        let block_spi2 = spi2_device
-            .as_mut()
-            .unwrap()
-            .acquire()
-            .wrap_err("Failed to acquire block spi")?;
-        crate::SdmmcController::new(block_spi2, crate::DummyClock)
-    };
-
-    let filename = {
-        let volume = controller
-            .get_volume(embedded_sdmmc::VolumeIdx(0))
-            .wrap_err("Failed to get volume")?;
-        let root_dir = controller.open_root_dir(&volume).unwrap();
-
-        let mut log_count = 0;
-        controller
-            .iterate_dir(&volume, &root_dir, |_| {
-                log_count += 1;
-            })
-            .wrap_err("Failed to iterate directory")?;
-        controller.close_dir(&volume, root_dir);
-
-        let mut filename = heapless::String::from(log_count);
-        filename
-            .push_str("_log.txt")
-            .expect("Filename buffer overflow");
-        filename
-    };
-
-    defmt::info!("Filename: {}", filename.as_str());
 
     let gps = {
         board.serial1.listen(serial::Event::Rxne);
@@ -79,8 +61,7 @@ pub fn init_drivers(
         led: board.led,
         bme280,
         gps,
-        controller,
-        filename,
+        sd_logger,
     })
 }
 

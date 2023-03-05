@@ -6,6 +6,7 @@ use stm32f4xx_hal::prelude::*;
 pub fn idle(ctx: app::idle::Context) -> ! {
     let bme = ctx.local.bme280;
     let delay = ctx.local.delay;
+    let sd_logger = ctx.local.sd_logger;
     let mut gps = ctx.shared.gps;
     loop {
         match bme.measure(delay) {
@@ -26,6 +27,7 @@ pub fn idle(ctx: app::idle::Context) -> ! {
 
         if let Some(msg) = gps.lock(|gps| gps.last_nmea()) {
             defmt::info!("{=[u8]:a}", &msg);
+            let _ = sd_logger.write(&msg);
         }
     }
 }
@@ -44,31 +46,4 @@ pub fn blink(ctx: app::blink::Context) {
     led.toggle();
     defmt::debug!("Blink");
     app::blink::spawn_after(1.secs()).unwrap();
-}
-
-pub fn sdmmc_log(ctx: app::sdmmc_log::Context) {
-    let controller = ctx.local.controller;
-    let filename = ctx.local.filename;
-    let mut volume = match controller.get_volume(embedded_sdmmc::VolumeIdx(0)) {
-        Ok(volume) => volume,
-        Err(e) => defmt::panic!("Failed to get volume: {}", e),
-    };
-
-    let root_dir = controller.open_root_dir(&volume).unwrap();
-
-    let mut f = controller
-        .open_file_in_dir(
-            &mut volume,
-            &root_dir,
-            filename,
-            embedded_sdmmc::Mode::ReadWriteCreateOrAppend,
-        )
-        .unwrap();
-    let num_written = controller
-        .write(&mut volume, &mut f, "test".as_bytes())
-        .unwrap();
-    defmt::info!("Written: {} bytes\n", num_written);
-    if let Err(e) = controller.close_file(&volume, f) {
-        defmt::panic!("Failed to close file: {}", e);
-    }
 }
