@@ -145,6 +145,10 @@
 <a href="#145" id="145">145</a>
 <a href="#146" id="146">146</a>
 <a href="#147" id="147">147</a>
+<a href="#148" id="148">148</a>
+<a href="#149" id="149">149</a>
+<a href="#150" id="150">150</a>
+<a href="#151" id="151">151</a>
 </pre><pre class="rust"><code><span class="kw">use crate</span>::{
     error::{Report, WrapErr},
     Spi2Device,
@@ -175,6 +179,8 @@
     <span class="kw-2">mut </span>board: Board,
     spi2_device: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span><span class="kw-2">mut </span><span class="prelude-ty">Option</span>&lt;Spi2Device&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;CanSat, Report&gt; {
+    <span class="macro">defmt::info!</span>(<span class="string">&quot;Initializing drivers&quot;</span>);
+
     <span class="kw">let </span><span class="kw-2">mut </span>bme280 = <span class="kw">crate</span>::Bme280::new_primary(board.i2c1);
     bme280
         .init(<span class="kw-2">&amp;mut </span>board.delay)
@@ -230,6 +236,8 @@
 }
 
 <span class="kw">pub fn </span>init_board(device: pac::Peripherals) -&gt; Board {
+    <span class="macro">defmt::info!</span>(<span class="string">&quot;Initializing the board&quot;</span>);
+
     <span class="kw">let </span>rcc = device.RCC.constrain();
     <span class="kw">let </span>clocks = rcc.cfgr.sysclk(<span class="number">84</span>.MHz()).freeze();
     <span class="kw">let </span>monotonic = device.TIM2.monotonic_us(<span class="kw-2">&amp;</span>clocks);

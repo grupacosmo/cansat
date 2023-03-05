@@ -121,10 +121,6 @@
 <a href="#121" id="121">121</a>
 <a href="#122" id="122">122</a>
 <a href="#123" id="123">123</a>
-<a href="#124" id="124">124</a>
-<a href="#125" id="125">125</a>
-<a href="#126" id="126">126</a>
-<a href="#127" id="127">127</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Binary crate targeting stm32f4 family microcontrollers.
 </span><span class="attr">#![deny(unsafe_code)]
 #![no_main]
@@ -195,26 +191,23 @@
     </span><span class="kw">type </span>MicrosecMono = MonoTimerUs&lt;pac::TIM2&gt;;
 
     <span class="kw">extern </span><span class="string">&quot;Rust&quot; </span>{
-        <span class="attr">#[task(shared = [gps]</span>, priority = <span class="number">2</span>)]
-        <span class="kw">fn </span>log_nmea(ctx: log_nmea::Context);
-
         <span class="attr">#[task(binds = USART1, shared = [gps]</span>, priority = <span class="number">3</span>)]
         <span class="kw">fn </span>gps_irq(ctx: gps_irq::Context);
 
         <span class="attr">#[task(local = [led]</span>, priority = <span class="number">1</span>)]
         <span class="kw">fn </span>blink(ctx: blink::Context);
 
-        <span class="attr">#[task(local = [delay, bme280]</span>, priority = <span class="number">1</span>)]
-        <span class="kw">fn </span>bme_measure(ctx: bme_measure::Context);
-
         <span class="attr">#[task(local = [controller, filename]</span>, priority = <span class="number">1</span>)]
         <span class="kw">fn </span>sdmmc_log(ctx: sdmmc_log::Context);
     }
 
+    <span class="attr">#[idle(local = [bme280, delay]</span>, shared = [gps])]
+    <span class="kw">fn </span>idle(ctx: idle::Context) -&gt; ! {
+        tasks::idle(ctx)
+    }
+
     <span class="attr">#[init(local = [spi2_device: <span class="prelude-ty">Option</span>&lt;Spi2Device&gt; = <span class="prelude-val">None</span>]</span>)]
     <span class="kw">fn </span>init(ctx: init::Context) -&gt; (Shared, Local, init::Monotonics) {
-        <span class="macro">defmt::info!</span>(<span class="string">&quot;Initializing&quot;</span>);
-
         <span class="kw">let </span>board = startup::init_board(ctx.device);
         <span class="kw">let </span>cansat = startup::init_drivers(board, ctx.local.spi2_device).unwrap_or_else(|e| {
             <span class="macro">defmt::panic!</span>(<span class="string">&quot;Drivers initialization failed: {}&quot;</span>, e);
@@ -222,7 +215,6 @@
 
         blink::spawn().unwrap();
         sdmmc_log::spawn().unwrap();
-        bme_measure::spawn().unwrap();
 
         <span class="kw">let </span>shared = Shared { gps: cansat.gps };
         <span class="kw">let </span>local = Local {
