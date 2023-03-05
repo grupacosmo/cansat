@@ -7,3 +7,10 @@ edition = "2021"
 
 [dependencies]
 libm = "0.2.6"
+
+[dependencies.derive_more]
+version = "0.99.17"
+default-features = false
+features = [
+    "add", "mul",
+]

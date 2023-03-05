@@ -1,5 +1,5 @@
 use super::app::{blink, bme_measure, gps_irq, log_nmea, sdmmc_log};
-use cansat_core::Pressure;
+use cansat_core::unit::Pressure;
 use defmt::Debug2Format;
 use rtic::Mutex;
 use stm32f4xx_hal::prelude::*;
