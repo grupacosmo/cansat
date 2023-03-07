@@ -3,7 +3,7 @@ use heapless::Vec;
 /// Data structure for double buffering.
 ///
 /// It consists of statically allocated write and read buffers.
-/// Buffers can be swapped in O(1).
+/// Buffers can be swapped in O(1) time.
 //
 // INVARIANT:
 // 1. 0 <= write_buf_idx <= 1
