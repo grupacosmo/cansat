@@ -33,48 +33,48 @@ impl core::ops::Div for Pressure {
 pub struct Temperature(f32);
 
 impl Temperature {
-    pub fn from_celsius(value: f32) -> Self {
+    pub const fn from_celsius(value: f32) -> Self {
         Self(value)
     }
 
-    pub fn from_kelvin(value: f32) -> Self {
+    pub fn from_kelvins(value: f32) -> Self {
         Self(value - 273.15)
     }
 
-    pub fn as_celsius(&self) -> f32 {
+    pub const fn as_celsius(&self) -> f32 {
         self.0
     }
 
-    pub fn as_kelvin(&self) -> f32 {
+    pub fn as_kelvins(&self) -> f32 {
         self.0 + 273.15
     }
 }
 
 #[derive(PartialEq, Clone, Copy, PartialOrd, Add, Sub, Mul, Div)]
-pub struct Metric(f32);
+pub struct Distance(f32);
 
-impl Metric {
-    pub fn from_meters(value: f32) -> Self {
+impl Distance {
+    pub const fn from_meters(value: f32) -> Self {
         Self(value)
     }
 
-    pub fn from_kilometers(value: f32) -> Self {
+    pub fn from_kilos(value: f32) -> Self {
         Self(value * 1000.)
     }
 
-    pub fn as_meters(&self) -> f32 {
+    pub const fn as_meters(&self) -> f32 {
         self.0
     }
 
-    pub fn as_kilometers(&self) -> f32 {
+    pub fn as_kilos(&self) -> f32 {
         self.0 / 1000.
     }
 }
 
-impl core::ops::Div for Metric {
-  type Output = f32;
+impl core::ops::Div for Distance {
+    type Output = f32;
 
-  fn div(self, rhs: Self) -> Self::Output {
-      self.0 / rhs.0
-  }
+    fn div(self, rhs: Self) -> Self::Output {
+        self.0 / rhs.0
+    }
 }

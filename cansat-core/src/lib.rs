@@ -20,7 +20,8 @@ pub fn calculate_altitude(pressure: Pressure) -> f32 {
 pub fn calculate_altitude_with_temperature(temperature: Temperature, pressure: Pressure) -> f32 {
     let base = SEA_LVL_PRESSURE / pressure.as_pascals();
     let exponent = 1. / 5.257;
-    ((libm::powf(base.as_pascals(), exponent) - 1.) * temperature.as_kelvin()) / GRAVITATIONAL_CONST
+    ((libm::powf(base.as_pascals(), exponent) - 1.) * temperature.as_kelvins())
+        / GRAVITATIONAL_CONST
 }
 
 pub fn roll_rotation(y: f32, z: f32) -> f32 {
@@ -28,5 +29,5 @@ pub fn roll_rotation(y: f32, z: f32) -> f32 {
 }
 
 pub fn pitch_rotation(x: f32, y: f32, z: f32) -> f32 {
-    libm::atan2f(-x, libm::sqrtf(y*y + z*z)) * 180. / PI
+    libm::atan2f(-x, libm::sqrtf(y * y + z * z)) * 180. / PI
 }
