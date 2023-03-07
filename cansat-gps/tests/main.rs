@@ -9,8 +9,8 @@ fn gps_last_nmea_returns_none_if_no_msg_received() {
     let uart = mock::Serial::new(FIRST_MSG.to_owned());
     let mut gps = Gps::new(uart);
 
-    gps.read_uart().unwrap();
-    gps.read_uart().unwrap();
+    gps.read_serial().unwrap();
+    gps.read_serial().unwrap();
 
     assert!(gps.last_nmea().is_none());
 }
