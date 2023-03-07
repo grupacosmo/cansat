@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":[["Error",""]],"struct":[["Gps","Gps driver."]]};
+window.SIDEBAR_ITEMS = {"constant":[["MAX_NMEA_LEN","Maximum length of an NMEA message including $ and [CR][LF]."]],"enum":[["Error",""]],"struct":[["Gps","Gps driver."]]};
