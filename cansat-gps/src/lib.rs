@@ -1,14 +1,19 @@
 //! Gps device driver using [embedded-hal](https://github.com/rust-embedded/embedded-hal) traits.
-#![deny(unsafe_code)]
 #![no_std]
 
+mod double_buf;
+
 use core::fmt::Debug;
+use double_buf::DoubleBuf;
 use embedded_hal::{nb, serial};
 use heapless::Vec;
 
+/// Maximum length of an NMEA message including $ and [CR][LF].
+pub const MAX_NMEA_LEN: usize = 82;
+
 /// Gps driver.
 ///
-/// It implements double buffering to ensure that you can always read latest message.
+/// It implements double buffering to ensure that you can always read the latest message received.
 ///
 /// # Examples
 /// ```
@@ -18,70 +23,63 @@ use heapless::Vec;
 ///
 /// let mut gps = Gps::new(uart);
 ///
-/// loop {
-///     let (b, is_new_msg) = gps.read_uart().unwrap();
+/// let msg = loop {
+///     let (b, is_new_msg) = gps.read_serial().unwrap();
 ///     
 ///     if is_new_msg {
-///         let msg = gps.last_nmea().unwrap();
-///         break;
+///         break gps.last_nmea().unwrap();
 ///     }
-/// }
+/// };
 /// ```
-pub struct Gps<Uart> {
-    uart: Uart,
-    bufs: [Vec<u8, 128>; 2],
-    current_buf_idx: usize,
+pub struct Gps<Serial> {
+    serial: Serial,
+    bufs: DoubleBuf<u8, MAX_NMEA_LEN>,
     has_nmea: bool,
 }
 
 #[derive(Debug)]
-pub enum Error<UartError>
+pub enum Error<SerialError>
 where
-    UartError: serial::Error,
+    SerialError: serial::Error,
 {
-    Uart(UartError),
+    Serial(SerialError),
     Overflow(u8),
 }
 
-impl<Uart> Gps<Uart> {
-    pub fn new(uart: Uart) -> Self {
+impl<Serial> Gps<Serial> {
+    pub fn new(serial: Serial) -> Self {
         Self {
-            uart,
+            serial,
             bufs: Default::default(),
-            current_buf_idx: 0,
             has_nmea: false,
         }
     }
 
     /// Reads last received NMEA message.
-    pub fn last_nmea(&self) -> Option<Vec<u8, 128>> {
-        self.has_nmea
-            .then(|| self.bufs[self.current_buf_idx ^ 1].clone())
+    pub fn last_nmea(&self) -> Option<Vec<u8, MAX_NMEA_LEN>> {
+        self.has_nmea.then(|| self.bufs.read().clone())
     }
 }
 
-impl<Uart> Gps<Uart>
+impl<Serial> Gps<Serial>
 where
-    Uart: serial::nb::Read,
+    Serial: serial::nb::Read,
 {
-    /// Reads a single character from UART in a blocking mode and stores it in an internal buffer.
+    /// Reads a single character from serial in a blocking mode and stores it in an internal buffer.
     /// On success, returns the read byte and a flag indicating whether a message was terminated.
-    pub fn read_uart(&mut self) -> Result<(u8, bool), Error<Uart::Error>> {
-        let new_b = nb::block!(self.uart.read()).map_err(Error::Uart)?;
+    pub fn read_serial(&mut self) -> Result<(u8, bool), Error<Serial::Error>> {
+        let b = nb::block!(self.serial.read()).map_err(Error::Serial)?;
+        let write_buf = self.bufs.write();
+        write_buf.push(b).map_err(Error::Overflow)?;
 
-        let is_terminated = {
-            let current = &mut self.bufs[self.current_buf_idx];
-            let last_b = current.last().cloned();
-            current.push(new_b).map_err(Error::Overflow)?;
-            last_b == Some(b'\r') && new_b == b'\n'
-        };
+        let is_terminated = write_buf.ends_with(b"\r\n");
 
         if is_terminated {
-            self.current_buf_idx ^= 1;
-            self.bufs[self.current_buf_idx].clear();
+            self.bufs.swap();
+            self.bufs.write().clear();
             self.has_nmea = true;
         }
 
-        Ok((new_b, is_terminated))
+        Ok((b, is_terminated))
     }
 }
