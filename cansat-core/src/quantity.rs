@@ -18,7 +18,7 @@ impl Pressure {
     }
 
     pub fn as_hectos(&self) -> f32 {
-        self.0 / 100.
+        self.0 / 100.0
     }
 }
 
@@ -60,7 +60,7 @@ impl Distance {
     }
 
     pub fn from_kilos(value: f32) -> Self {
-        Self(value * 1000.)
+        Self(value * 1000.0)
     }
 
     pub const fn as_meters(&self) -> f32 {
@@ -68,7 +68,7 @@ impl Distance {
     }
 
     pub fn as_kilos(&self) -> f32 {
-        self.0 / 1000.
+        self.0 / 1000.0
     }
 }
 
