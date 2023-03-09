@@ -1,3 +1,4 @@
+use core::f32::consts::PI;
 use derive_more::{Add, Div, Mul, Sub};
 
 #[derive(PartialEq, Clone, Copy, PartialOrd, Add, Sub, Mul, Div)]
@@ -76,5 +77,26 @@ impl core::ops::Div for Distance {
 
     fn div(self, rhs: Self) -> Self::Output {
         self.0 / rhs.0
+    }
+}
+
+#[derive(PartialEq, Clone, Copy, PartialOrd, Add, Sub, Mul, Div)]
+pub struct Angle(f32);
+
+impl Angle {
+    pub const fn from_degrees(value: f32) -> Self {
+        Self(value)
+    }
+
+    pub fn from_radians(value: f32) -> Self {
+        Self(value * 180.0 / PI)
+    }
+
+    pub const fn as_degrees(&self) -> f32 {
+        self.0
+    }
+
+    pub fn as_radians(&self) -> f32 {
+        self.0 * PI / 180.0
     }
 }

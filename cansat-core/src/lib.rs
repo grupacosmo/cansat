@@ -4,8 +4,7 @@
 
 pub mod quantity;
 
-use core::f32::consts::PI;
-use quantity::{Pressure, Temperature};
+use quantity::{Pressure, Temperature, Angle};
 
 const SEA_LVL_PRESSURE: Pressure = Pressure::from_pascals(101300.25);
 const GRAVITATIONAL_CONST: f32 = 0.0065;
@@ -24,10 +23,10 @@ pub fn calculate_altitude_with_temperature(temperature: Temperature, pressure: P
         / GRAVITATIONAL_CONST
 }
 
-pub fn roll_rotation(y: f32, z: f32) -> f32 {
-    libm::atan2f(y, z) * 180. / PI
+pub fn roll_rotation(y: f32, z: f32) -> Angle {
+    Angle::from_radians(libm::atan2f(y, z))
 }
 
-pub fn pitch_rotation(x: f32, y: f32, z: f32) -> f32 {
-    libm::atan2f(-x, libm::sqrtf(y * y + z * z)) * 180. / PI
+pub fn pitch_rotation(x: f32, y: f32, z: f32) -> Angle {
+    Angle::from_radians(libm::atan2f(-x, libm::sqrtf(y * y + z * z)))
 }
