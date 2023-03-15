@@ -1,8 +1,8 @@
 use crate::app;
+use accelerometer::RawAccelerometer;
 use cansat_core::quantity::Pressure;
 use rtic::Mutex;
-use stm32f4xx_hal::{prelude::*, hal::blocking::i2c};
-use accelerometer::{RawAccelerometer, Tracker};
+use stm32f4xx_hal::prelude::*;
 
 pub fn idle(ctx: app::idle::Context) -> ! {
     let i2c1_devices = ctx.local.i2c1_devices;
@@ -10,7 +10,7 @@ pub fn idle(ctx: app::idle::Context) -> ! {
     let sd_logger = ctx.local.sd_logger;
     let mut gps = ctx.shared.gps;
     let tracker = ctx.local.tracker;
-    
+
     loop {
         match i2c1_devices.bme280.measure(delay) {
             Ok(m) => {
@@ -29,16 +29,17 @@ pub fn idle(ctx: app::idle::Context) -> ! {
         };
 
         if let Some(msg) = gps.lock(|gps| gps.last_nmea()) {
-            defmt::info!("{=[u8]:a}", &msg);
+            defmt::info!("GPS: {=[u8]:a}", &msg);
             let _ = sd_logger.write(&msg);
         }
 
-       
-        
-        
         let accel = i2c1_devices.lis3dh.accel_raw().unwrap();
         let orientation = tracker.update(accel);
-        //defmt::info!("{:?}", orientation);
+        defmt::info!("Accelerometer vector {:?}", defmt::Debug2Format(&accel));
+        defmt::info!(
+            "Predicted position: {:?}",
+            defmt::Debug2Format(&orientation)
+        );
     }
 }
 
@@ -59,5 +60,4 @@ pub fn blink(ctx: app::blink::Context) {
     led.toggle();
     defmt::debug!("Blink");
     app::blink::spawn_after(1.secs()).unwrap();
-    
 }

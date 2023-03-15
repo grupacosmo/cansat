@@ -58,12 +58,9 @@ pub struct I2c1Devices {
 mod app {
     use super::*;
 
-   
-
     #[shared]
     struct Shared {
         gps: Gps,
-        
     }
 
     #[local]
@@ -101,7 +98,7 @@ mod app {
 
         blink::spawn().unwrap();
 
-        let shared = Shared { gps: cansat.gps};
+        let shared = Shared { gps: cansat.gps };
         let local = Local {
             delay: cansat.delay,
             led: cansat.led,
