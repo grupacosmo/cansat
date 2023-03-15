@@ -21,10 +21,14 @@ use tasks::*;
 type Monotonic = MonoTimerUs<pac::TIM2>;
 type Delay = DelayUs<pac::TIM3>;
 type Led = gpio::PC13<gpio::Output>;
-type Bme280 = bme280::i2c::BME280<I2c1>;
+//type Bme280 = bme280::i2c::BME280<I2c1>;
 type Gps = cansat_gps::Gps<Serial1>;
 type SdmmcController =
     embedded_sdmmc::Controller<BlockSpi2, DummyClock, MAX_OPEN_DIRS, MAX_OPEN_FILES>;
+//type Lis3dh = lis3dh::Lis3dh<lis3dh::Lis3dhI2C<I2c1>>;
+type I2c1Proxy = shared_bus::I2cProxy<'static, shared_bus::AtomicCheckMutex<I2c1>>;
+type Bme280 = bme280::i2c::BME280<I2c1Proxy>;
+type Lis3dh = lis3dh::Lis3dh<lis3dh::Lis3dhI2C<I2c1Proxy>>;
 
 type BlockSpi2 = embedded_sdmmc::BlockSpi<'static, Spi2, Cs2>;
 const MAX_OPEN_DIRS: usize = 4;
@@ -45,21 +49,30 @@ type Sck2 = gpio::PB13<gpio::Alternate<5>>;
 type Miso2 = gpio::PB14<gpio::Alternate<5>>;
 type Mosi2 = gpio::PB15<gpio::Alternate<5>>;
 
+pub struct I2c1Devices {
+    pub bme280: Bme280,
+    pub lis3dh: Lis3dh,
+}
+
 #[rtic::app(device = stm32f4xx_hal::pac, dispatchers = [EXTI0, EXTI1])]
 mod app {
     use super::*;
 
+   
+
     #[shared]
     struct Shared {
         gps: Gps,
+        
     }
 
     #[local]
     struct Local {
         delay: DelayUs<pac::TIM3>,
         led: Led,
-        bme280: Bme280,
         sd_logger: SdLogger,
+        tracker: accelerometer::Tracker,
+        i2c1_devices: I2c1Devices,
     }
 
     #[monotonic(binds = TIM2, default = true)]
@@ -71,9 +84,10 @@ mod app {
 
         #[task(local = [led], priority = 1)]
         fn blink(ctx: blink::Context);
+
     }
 
-    #[idle(local = [bme280, delay, sd_logger], shared = [gps])]
+    #[idle(local = [delay, sd_logger, tracker, i2c1_devices], shared = [gps])]
     fn idle(ctx: idle::Context) -> ! {
         tasks::idle(ctx)
     }
@@ -87,12 +101,13 @@ mod app {
 
         blink::spawn().unwrap();
 
-        let shared = Shared { gps: cansat.gps };
+        let shared = Shared { gps: cansat.gps};
         let local = Local {
             delay: cansat.delay,
             led: cansat.led,
-            bme280: cansat.bme280,
             sd_logger: cansat.sd_logger,
+            tracker: cansat.tracker,
+            i2c1_devices: cansat.i2c1_devices,
         };
         let monotonics = init::Monotonics(cansat.monotonic);
 

@@ -3,14 +3,15 @@ use crate::{
     Spi2Device,
 };
 use stm32f4xx_hal::{i2c, pac, prelude::*, serial, spi};
-
+use crate::I2c1Devices;
 pub struct CanSat {
     pub monotonic: crate::Monotonic,
     pub delay: crate::Delay,
     pub led: crate::Led,
-    pub bme280: crate::Bme280,
     pub gps: crate::Gps,
     pub sd_logger: crate::SdLogger,
+    pub tracker: accelerometer::Tracker,
+    pub i2c1_devices: crate::I2c1Devices,
 }
 
 pub struct Board {
@@ -28,7 +29,9 @@ pub fn init_drivers(
     spi2_device: &'static mut Option<Spi2Device>,
 ) -> Result<CanSat, Report> {
     defmt::info!("Initializing drivers");
-
+    let i2c1 = board.i2c1;
+    let i2c1_manager = 
+        shared_bus::new_atomic_check!(crate::I2c1 = i2c1).unwrap();
     let mut sd_logger = {
         let controller = {
             *spi2_device = Some(embedded_sdmmc::SdMmcSpi::new(board.spi2, board.cs2));
@@ -44,24 +47,35 @@ pub fn init_drivers(
     };
 
     let _ = sd_logger.write(b"[NEW RUN]");
-
-    let mut bme280 = crate::Bme280::new_primary(board.i2c1);
-    bme280
-        .init(&mut board.delay)
-        .wrap_err("Failed to initialize BME280")?;
+    let bme280 = {
+        let mut bme280 = crate::Bme280::new_primary(i2c1_manager.acquire_i2c());
+        bme280
+            .init(&mut board.delay)
+            .wrap_err("Failed to initialize BME280")?;
+        bme280
+    };
 
     let gps = {
         board.serial1.listen(serial::Event::Rxne);
         crate::Gps::new(board.serial1)
     };
 
+    let mut lis3dh = crate::Lis3dh::new_i2c(i2c1_manager.acquire_i2c(), lis3dh::SlaveAddr::Alternate).unwrap();
+    lis3dh.set_range(lis3dh::Range::G8).unwrap();
+
+    let mut tracker = accelerometer::Tracker::new(3700.0);
+    let i2c1_devices = I2c1Devices {
+        bme280,
+        lis3dh,
+    };
     Ok(CanSat {
         monotonic: board.monotonic,
         delay: board.delay,
         led: board.led,
-        bme280,
         gps,
         sd_logger,
+        tracker,
+        i2c1_devices: i2c1_devices,
     })
 }
 
@@ -78,23 +92,24 @@ pub fn init_board(device: pac::Peripherals) -> Board {
 
     let led = gpioc.pc13.into_push_pull_output();
 
-    let i2c1 = {
-        let scl1 = gpiob
-            .pb8
-            .into_alternate()
-            .internal_pull_up(false)
-            .set_open_drain();
-        let sda1 = gpiob
-            .pb9
-            .into_alternate()
-            .internal_pull_up(false)
-            .set_open_drain();
-        let mode = i2c::Mode::Fast {
-            frequency: 400000.Hz(),
-            duty_cycle: i2c::DutyCycle::Ratio2to1,
+        let i2c1 = {
+            let scl1 = gpiob
+                .pb8
+                .into_alternate()
+                .internal_pull_up(false)
+                .set_open_drain();
+            let sda1 = gpiob
+                .pb9
+                .into_alternate()
+                .internal_pull_up(false)
+                .set_open_drain();
+            let mode = i2c::Mode::Fast {
+                frequency: 400000.Hz(),
+                duty_cycle: i2c::DutyCycle::Ratio2to1,
+            };
+            device.I2C1.i2c((scl1, sda1), mode, &clocks)
         };
-        device.I2C1.i2c((scl1, sda1), mode, &clocks)
-    };
+    
 
     let spi2 = {
         let sck2 = gpiob.pb13.into_alternate();
