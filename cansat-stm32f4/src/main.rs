@@ -21,11 +21,9 @@ use tasks::*;
 type Monotonic = MonoTimerUs<pac::TIM2>;
 type Delay = DelayUs<pac::TIM3>;
 type Led = gpio::PC13<gpio::Output>;
-//type Bme280 = bme280::i2c::BME280<I2c1>;
 type Gps = cansat_gps::Gps<Serial1>;
 type SdmmcController =
     embedded_sdmmc::Controller<BlockSpi2, DummyClock, MAX_OPEN_DIRS, MAX_OPEN_FILES>;
-//type Lis3dh = lis3dh::Lis3dh<lis3dh::Lis3dhI2C<I2c1>>;
 type I2c1Proxy = shared_bus::I2cProxy<'static, shared_bus::AtomicCheckMutex<I2c1>>;
 type Bme280 = bme280::i2c::BME280<I2c1Proxy>;
 type Lis3dh = lis3dh::Lis3dh<lis3dh::Lis3dhI2C<I2c1Proxy>>;
