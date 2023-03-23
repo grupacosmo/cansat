@@ -130,19 +130,31 @@
 <a href="#130" id="130">130</a>
 <a href="#131" id="131">131</a>
 <a href="#132" id="132">132</a>
-</pre><pre class="rust"><code><span class="kw">use crate</span>::{
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
+</pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::I2c1Devices;
+<span class="kw">use crate</span>::{
     error::{Report, WrapErr},
     Spi2Device,
 };
 <span class="kw">use </span>stm32f4xx_hal::{i2c, pac, prelude::<span class="kw-2">*</span>, serial, spi};
-
 <span class="kw">pub struct </span>CanSat {
     <span class="kw">pub </span>monotonic: <span class="kw">crate</span>::Monotonic,
     <span class="kw">pub </span>delay: <span class="kw">crate</span>::Delay,
     <span class="kw">pub </span>led: <span class="kw">crate</span>::Led,
-    <span class="kw">pub </span>bme280: <span class="kw">crate</span>::Bme280,
     <span class="kw">pub </span>gps: <span class="kw">crate</span>::Gps,
     <span class="kw">pub </span>sd_logger: <span class="kw">crate</span>::SdLogger,
+    <span class="kw">pub </span>tracker: accelerometer::Tracker,
+    <span class="kw">pub </span>i2c1_devices: <span class="kw">crate</span>::I2c1Devices,
 }
 
 <span class="kw">pub struct </span>Board {
@@ -160,7 +172,8 @@
     spi2_device: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span><span class="kw-2">mut </span><span class="prelude-ty">Option</span>&lt;Spi2Device&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;CanSat, Report&gt; {
     <span class="macro">defmt::info!</span>(<span class="string">&quot;Initializing drivers&quot;</span>);
-
+    <span class="kw">let </span>i2c1 = board.i2c1;
+    <span class="kw">let </span>i2c1_manager = <span class="macro">shared_bus::new_atomic_check!</span>(<span class="kw">crate</span>::I2c1 = i2c1).unwrap();
     <span class="kw">let </span><span class="kw-2">mut </span>sd_logger = {
         <span class="kw">let </span>controller = {
             <span class="kw-2">*</span>spi2_device = <span class="prelude-val">Some</span>(embedded_sdmmc::SdMmcSpi::new(board.spi2, board.cs2));
@@ -176,24 +189,33 @@
     </span>};
 
     <span class="kw">let _ </span>= sd_logger.write(<span class="string">b&quot;[NEW RUN]&quot;</span>);
-
-    <span class="kw">let </span><span class="kw-2">mut </span>bme280 = <span class="kw">crate</span>::Bme280::new_primary(board.i2c1);
-    bme280
-        .init(<span class="kw-2">&amp;mut </span>board.delay)
-        .wrap_err(<span class="string">&quot;Failed to initialize BME280&quot;</span>)<span class="question-mark">?</span>;
+    <span class="kw">let </span>bme280 = {
+        <span class="kw">let </span><span class="kw-2">mut </span>bme280 = <span class="kw">crate</span>::Bme280::new_primary(i2c1_manager.acquire_i2c());
+        bme280
+            .init(<span class="kw-2">&amp;mut </span>board.delay)
+            .wrap_err(<span class="string">&quot;Failed to initialize BME280&quot;</span>)<span class="question-mark">?</span>;
+        bme280
+    };
 
     <span class="kw">let </span>gps = {
         board.serial1.listen(serial::Event::Rxne);
         <span class="kw">crate</span>::Gps::new(board.serial1)
     };
 
+    <span class="kw">let </span><span class="kw-2">mut </span>lis3dh =
+        <span class="kw">crate</span>::Lis3dh::new_i2c(i2c1_manager.acquire_i2c(), lis3dh::SlaveAddr::Default).unwrap();
+    lis3dh.set_range(lis3dh::Range::G8).unwrap();
+
+    <span class="kw">let </span>tracker = accelerometer::Tracker::new(<span class="number">3700.0</span>);
+    <span class="kw">let </span>i2c1_devices = I2c1Devices { bme280, lis3dh };
     <span class="prelude-val">Ok</span>(CanSat {
         monotonic: board.monotonic,
         delay: board.delay,
         led: board.led,
-        bme280,
         gps,
         sd_logger,
+        tracker,
+        i2c1_devices,
     })
 }
 
