@@ -20,12 +20,9 @@ fn gps_last_nmea_returns_msg_if_msg_received() {
     let uart = mock::Serial::new(FIRST_MSG.to_owned());
     let mut gps = Gps::new(uart);
 
-    // Read until the first message is fully received (the second element of the tuple returned by read_serial() is true)
-    // So as long as it is 'false', it means that the read operation has not yet been completed, and only when the value becomes 'true', it means that the entire GPS message has been read.
-    while let Ok((_read_data, false)) = gps.read_serial() {}
+    while let (_, _is_msg_terminated @ false) = gps.read_serial().unwrap() {}
 
-    // Check if the message has been successfully received (i.e., when in 'is_some()' the returned value is not empty = true).
-    assert!(gps.last_nmea().is_some());
+    assert_eq!(gps.last_nmea().unwrap(), FIRST_MSG);
 }
 
 #[test]
@@ -33,10 +30,8 @@ fn gps_last_nmea_returns_first_msg_if_second_not_yet_terminated() {
     let uart = mock::Serial::new([FIRST_MSG, SECOND_MSG].concat());
     let mut gps = Gps::new(uart);
 
-    // Similar to the comments above
     while let Ok((_read_data, false)) = gps.read_serial() {}
 
-    // Check if the first message is available.
     assert_eq!(gps.last_nmea().unwrap(), FIRST_MSG);
 }
 
@@ -45,10 +40,8 @@ fn gps_last_nmea_returns_second_read_msg() {
     let uart = mock::Serial::new([FIRST_MSG, SECOND_MSG].concat());
     let mut gps = Gps::new(uart);
 
-    // Similar to the comments above
-    while let Ok((_read_data, false)) = gps.read_serial() {}
-    while let Ok((_read_data, false)) = gps.read_serial() {}
+    while let (_, _is_msg_terminated @ false) = gps.read_serial().unwrap() {}
+    while let (_, _is_msg_terminated @ false) = gps.read_serial().unwrap() {}
 
-    // Check if the second message is available.
     assert_eq!(gps.last_nmea().unwrap(), SECOND_MSG);
 }
