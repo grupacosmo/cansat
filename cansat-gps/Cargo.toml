@@ -11,3 +11,4 @@ heapless = { version = "0.7.16", default-features = false }
 
 [dev-dependencies]
 cansat-test-utils = { path = "../cansat-test-utils" }
+rand = "0.8.5"
