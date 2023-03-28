@@ -38,7 +38,6 @@ fn gps_last_nmea_returns_first_msg_if_second_not_yet_terminated() {
         gps.read_serial().unwrap();
     }
 
-
     assert_eq!(gps.last_nmea().unwrap(), FIRST_MSG);
 }
 
