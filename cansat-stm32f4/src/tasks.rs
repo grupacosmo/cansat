@@ -1,6 +1,6 @@
 use crate::app;
 use accelerometer::RawAccelerometer;
-use cansat_core::{csv, quantity::Pressure, Measurements};
+use cansat_core::{quantity::Pressure, Measurements};
 use rtic::Mutex;
 use stm32f4xx_hal::prelude::*;
 
@@ -10,7 +10,7 @@ pub fn idle(mut ctx: app::idle::Context) -> ! {
 
         let mut buf = [0; 1024];
 
-        let nwritten = match csv::measurement_to_record(&measurements, &mut buf) {
+        let nwritten = match measurements.to_csv_record(&mut buf) {
             Ok(record) => record,
             Err(_) => {
                 defmt::error!("CSV buffer overflow");

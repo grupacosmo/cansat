@@ -6,6 +6,7 @@ pub mod csv;
 pub mod quantity;
 
 use accelerometer::vector;
+use csv::Write;
 use heapless::Vec;
 use quantity::Pressure;
 
@@ -19,6 +20,33 @@ pub struct Measurements {
     pub nmea: Option<Vec<u8, 82>>,
     pub acceleration: Option<vector::I16x3>,
     pub orientation: Option<accelerometer::Orientation>,
+}
+
+pub enum Error {
+    Overflow,
+}
+
+impl Measurements {
+    pub fn to_csv_record(&self, output: &mut [u8]) -> Result<usize, Error> {
+        let mut writer = csv::Writer::new();
+        let mut nwritten = 0;
+
+        let (result, _, n) = self.write(&mut writer, output);
+        nwritten += n;
+
+        if result == csv::WriteResult::OutputFull {
+            return Err(Error::Overflow);
+        }
+
+        let (result, n) = writer.finish(output);
+        nwritten += n;
+
+        if result == csv::WriteResult::OutputFull {
+            return Err(Error::Overflow);
+        }
+
+        Ok(nwritten)
+    }
 }
 
 // TODO: make it weather dependent
