@@ -18,7 +18,7 @@ pub fn idle(ctx: app::idle::Context) -> ! {
                 let pressure = Pressure::from_pascals(m.pressure);
 
                 let altitude = cansat_core::calculate_altitude(pressure);
-                
+
                 defmt::info!("Altitude = {} meters above sea level", altitude.as_meters());
                 defmt::info!("Relative Humidity = {}%", m.humidity);
                 defmt::info!("Temperature = {} deg C", temperature.as_celsius());

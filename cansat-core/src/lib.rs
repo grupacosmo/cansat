@@ -28,7 +28,7 @@ pub fn calculate_altitude_with_temperature(
 }
 
 /// Aircraft roll rotation.
-/// 
+///
 /// Allows us to determine the position of the forward roll.
 /// A positive rolling motion lifts the left wing and lowers the right wing in the aircraft.
 /// https://en.wikipedia.org/wiki/Aircraft_principal_axes#/media/File:Yaw_Axis_Corrected.svg
@@ -37,7 +37,7 @@ pub fn roll(y: f32, z: f32) -> Angle {
 }
 
 /// Aircraft pitch rotation.
-/// 
+///
 /// Allows us to determine the position of the aircraft nose relative to center of mass.
 /// https://en.wikipedia.org/wiki/Aircraft_principal_axes#/media/File:Yaw_Axis_Corrected.svg
 pub fn pitch(x: f32, y: f32, z: f32) -> Angle {
