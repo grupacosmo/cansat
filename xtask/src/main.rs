@@ -21,6 +21,7 @@ struct Cli {
 #[derive(Subcommand)]
 enum Cmd {
     /// Run `cargo embed` on a specified package
+    #[clap(visible_alias = "e")]
     Embed {
         /// Package name
         pkg_name: String,
@@ -28,6 +29,7 @@ enum Cmd {
         args: Vec<String>,
     },
     /// `cd` and build each package
+    #[clap(visible_alias = "b")]
     Build {
         /// Arguments for `cargo build`
         args: Vec<String>,
@@ -35,6 +37,7 @@ enum Cmd {
     /// `cd` and test each package
     ///
     /// Packages can be excluded with XTASK_TEST_EXCLUDE environment variable.
+    #[clap(visible_alias = "t")]
     Test {
         /// Arguments for `cargo test`
         args: Vec<String>,
