@@ -37,7 +37,7 @@ impl Write for Measurements {
         let mut consumed = 0;
         let mut written = 0;
 
-        let (r, c, w) = self.temperature.write(writer, out);
+        let (r, c, w) = self.temperature.map(|x| x.as_celsius()).write(writer, out);
         consumed += c;
         written += w;
         if let WriteResult::OutputFull = r {
@@ -50,7 +50,7 @@ impl Write for Measurements {
             return (r, consumed, written);
         }
 
-        let (r, c, w) = self.pressure.write(writer, out);
+        let (r, c, w) = self.pressure.map(|x| x.as_pascals()).write(writer, out);
         consumed += c;
         written += w;
         if let WriteResult::OutputFull = r {
@@ -63,7 +63,7 @@ impl Write for Measurements {
             return (r, consumed, written);
         }
 
-        let (r, c, w) = self.altitude.write(writer, out);
+        let (r, c, w) = self.altitude.map(|x| x.as_meters()).write(writer, out);
         consumed += c;
         written += w;
         if let WriteResult::OutputFull = r {

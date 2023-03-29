@@ -1,6 +1,9 @@
 use crate::app;
 use accelerometer::RawAccelerometer;
-use cansat_core::{quantity::Pressure, Measurements};
+use cansat_core::{
+    quantity::{Pressure, Temperature},
+    Measurements,
+};
 use rtic::Mutex;
 use stm32f4xx_hal::prelude::*;
 
@@ -35,17 +38,19 @@ fn read_measurements(ctx: &mut app::idle::Context) -> Measurements {
 
     match i2c1_devices.bme280.measure(delay) {
         Ok(m) => {
+            let temperature = Temperature::from_celsius(m.temperature);
+            let pressure = Pressure::from_pascals(m.pressure);
             let altitude = cansat_core::calculate_altitude(Pressure::from_pascals(m.pressure));
 
             defmt::info!(
-                "Temperature: {}°C\r\nPressure: {}Pa\n\rAltitude: {}m",
-                m.temperature,
-                m.pressure,
-                altitude
+                "Temperature: {}°C\r\nPressure: {}hPa\n\rAltitude: {}km",
+                temperature.as_celsius(),
+                pressure.as_hectos(),
+                altitude.as_kilos()
             );
 
-            data.temperature = Some(m.temperature);
-            data.pressure = Some(m.pressure);
+            data.temperature = Some(temperature);
+            data.pressure = Some(pressure);
             data.altitude = Some(altitude);
         }
         Err(e) => {
