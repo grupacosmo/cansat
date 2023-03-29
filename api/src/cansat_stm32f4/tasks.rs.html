@@ -61,9 +61,13 @@
 <a href="#61" id="61">61</a>
 <a href="#62" id="62">62</a>
 <a href="#63" id="63">63</a>
+<a href="#64" id="64">64</a>
+<a href="#65" id="65">65</a>
+<a href="#66" id="66">66</a>
+<a href="#67" id="67">67</a>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::app;
 <span class="kw">use </span>accelerometer::RawAccelerometer;
-<span class="kw">use </span>cansat_core::quantity::Pressure;
+<span class="kw">use </span>cansat_core::quantity::{Pressure, Temperature};
 <span class="kw">use </span>rtic::Mutex;
 <span class="kw">use </span>stm32f4xx_hal::prelude::<span class="kw-2">*</span>;
 
@@ -77,11 +81,15 @@
     <span class="kw">loop </span>{
         <span class="kw">match </span>i2c1_devices.bme280.measure(delay) {
             <span class="prelude-val">Ok</span>(m) =&gt; {
-                <span class="kw">let </span>altitude = cansat_core::calculate_altitude(Pressure::from_pascals(m.pressure));
-                <span class="macro">defmt::info!</span>(<span class="string">&quot;Altitude = {} meters above sea level&quot;</span>, altitude);
+                <span class="kw">let </span>temperature = Temperature::from_celsius(m.temperature);
+                <span class="kw">let </span>pressure = Pressure::from_pascals(m.pressure);
+
+                <span class="kw">let </span>altitude = cansat_core::calculate_altitude(pressure);
+
+                <span class="macro">defmt::info!</span>(<span class="string">&quot;Altitude = {} meters above sea level&quot;</span>, altitude.as_meters());
                 <span class="macro">defmt::info!</span>(<span class="string">&quot;Relative Humidity = {}%&quot;</span>, m.humidity);
-                <span class="macro">defmt::info!</span>(<span class="string">&quot;Temperature = {} deg C&quot;</span>, m.temperature);
-                <span class="macro">defmt::info!</span>(<span class="string">&quot;Pressure = {} pascals&quot;</span>, m.pressure);
+                <span class="macro">defmt::info!</span>(<span class="string">&quot;Temperature = {} deg C&quot;</span>, temperature.as_celsius());
+                <span class="macro">defmt::info!</span>(<span class="string">&quot;Pressure = {} hPa&quot;</span>, pressure.as_hectos());
             }
             <span class="prelude-val">Err</span>(e) =&gt; {
                 <span class="macro">defmt::error!</span>(
