@@ -69,7 +69,7 @@ pub fn init_drivers(
 
     let tracker = accelerometer::Tracker::new(3700.0);
     let i2c1_devices = I2c1Devices { bme280, lis3dh };
-    
+
     Ok(CanSat {
         monotonic: board.monotonic,
         delay: board.delay,
