@@ -69,6 +69,5 @@ mod app {
 
         #[task(local = [led], priority = 1)]
         fn blink(ctx: blink::Context);
-
     }
 }
