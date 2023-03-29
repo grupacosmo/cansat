@@ -1,6 +1,6 @@
 use crate::app;
 use accelerometer::RawAccelerometer;
-use cansat_core::quantity::Pressure;
+use cansat_core::quantity::{Pressure, Temperature};
 use rtic::Mutex;
 use stm32f4xx_hal::prelude::*;
 
@@ -14,11 +14,15 @@ pub fn idle(ctx: app::idle::Context) -> ! {
     loop {
         match i2c1_devices.bme280.measure(delay) {
             Ok(m) => {
-                let altitude = cansat_core::calculate_altitude(Pressure::from_pascals(m.pressure));
-                defmt::info!("Altitude = {} meters above sea level", altitude);
+                let temperature = Temperature::from_celsius(m.temperature);
+                let pressure = Pressure::from_pascals(m.pressure);
+
+                let altitude = cansat_core::calculate_altitude(pressure);
+
+                defmt::info!("Altitude = {} meters above sea level", altitude.as_meters());
                 defmt::info!("Relative Humidity = {}%", m.humidity);
-                defmt::info!("Temperature = {} deg C", m.temperature);
-                defmt::info!("Pressure = {} pascals", m.pressure);
+                defmt::info!("Temperature = {} deg C", temperature.as_celsius());
+                defmt::info!("Pressure = {} hPa", pressure.as_hectos());
             }
             Err(e) => {
                 defmt::error!(
