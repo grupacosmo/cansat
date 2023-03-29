@@ -144,30 +144,123 @@
 <a href="#144" id="144">144</a>
 <a href="#145" id="145">145</a>
 <a href="#146" id="146">146</a>
-</pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::I2c1Devices;
-<span class="kw">use crate</span>::{
+<a href="#147" id="147">147</a>
+<a href="#148" id="148">148</a>
+<a href="#149" id="149">149</a>
+<a href="#150" id="150">150</a>
+<a href="#151" id="151">151</a>
+<a href="#152" id="152">152</a>
+<a href="#153" id="153">153</a>
+<a href="#154" id="154">154</a>
+<a href="#155" id="155">155</a>
+<a href="#156" id="156">156</a>
+<a href="#157" id="157">157</a>
+<a href="#158" id="158">158</a>
+<a href="#159" id="159">159</a>
+<a href="#160" id="160">160</a>
+<a href="#161" id="161">161</a>
+<a href="#162" id="162">162</a>
+<a href="#163" id="163">163</a>
+<a href="#164" id="164">164</a>
+<a href="#165" id="165">165</a>
+<a href="#166" id="166">166</a>
+<a href="#167" id="167">167</a>
+<a href="#168" id="168">168</a>
+<a href="#169" id="169">169</a>
+<a href="#170" id="170">170</a>
+<a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
+<a href="#182" id="182">182</a>
+<a href="#183" id="183">183</a>
+<a href="#184" id="184">184</a>
+<a href="#185" id="185">185</a>
+<a href="#186" id="186">186</a>
+<a href="#187" id="187">187</a>
+<a href="#188" id="188">188</a>
+<a href="#189" id="189">189</a>
+<a href="#190" id="190">190</a>
+<a href="#191" id="191">191</a>
+<a href="#192" id="192">192</a>
+<a href="#193" id="193">193</a>
+<a href="#194" id="194">194</a>
+<a href="#195" id="195">195</a>
+<a href="#196" id="196">196</a>
+<a href="#197" id="197">197</a>
+<a href="#198" id="198">198</a>
+<a href="#199" id="199">199</a>
+<a href="#200" id="200">200</a>
+</pre><pre class="rust"><code><span class="kw">use crate</span>::{
     error::{Report, WrapErr},
-    Spi2Device,
+    SdLogger,
 };
-<span class="kw">use </span>stm32f4xx_hal::{i2c, pac, prelude::<span class="kw-2">*</span>, serial, spi};
+<span class="kw">use </span>stm32f4xx_hal::{
+    gpio, i2c, pac,
+    prelude::<span class="kw-2">*</span>,
+    serial, spi,
+    timer::{monotonic::MonoTimerUs, DelayUs},
+};
+
+<span class="kw">pub type </span>Monotonic = MonoTimerUs&lt;pac::TIM2&gt;;
+<span class="kw">pub type </span>Delay = DelayUs&lt;pac::TIM3&gt;;
+<span class="kw">pub type </span>Led = gpio::PC13&lt;gpio::Output&gt;;
+<span class="kw">pub type </span>Gps = cansat_gps::Gps&lt;Serial1&gt;;
+<span class="kw">pub type </span>SdmmcController =
+    embedded_sdmmc::Controller&lt;BlockSpi2, DummyClock, MAX_OPEN_DIRS, MAX_OPEN_FILES&gt;;
+<span class="kw">pub type </span>Bme280 = bme280::i2c::BME280&lt;I2c1Proxy&gt;;
+<span class="kw">pub type </span>Lis3dh = lis3dh::Lis3dh&lt;lis3dh::Lis3dhI2C&lt;I2c1Proxy&gt;&gt;;
+
+<span class="kw">type </span>BlockSpi2 = embedded_sdmmc::BlockSpi&lt;<span class="lifetime">&#39;static</span>, Spi2, Cs2&gt;;
+<span class="kw">const </span>MAX_OPEN_DIRS: usize = <span class="number">4</span>;
+<span class="kw">const </span>MAX_OPEN_FILES: usize = <span class="number">4</span>;
+
+<span class="kw">type </span>I2c1Proxy = shared_bus::I2cProxy&lt;<span class="lifetime">&#39;static</span>, shared_bus::AtomicCheckMutex&lt;I2c1&gt;&gt;;
+<span class="kw">type </span>I2c1 = i2c::I2c1&lt;(Scl1, Sda1)&gt;;
+<span class="kw">type </span>Scl1 = gpio::PB8&lt;gpio::Alternate&lt;<span class="number">4</span>, gpio::OpenDrain&gt;&gt;;
+<span class="kw">type </span>Sda1 = gpio::PB9&lt;gpio::Alternate&lt;<span class="number">4</span>, gpio::OpenDrain&gt;&gt;;
+
+<span class="kw">type </span>Serial1 = serial::Serial1&lt;(Tx1, Rx1)&gt;;
+<span class="kw">type </span>Tx1 = gpio::PB6&lt;gpio::Alternate&lt;<span class="number">7</span>&gt;&gt;;
+<span class="kw">type </span>Rx1 = gpio::PB7&lt;gpio::Alternate&lt;<span class="number">7</span>&gt;&gt;;
+
+<span class="kw">pub type </span>Spi2Device = embedded_sdmmc::SdMmcSpi&lt;Spi2, Cs2&gt;;
+<span class="kw">type </span>Spi2 = spi::Spi2&lt;(Sck2, Miso2, Mosi2)&gt;;
+<span class="kw">type </span>Cs2 = gpio::PB12&lt;gpio::Output&gt;;
+<span class="kw">type </span>Sck2 = gpio::PB13&lt;gpio::Alternate&lt;<span class="number">5</span>&gt;&gt;;
+<span class="kw">type </span>Miso2 = gpio::PB14&lt;gpio::Alternate&lt;<span class="number">5</span>&gt;&gt;;
+<span class="kw">type </span>Mosi2 = gpio::PB15&lt;gpio::Alternate&lt;<span class="number">5</span>&gt;&gt;;
+
 <span class="kw">pub struct </span>CanSat {
-    <span class="kw">pub </span>monotonic: <span class="kw">crate</span>::Monotonic,
-    <span class="kw">pub </span>delay: <span class="kw">crate</span>::Delay,
-    <span class="kw">pub </span>led: <span class="kw">crate</span>::Led,
-    <span class="kw">pub </span>gps: <span class="kw">crate</span>::Gps,
-    <span class="kw">pub </span>sd_logger: <span class="kw">crate</span>::SdLogger,
+    <span class="kw">pub </span>monotonic: Monotonic,
+    <span class="kw">pub </span>delay: Delay,
+    <span class="kw">pub </span>led: Led,
+    <span class="kw">pub </span>gps: Gps,
+    <span class="kw">pub </span>sd_logger: SdLogger,
     <span class="kw">pub </span>tracker: accelerometer::Tracker,
-    <span class="kw">pub </span>i2c1_devices: <span class="kw">crate</span>::I2c1Devices,
+    <span class="kw">pub </span>i2c1_devices: I2c1Devices,
+}
+
+<span class="kw">pub struct </span>I2c1Devices {
+    <span class="kw">pub </span>bme280: Bme280,
+    <span class="kw">pub </span>lis3dh: Lis3dh,
 }
 
 <span class="kw">pub struct </span>Board {
-    <span class="kw">pub </span>monotonic: <span class="kw">crate</span>::Monotonic,
-    <span class="kw">pub </span>delay: <span class="kw">crate</span>::Delay,
-    <span class="kw">pub </span>led: <span class="kw">crate</span>::Led,
-    <span class="kw">pub </span>i2c1: <span class="kw">crate</span>::I2c1,
-    <span class="kw">pub </span>serial1: <span class="kw">crate</span>::Serial1,
-    <span class="kw">pub </span>spi2: <span class="kw">crate</span>::Spi2,
-    <span class="kw">pub </span>cs2: <span class="kw">crate</span>::Cs2,
+    <span class="kw">pub </span>monotonic: Monotonic,
+    <span class="kw">pub </span>delay: Delay,
+    <span class="kw">pub </span>led: Led,
+    <span class="kw">pub </span>i2c1: I2c1,
+    <span class="kw">pub </span>serial1: Serial1,
+    <span class="kw">pub </span>spi2: Spi2,
+    <span class="kw">pub </span>cs2: Cs2,
 }
 
 <span class="kw">pub fn </span>init_drivers(
@@ -175,7 +268,7 @@
     spi2_device: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span><span class="kw-2">mut </span><span class="prelude-ty">Option</span>&lt;Spi2Device&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;CanSat, Report&gt; {
     <span class="kw">let </span>i2c1 = board.i2c1;
-    <span class="kw">let </span>i2c1_manager = <span class="macro">shared_bus::new_atomic_check!</span>(<span class="kw">crate</span>::I2c1 = i2c1).unwrap();
+    <span class="kw">let </span>i2c1_manager = <span class="macro">shared_bus::new_atomic_check!</span>(I2c1 = i2c1).unwrap();
 
     <span class="macro">defmt::info!</span>(<span class="string">&quot;Initializing sd logger&quot;</span>);
     <span class="kw">let </span><span class="kw-2">mut </span>sd_logger = {
@@ -186,16 +279,16 @@
                 .unwrap()
                 .acquire()
                 .wrap_err(<span class="string">&quot;Failed to acquire block spi&quot;</span>)<span class="question-mark">?</span>;
-            <span class="kw">crate</span>::SdmmcController::new(block_spi2, <span class="kw">crate</span>::DummyClock)
+            SdmmcController::new(block_spi2, DummyClock)
         };
 
-        <span class="kw">crate</span>::sd_logger::SdLogger::new(controller).wrap_err(<span class="string">&quot;Failed to initialize SdLogger&quot;</span>)<span class="question-mark">?
+        SdLogger::new(controller).wrap_err(<span class="string">&quot;Failed to initialize SdLogger&quot;</span>)<span class="question-mark">?
     </span>};
-    <span class="kw">let _ </span>= sd_logger.write(<span class="string">b&quot;[NEW RUN]&quot;</span>);
+    <span class="kw">let _ </span>= sd_logger.write(<span class="string">b&quot;[NEW RUN]\n&quot;</span>);
 
     <span class="macro">defmt::info!</span>(<span class="string">&quot;Initializing BME280&quot;</span>);
     <span class="kw">let </span>bme280 = {
-        <span class="kw">let </span><span class="kw-2">mut </span>bme280 = <span class="kw">crate</span>::Bme280::new_primary(i2c1_manager.acquire_i2c());
+        <span class="kw">let </span><span class="kw-2">mut </span>bme280 = Bme280::new_primary(i2c1_manager.acquire_i2c());
         bme280
             .init(<span class="kw-2">&amp;mut </span>board.delay)
             .wrap_err(<span class="string">&quot;Failed to initialize BME280&quot;</span>)<span class="question-mark">?</span>;
@@ -205,12 +298,12 @@
     <span class="macro">defmt::info!</span>(<span class="string">&quot;Initializing GPS&quot;</span>);
     <span class="kw">let </span>gps = {
         board.serial1.listen(serial::Event::Rxne);
-        <span class="kw">crate</span>::Gps::new(board.serial1)
+        Gps::new(board.serial1)
     };
 
     <span class="macro">defmt::info!</span>(<span class="string">&quot;Initializing LIS3DH&quot;</span>);
     <span class="kw">let </span><span class="kw-2">mut </span>lis3dh =
-        <span class="kw">crate</span>::Lis3dh::new_i2c(i2c1_manager.acquire_i2c(), lis3dh::SlaveAddr::Default).unwrap();
+        Lis3dh::new_i2c(i2c1_manager.acquire_i2c(), lis3dh::SlaveAddr::Default).unwrap();
     lis3dh.set_range(lis3dh::Range::G8).unwrap();
 
     <span class="kw">let </span>tracker = accelerometer::Tracker::new(<span class="number">3700.0</span>);
@@ -288,6 +381,21 @@
         serial1,
         spi2,
         cs2,
+    }
+}
+
+<span class="kw">pub struct </span>DummyClock;
+
+<span class="kw">impl </span>embedded_sdmmc::TimeSource <span class="kw">for </span>DummyClock {
+    <span class="kw">fn </span>get_timestamp(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; embedded_sdmmc::Timestamp {
+        embedded_sdmmc::Timestamp {
+            year_since_1970: <span class="number">0</span>,
+            zero_indexed_month: <span class="number">0</span>,
+            zero_indexed_day: <span class="number">0</span>,
+            hours: <span class="number">0</span>,
+            minutes: <span class="number">0</span>,
+            seconds: <span class="number">0</span>,
+        }
     }
 }
 </code></pre></div>
