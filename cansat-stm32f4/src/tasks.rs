@@ -14,7 +14,7 @@ pub fn idle(mut ctx: app::idle::Context) -> ! {
         let mut buf = [0; 1024];
 
         let nwritten = match measurements.to_csv_record(&mut buf) {
-            Ok(record) => record,
+            Ok(n) => n,
             Err(_) => {
                 defmt::error!("CSV buffer overflow");
                 continue;
@@ -43,7 +43,7 @@ fn read_measurements(ctx: &mut app::idle::Context) -> Measurements {
             let altitude = cansat_core::calculate_altitude(Pressure::from_pascals(m.pressure));
 
             defmt::info!(
-                "Temperature: {}°C\r\nPressure: {}hPa\n\rAltitude: {}km",
+                "Temperature: {}°C\r\nPressure: {}hPa\r\nAltitude: {}km",
                 temperature.as_celsius(),
                 pressure.as_hectos(),
                 altitude.as_kilos()
