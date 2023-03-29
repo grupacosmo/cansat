@@ -104,8 +104,12 @@ checksum = "14c189c53d098945499cdfa7ecc63567cf3886b3332b312a5b4585d8d3a6a610"
 name = "cansat-core"
 version = "0.1.0"
 dependencies = [
+ "accelerometer",
+ "csv-core",
  "derive_more",
+ "heapless",
  "libm",
+ "ryu",
 ]
 
 [[package]]
@@ -129,7 +133,6 @@ dependencies = [
  "cortex-m 0.7.7",
  "cortex-m-rt",
  "cortex-m-rtic",
- "csv-core",
  "defmt",
  "defmt-rtt",
  "embedded-sdmmc",
@@ -137,7 +140,6 @@ dependencies = [
  "lis3dh",
  "once_cell",
  "panic-probe",
- "ryu",
  "shared-bus",
  "stm32f4xx-hal",
 ]

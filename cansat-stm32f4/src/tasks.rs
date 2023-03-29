@@ -1,60 +1,37 @@
 use crate::app;
-use accelerometer::{vector, Orientation, RawAccelerometer};
-use cansat_core::quantity::Pressure;
-use cansat_gps::MAX_NMEA_LEN;
-use heapless::Vec;
+use accelerometer::RawAccelerometer;
+use cansat_core::{csv, quantity::Pressure, Measurements};
 use rtic::Mutex;
 use stm32f4xx_hal::prelude::*;
 
-#[derive(Default)]
-struct RecordData {
-    temperature: Option<f32>,
-    pressure: Option<f32>,
-    altitude: Option<f32>,
-    nmea: Option<Vec<u8, MAX_NMEA_LEN>>,
-    acceleration: Option<vector::I16x3>,
-    orientation: Option<Orientation>,
-}
-
 pub fn idle(mut ctx: app::idle::Context) -> ! {
-    let mut csv_writer = csv_core::WriterBuilder::new().build();
-    let mut buf: Vec<u8, 1000> = Vec::new();
-
     loop {
-        let data = read_record_data(&mut ctx);
+        let measurements = read_measurements(&mut ctx);
 
-        write_option_f32(&mut csv_writer, data.temperature, &mut buf);
-        csv_writer.delimiter(&mut buf);
+        let mut buf = [0; 1024];
 
-        write_option_f32(&mut csv_writer, data.pressure, &mut buf);
-        csv_writer.delimiter(&mut buf);
+        let nwritten = match csv::measurement_to_record(&measurements, &mut buf) {
+            Ok(record) => record,
+            Err(_) => {
+                defmt::error!("CSV buffer overflow");
+                continue;
+            }
+        };
 
-        write_option_f32(&mut csv_writer, data.altitude, &mut buf);
-        csv_writer.delimiter(&mut buf);
-
-        if let Some(nmea) = data.nmea {
-            csv_writer.field(&nmea, &mut buf);
-        }
-        csv_writer.delimiter(&mut buf);
-
-        // TODO:
-        // write acceleration and orientation
-
-        csv_writer.terminator(&mut buf);
-        csv_writer.finish(&mut buf);
+        let csv_record = &buf[..nwritten];
 
         let sd_logger = &mut ctx.local.sd_logger;
-        sd_logger.write(&buf).unwrap();
+        sd_logger.write(csv_record).unwrap();
     }
 }
 
-fn read_record_data(ctx: &mut app::idle::Context) -> RecordData {
+fn read_measurements(ctx: &mut app::idle::Context) -> Measurements {
     let i2c1_devices = &mut ctx.local.i2c1_devices;
     let delay = &mut ctx.local.delay;
     let gps = &mut ctx.shared.gps;
     let tracker = &mut ctx.local.tracker;
 
-    let mut data = RecordData::default();
+    let mut data = Measurements::default();
 
     match i2c1_devices.bme280.measure(delay) {
         Ok(m) => {
@@ -105,14 +82,6 @@ fn read_record_data(ctx: &mut app::idle::Context) -> RecordData {
     }
 
     data
-}
-
-fn write_option_f32(w: &mut csv_core::Writer, f: Option<f32>, out: &mut [u8]) {
-    let mut buf = ryu::Buffer::new();
-    if let Some(f) = f {
-        let f = buf.format(f);
-        w.field(f.as_bytes(), out);
-    }
 }
 
 /// USART3 interrupt handler that reads data into the gps working buffer
