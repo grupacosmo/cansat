@@ -215,7 +215,7 @@
 
     <span class="kw">let </span>tracker = accelerometer::Tracker::new(<span class="number">3700.0</span>);
     <span class="kw">let </span>i2c1_devices = I2c1Devices { bme280, lis3dh };
-    
+
     <span class="prelude-val">Ok</span>(CanSat {
         monotonic: board.monotonic,
         delay: board.delay,
