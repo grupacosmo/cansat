@@ -32,7 +32,7 @@ fn gps_last_nmea_returns_first_msg_if_second_not_yet_terminated() {
     let mut gps = Gps::new(uart);
     let mut rng = rand::thread_rng();
 
-    while let Ok((_read_data, false)) = gps.read_serial() {}
+    while let (_, _is_msg_terminated @ false) = gps.read_serial().unwrap() {}
 
     for _ in 0..rng.gen_range(1..SECOND_MSG.len()) {
         gps.read_serial().unwrap();
