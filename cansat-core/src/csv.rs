@@ -1,27 +1,76 @@
-pub use csv_core::{WriteResult, Writer, WriterBuilder};
+/// Ergonomic [`csv_core::Writer`] adapter
+#[derive(Default)]
+pub struct Writer(pub csv_core::Writer);
 
-use crate::Measurements;
+#[derive(Debug)]
+pub enum Error {
+    /// Output buffer overflow
+    Overflow,
+    /// Byte conversion failure
+    Conversion,
+}
+
+impl Writer {
+    pub fn new() -> Self {
+        Self(csv_core::Writer::new())
+    }
+
+    pub fn field(&mut self, input: &[u8], output: &mut [u8]) -> Result<usize, Error> {
+        let (r, _, w) = self.0.field(input, output);
+        if let csv_core::WriteResult::OutputFull = r {
+            return Err(Error::Overflow);
+        }
+        Ok(w)
+    }
+
+    pub fn delimiter(&mut self, output: &mut [u8]) -> Result<usize, Error> {
+        let (r, w) = self.0.delimiter(output);
+        if let csv_core::WriteResult::OutputFull = r {
+            return Err(Error::Overflow);
+        }
+        Ok(w)
+    }
+
+    pub fn terminator(&mut self, output: &mut [u8]) -> Result<usize, Error> {
+        let (r, w) = self.0.terminator(output);
+        if let csv_core::WriteResult::OutputFull = r {
+            return Err(Error::Overflow);
+        }
+        Ok(w)
+    }
+
+    pub fn finish(&mut self, output: &mut [u8]) -> Result<usize, Error> {
+        let (r, w) = self.0.finish(output);
+        if let csv_core::WriteResult::OutputFull = r {
+            return Err(Error::Overflow);
+        }
+        Ok(w)
+    }
+}
+
+pub fn to_byte_record(v: &impl Write, output: &mut [u8]) -> Result<usize, Error> {
+    let mut writer = Writer::new();
+    let mut nwritten = 0;
+
+    nwritten += v.write(&mut writer, output)?;
+    nwritten += writer.terminator(&mut output[nwritten..])?;
+    nwritten += writer.finish(&mut output[nwritten..])?;
+
+    Ok(nwritten)
+}
 
 pub trait Write {
-    fn write(&self, writer: &mut Writer, out: &mut [u8]) -> (WriteResult, usize, usize);
+    fn write(&self, writer: &mut Writer, out: &mut [u8]) -> Result<usize, Error>;
 }
 
 impl Write for &[u8] {
-    fn write(&self, writer: &mut Writer, out: &mut [u8]) -> (WriteResult, usize, usize) {
+    fn write(&self, writer: &mut Writer, out: &mut [u8]) -> Result<usize, Error> {
         writer.field(self, out)
     }
 }
 
 impl Write for f32 {
-    fn write(&self, writer: &mut Writer, out: &mut [u8]) -> (WriteResult, usize, usize) {
-        let mut buf = ryu::Buffer::new();
-        let f = buf.format(*self);
-        f.as_bytes().write(writer, out)
-    }
-}
-
-impl Write for f64 {
-    fn write(&self, writer: &mut Writer, out: &mut [u8]) -> (WriteResult, usize, usize) {
+    fn write(&self, writer: &mut Writer, out: &mut [u8]) -> Result<usize, Error> {
         let mut buf = ryu::Buffer::new();
         let f = buf.format(*self);
         f.as_bytes().write(writer, out)
@@ -29,92 +78,11 @@ impl Write for f64 {
 }
 
 impl<T: Write> Write for Option<T> {
-    fn write(&self, writer: &mut Writer, out: &mut [u8]) -> (WriteResult, usize, usize) {
+    fn write(&self, writer: &mut Writer, out: &mut [u8]) -> Result<usize, Error> {
         if let Some(t) = self {
             t.write(writer, out)
         } else {
-            (WriteResult::InputEmpty, 0, 0)
+            Ok(0)
         }
-    }
-}
-
-impl Write for Measurements {
-    fn write(&self, writer: &mut Writer, out: &mut [u8]) -> (WriteResult, usize, usize) {
-        let mut consumed = 0;
-        let mut written = 0;
-
-        let (r, c, w) = self.temperature.map(|x| x.as_celsius()).write(writer, out);
-        consumed += c;
-        written += w;
-        if let WriteResult::OutputFull = r {
-            return (r, consumed, written);
-        }
-
-        let (r, w) = writer.delimiter(&mut out[written..]);
-        written += w;
-        if let WriteResult::OutputFull = r {
-            return (r, consumed, written);
-        }
-
-        let (r, c, w) = self
-            .pressure
-            .map(|x| x.as_pascals())
-            .write(writer, &mut out[written..]);
-        consumed += c;
-        written += w;
-        if let WriteResult::OutputFull = r {
-            return (r, consumed, written);
-        }
-
-        let (r, w) = writer.delimiter(&mut out[written..]);
-        written += w;
-        if let WriteResult::OutputFull = r {
-            return (r, consumed, written);
-        }
-
-        let (r, c, w) = self
-            .altitude
-            .map(|x| x.as_meters())
-            .write(writer, &mut out[written..]);
-        consumed += c;
-        written += w;
-        if let WriteResult::OutputFull = r {
-            return (r, consumed, written);
-        }
-
-        let (r, w) = writer.delimiter(&mut out[written..]);
-        written += w;
-        if let WriteResult::OutputFull = r {
-            return (r, consumed, written);
-        }
-
-        let (r, c, w) = self.nmea.as_deref().write(writer, &mut out[written..]);
-        consumed += c;
-        written += w;
-        if let WriteResult::OutputFull = r {
-            return (r, consumed, written);
-        }
-
-        let (r, w) = writer.delimiter(&mut out[written..]);
-        written += w;
-        if let WriteResult::OutputFull = r {
-            return (r, consumed, written);
-        }
-
-        if self.acceleration.is_some() {
-            todo!("write acceleration");
-        }
-
-        let (r, w) = writer.delimiter(&mut out[written..]);
-        written += w;
-        if let WriteResult::OutputFull = r {
-            return (r, consumed, written);
-        }
-
-        if self.orientation.is_some() {
-            todo!("write orientation");
-        }
-
-        (WriteResult::InputEmpty, consumed, written)
     }
 }

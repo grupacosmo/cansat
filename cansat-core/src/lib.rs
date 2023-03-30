@@ -6,7 +6,6 @@ pub mod csv;
 pub mod quantity;
 
 use accelerometer::vector;
-use csv::Write;
 use heapless::Vec;
 use quantity::{Angle, Distance, Pressure, Temperature};
 
@@ -23,35 +22,31 @@ pub struct Measurements {
     pub orientation: Option<accelerometer::Orientation>,
 }
 
-#[derive(Debug)]
-pub enum Error {
-    Overflow,
-}
-
-impl Measurements {
-    pub fn to_csv_record(&self, output: &mut [u8]) -> Result<usize, Error> {
-        let mut writer = csv::Writer::new();
+impl csv::Write for Measurements {
+    fn write(&self, writer: &mut csv::Writer, out: &mut [u8]) -> Result<usize, csv::Error> {
         let mut nwritten = 0;
+        let temperature = self.temperature.map(|x| x.as_celsius());
+        nwritten += temperature.write(writer, out)?;
+        nwritten += writer.delimiter(&mut out[nwritten..])?;
 
-        let (result, _, n) = self.write(&mut writer, output);
-        nwritten += n;
+        let pressure = self.pressure.map(|x| x.as_pascals());
+        nwritten += pressure.write(writer, &mut out[nwritten..])?;
+        nwritten += writer.delimiter(&mut out[nwritten..])?;
 
-        if result == csv::WriteResult::OutputFull {
-            return Err(Error::Overflow);
+        let altitude = self.altitude.map(|x| x.as_meters());
+        nwritten += altitude.write(writer, &mut out[nwritten..])?;
+        nwritten += writer.delimiter(&mut out[nwritten..])?;
+
+        nwritten += self.nmea.as_deref().write(writer, &mut out[nwritten..])?;
+        nwritten += writer.delimiter(&mut out[nwritten..])?;
+
+        if self.acceleration.is_some() {
+            todo!("write acceleration");
         }
+        nwritten += writer.delimiter(&mut out[nwritten..])?;
 
-        let (result, n) = writer.terminator(&mut output[nwritten..]);
-        nwritten += n;
-
-        if result == csv::WriteResult::OutputFull {
-            return Err(Error::Overflow);
-        }
-
-        let (result, n) = writer.finish(&mut output[nwritten..]);
-        nwritten += n;
-
-        if result == csv::WriteResult::OutputFull {
-            return Err(Error::Overflow);
+        if self.orientation.is_some() {
+            todo!("write orientation");
         }
 
         Ok(nwritten)

@@ -1,6 +1,7 @@
 use crate::app;
 use accelerometer::RawAccelerometer;
 use cansat_core::{
+    csv,
     quantity::{Pressure, Temperature},
     Measurements,
 };
@@ -12,15 +13,16 @@ pub fn idle(mut ctx: app::idle::Context) -> ! {
         let measurements = read_measurements(&mut ctx);
 
         let mut buf = [0; 1024];
-
-        let nwritten = match measurements.to_csv_record(&mut buf) {
+        let nwritten = match csv::to_byte_record(&measurements, &mut buf) {
             Ok(n) => n,
-            Err(_) => {
-                defmt::error!("CSV buffer overflow");
+            Err(e) => {
+                defmt::error!(
+                    "Failed to create csv byte record {}",
+                    defmt::Debug2Format(&e)
+                );
                 continue;
             }
         };
-
         let csv_record = &buf[..nwritten];
 
         let sd_logger = &mut ctx.local.sd_logger;
