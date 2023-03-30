@@ -23,6 +23,7 @@ pub struct Measurements {
     pub orientation: Option<accelerometer::Orientation>,
 }
 
+#[derive(Debug)]
 pub enum Error {
     Overflow,
 }
@@ -39,7 +40,14 @@ impl Measurements {
             return Err(Error::Overflow);
         }
 
-        let (result, n) = writer.finish(output);
+        let (result, n) = writer.terminator(&mut output[nwritten..]);
+        nwritten += n;
+
+        if result == csv::WriteResult::OutputFull {
+            return Err(Error::Overflow);
+        }
+
+        let (result, n) = writer.finish(&mut output[nwritten..]);
         nwritten += n;
 
         if result == csv::WriteResult::OutputFull {

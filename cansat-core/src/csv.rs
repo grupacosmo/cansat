@@ -6,11 +6,17 @@ pub trait Write {
     fn write(&self, writer: &mut Writer, out: &mut [u8]) -> (WriteResult, usize, usize);
 }
 
+impl Write for &[u8] {
+    fn write(&self, writer: &mut Writer, out: &mut [u8]) -> (WriteResult, usize, usize) {
+        writer.field(self, out)
+    }
+}
+
 impl Write for f32 {
     fn write(&self, writer: &mut Writer, out: &mut [u8]) -> (WriteResult, usize, usize) {
         let mut buf = ryu::Buffer::new();
         let f = buf.format(*self);
-        writer.field(f.as_bytes(), out)
+        f.as_bytes().write(writer, out)
     }
 }
 
@@ -18,7 +24,7 @@ impl Write for f64 {
     fn write(&self, writer: &mut Writer, out: &mut [u8]) -> (WriteResult, usize, usize) {
         let mut buf = ryu::Buffer::new();
         let f = buf.format(*self);
-        writer.field(f.as_bytes(), out)
+        f.as_bytes().write(writer, out)
     }
 }
 
@@ -44,49 +50,70 @@ impl Write for Measurements {
             return (r, consumed, written);
         }
 
-        let (r, w) = writer.delimiter(out);
+        let (r, w) = writer.delimiter(&mut out[written..]);
         written += w;
         if let WriteResult::OutputFull = r {
             return (r, consumed, written);
         }
 
-        let (r, c, w) = self.pressure.map(|x| x.as_pascals()).write(writer, out);
+        let (r, c, w) = self
+            .pressure
+            .map(|x| x.as_pascals())
+            .write(writer, &mut out[written..]);
         consumed += c;
         written += w;
         if let WriteResult::OutputFull = r {
             return (r, consumed, written);
         }
 
-        let (r, w) = writer.delimiter(out);
+        let (r, w) = writer.delimiter(&mut out[written..]);
         written += w;
         if let WriteResult::OutputFull = r {
             return (r, consumed, written);
         }
 
-        let (r, c, w) = self.altitude.map(|x| x.as_meters()).write(writer, out);
+        let (r, c, w) = self
+            .altitude
+            .map(|x| x.as_meters())
+            .write(writer, &mut out[written..]);
         consumed += c;
         written += w;
         if let WriteResult::OutputFull = r {
             return (r, consumed, written);
         }
 
-        let (r, w) = writer.delimiter(out);
+        let (r, w) = writer.delimiter(&mut out[written..]);
         written += w;
         if let WriteResult::OutputFull = r {
             return (r, consumed, written);
         }
 
-        if let Some(nmea) = &self.nmea {
-            let (r, c, w) = writer.field(nmea, out);
-            consumed += c;
-            written += w;
-            if let WriteResult::OutputFull = r {
-                return (r, consumed, written);
-            }
+        let (r, c, w) = self.nmea.as_deref().write(writer, &mut out[written..]);
+        consumed += c;
+        written += w;
+        if let WriteResult::OutputFull = r {
+            return (r, consumed, written);
         }
 
-        // TODO:
-        // write acceleration and orientation
+        let (r, w) = writer.delimiter(&mut out[written..]);
+        written += w;
+        if let WriteResult::OutputFull = r {
+            return (r, consumed, written);
+        }
+
+        if self.acceleration.is_some() {
+            todo!("write acceleration");
+        }
+
+        let (r, w) = writer.delimiter(&mut out[written..]);
+        written += w;
+        if let WriteResult::OutputFull = r {
+            return (r, consumed, written);
+        }
+
+        if self.orientation.is_some() {
+            todo!("write orientation");
+        }
 
         (WriteResult::InputEmpty, consumed, written)
     }
