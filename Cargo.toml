@@ -1,8 +1,8 @@
 [workspace]
 members = [
-    "cansat-core",
-    "cansat-gps",
-    "cansat-stm32f4",
-    "cansat-test-utils",
+    "crates/cansat-core",
+    "crates/cansat-gps",
+    "crates/cansat-stm32f4",
+    "crates/cansat-test-utils",
     "xtask"
 ]
