@@ -135,6 +135,29 @@
 <a href="#135" id="135">135</a>
 <a href="#136" id="136">136</a>
 <a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
+<a href="#147" id="147">147</a>
+<a href="#148" id="148">148</a>
+<a href="#149" id="149">149</a>
+<a href="#150" id="150">150</a>
+<a href="#151" id="151">151</a>
+<a href="#152" id="152">152</a>
+<a href="#153" id="153">153</a>
+<a href="#154" id="154">154</a>
+<a href="#155" id="155">155</a>
+<a href="#156" id="156">156</a>
+<a href="#157" id="157">157</a>
+<a href="#158" id="158">158</a>
+<a href="#159" id="159">159</a>
+<a href="#160" id="160">160</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Custom commands for cargo.
 //!
 //! See [cargo-xtask](https://github.com/matklad/cargo-xtask) for details.
@@ -157,11 +180,14 @@
 
 <span class="attr">#[derive(Subcommand)]
 </span><span class="kw">enum </span>Cmd {
-    <span class="doccomment">/// Run `cargo embed` on a specified package
+    <span class="doccomment">/// Run `cargo embed` on a default or specified package
     </span><span class="attr">#[clap(visible_alias = <span class="string">&quot;e&quot;</span>)]
     </span>Embed {
-        <span class="doccomment">/// Package name
-        </span>pkg_name: String,
+        <span class="doccomment">/// Path to the package
+        ///
+        /// If not provided a default specified in XTASK_EMBED_DEFAULT env variable will be used.
+        </span><span class="attr">#[arg(short, long)]
+        </span>pkg_name: <span class="prelude-ty">Option</span>&lt;String&gt;,
         <span class="doccomment">/// Arguments for `cargo embed`
         </span>args: Vec&lt;String&gt;,
     },
@@ -184,11 +210,24 @@
 <span class="kw">fn </span>run() -&gt; eyre::Result&lt;()&gt; {
     <span class="kw">let </span>cli = Cli::parse();
     <span class="kw">match </span>cli.cmd {
-        Cmd::Embed { pkg_name, args } =&gt; {
+        Cmd::Embed {
+            pkg_name: pkg_path,
+            args,
+        } =&gt; {
+            <span class="kw">let </span>default = <span class="kw">match </span>env::var(<span class="string">&quot;XTASK_EMBED_DEFAULT&quot;</span>) {
+                <span class="prelude-val">Ok</span>(v) =&gt; <span class="prelude-val">Some</span>(v),
+                <span class="prelude-val">Err</span>(env::VarError::NotPresent) =&gt; <span class="prelude-val">None</span>,
+                <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">bail!</span>(e),
+            };
+            <span class="kw">let </span>dir = pkg_path.or(default).ok_or(<span class="macro">eyre!</span>(
+                <span class="string">&quot;No pkg to run.\
+                 Either pass the path to the crate with `-p &lt;path&gt;` option, \
+                 or define XTASK_EMBED_DEFAULT env variable.&quot;
+            </span>))<span class="question-mark">?</span>;
             Command::new(<span class="string">&quot;cargo&quot;</span>)
                 .arg(<span class="string">&quot;embed&quot;</span>)
                 .args(<span class="kw-2">&amp;</span>args)
-                .current_dir(<span class="kw-2">&amp;</span>pkg_name)
+                .current_dir(<span class="kw-2">&amp;</span>dir)
                 .status()<span class="question-mark">?</span>;
         }
         Cmd::Build { args } =&gt; {
@@ -214,8 +253,15 @@
             }
         }
         Cmd::Test { args } =&gt; {
-            <span class="kw">let </span>excluded = env::var(<span class="string">&quot;XTASK_TEST_EXCLUDE&quot;</span>).unwrap_or_else(|<span class="kw">_</span>| <span class="string">&quot;&quot;</span>.to_owned());
-            <span class="kw">let </span>excluded: Vec&lt;<span class="kw">_</span>&gt; = excluded.split(<span class="string">&#39;,&#39;</span>).collect();
+            <span class="kw">let </span>excluded = <span class="kw">match </span>env::var(<span class="string">&quot;XTASK_TEST_EXCLUDE&quot;</span>) {
+                <span class="prelude-val">Ok</span>(v) =&gt; <span class="prelude-val">Some</span>(v),
+                <span class="prelude-val">Err</span>(env::VarError::NotPresent) =&gt; <span class="prelude-val">None</span>,
+                <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">bail!</span>(e),
+            };
+            <span class="kw">let </span>excluded: Vec&lt;<span class="kw">_</span>&gt; = excluded
+                .as_ref()
+                .map(|s| s.split(<span class="string">&#39;,&#39;</span>).collect())
+                .unwrap_or_default();
             <span class="kw">let </span>members = workspace_members()<span class="question-mark">?</span>;
             <span class="kw">let </span>members = members.iter().filter(|m| !excluded.contains(<span class="kw-2">&amp;</span>m.as_str()));
             <span class="kw">for </span>member <span class="kw">in </span>members {
