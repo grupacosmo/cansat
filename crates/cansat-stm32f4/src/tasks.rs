@@ -1,7 +1,6 @@
 use crate::app;
 use accelerometer::RawAccelerometer;
 use cansat_core::{
-    csv,
     quantity::{Pressure, Temperature},
     Measurements,
 };
@@ -13,7 +12,7 @@ pub fn idle(mut ctx: app::idle::Context) -> ! {
         let measurements = read_measurements(&mut ctx);
 
         let mut buf = [0; 1024];
-        let nwritten = match csv::to_byte_record(&measurements, &mut buf) {
+        let nwritten = match serde_csv_core::to_byte_slice(&measurements, &mut buf) {
             Ok(n) => n,
             Err(e) => {
                 defmt::error!(

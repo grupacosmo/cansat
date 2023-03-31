@@ -2,56 +2,15 @@
 #![deny(unsafe_code)]
 #![no_std]
 
-pub mod csv;
+pub mod measurements;
 pub mod quantity;
 
-use accelerometer::vector;
-use heapless::Vec;
+pub use measurements::Measurements;
+
 use quantity::{Angle, Distance, Pressure, Temperature};
 
 const SEA_LVL_PRESSURE: Pressure = Pressure::from_pascals(101300.25);
 const GRAVITATIONAL_CONST: f32 = 0.0065;
-
-#[derive(Default)]
-pub struct Measurements {
-    pub temperature: Option<Temperature>,
-    pub pressure: Option<Pressure>,
-    pub altitude: Option<Distance>,
-    pub nmea: Option<Vec<u8, 82>>,
-    pub acceleration: Option<vector::I16x3>,
-    pub orientation: Option<accelerometer::Orientation>,
-}
-
-impl csv::Write for Measurements {
-    fn write(&self, writer: &mut csv::Writer, out: &mut [u8]) -> Result<usize, csv::Error> {
-        let mut nwritten = 0;
-        let temperature = self.temperature.map(|x| x.as_celsius());
-        nwritten += temperature.write(writer, out)?;
-        nwritten += writer.delimiter(&mut out[nwritten..])?;
-
-        let pressure = self.pressure.map(|x| x.as_pascals());
-        nwritten += pressure.write(writer, &mut out[nwritten..])?;
-        nwritten += writer.delimiter(&mut out[nwritten..])?;
-
-        let altitude = self.altitude.map(|x| x.as_meters());
-        nwritten += altitude.write(writer, &mut out[nwritten..])?;
-        nwritten += writer.delimiter(&mut out[nwritten..])?;
-
-        nwritten += self.nmea.as_deref().write(writer, &mut out[nwritten..])?;
-        nwritten += writer.delimiter(&mut out[nwritten..])?;
-
-        if self.acceleration.is_some() {
-            todo!("write acceleration");
-        }
-        nwritten += writer.delimiter(&mut out[nwritten..])?;
-
-        if self.orientation.is_some() {
-            todo!("write orientation");
-        }
-
-        Ok(nwritten)
-    }
-}
 
 // TODO: make it weather dependent
 pub fn calculate_altitude(pressure: Pressure) -> Distance {

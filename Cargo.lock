@@ -105,11 +105,11 @@ name = "cansat-core"
 version = "0.1.0"
 dependencies = [
  "accelerometer",
- "csv-core",
  "derive_more",
  "heapless",
  "libm",
  "ryu",
+ "serde",
 ]
 
 [[package]]
@@ -140,6 +140,7 @@ dependencies = [
  "lis3dh",
  "once_cell",
  "panic-probe",
+ "serde-csv-core",
  "shared-bus",
  "stm32f4xx-hal",
 ]
@@ -526,6 +527,7 @@ dependencies = [
  "defmt",
  "hash32",
  "rustc_version 0.4.0",
+ "serde",
  "spin",
  "stable_deref_trait",
 ]
@@ -591,6 +593,12 @@ dependencies = [
  "rustix",
  "windows-sys",
 ]
+
+[[package]]
+name = "itoa"
+version = "1.0.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "453ad9f582a441959e5f0d088b02ce04cfe8d51a8eaf077f12ac6d3e94164ca6"
 
 [[package]]
 name = "lazy_static"
@@ -883,6 +891,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3c04e8343c3daeec41f58990b9d77068df31209f2af111e059e9fe9646693065"
 dependencies = [
  "serde_derive",
+]
+
+[[package]]
+name = "serde-csv-core"
+version = "0.1.0"
+source = "git+https://github.com/grupacosmo/serde-csv-core#8ed69a425e5b3334ecb4a42e6c92b9461fc1c966"
+dependencies = [
+ "csv-core",
+ "itoa",
+ "ryu",
+ "serde",
 ]
 
 [[package]]
