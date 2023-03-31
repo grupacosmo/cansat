@@ -14,10 +14,16 @@ rustup target add thumbv7em-none-eabihf
 ```
 
 ## xtask
-[cargo-xtask](https://github.com/matklad/cargo-xtask) is a way of extending `cargo` with user-defined workflows. 
+[cargo-xtask](https://github.com/matklad/cargo-xtask) is a way of extending `cargo` with user-defined workflows.
+
+Run the following commands for a quick rundown:
 ```
 cargo xtask --help
+
+cargo xtask embed --help
 ```
+
+All workflows are implemented in the `xtask/` directory.
 
 ## Build
 ```
