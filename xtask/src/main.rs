@@ -20,11 +20,14 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Cmd {
-    /// Run `cargo embed` on a specified package
+    /// Run `cargo embed` on a default or specified package
     #[clap(visible_alias = "e")]
     Embed {
-        /// Package name
-        pkg_name: String,
+        /// Path to the package
+        ///
+        /// If not provided a default specified in XTASK_EMBED_DEFAULT env variable will be used.
+        #[arg(short, long)]
+        pkg_name: Option<String>,
         /// Arguments for `cargo embed`
         args: Vec<String>,
     },
@@ -47,11 +50,24 @@ enum Cmd {
 fn run() -> eyre::Result<()> {
     let cli = Cli::parse();
     match cli.cmd {
-        Cmd::Embed { pkg_name, args } => {
+        Cmd::Embed {
+            pkg_name: pkg_path,
+            args,
+        } => {
+            let default = match env::var("XTASK_EMBED_DEFAULT") {
+                Ok(v) => Some(v),
+                Err(env::VarError::NotPresent) => None,
+                Err(e) => bail!(e),
+            };
+            let dir = pkg_path.or(default).ok_or(eyre!(
+                "No pkg to run.\
+                 Either pass the path to the crate with `-p <path>` option, \
+                 or define XTASK_EMBED_DEFAULT env variable."
+            ))?;
             Command::new("cargo")
                 .arg("embed")
                 .args(&args)
-                .current_dir(&pkg_name)
+                .current_dir(&dir)
                 .status()?;
         }
         Cmd::Build { args } => {
@@ -77,8 +93,15 @@ fn run() -> eyre::Result<()> {
             }
         }
         Cmd::Test { args } => {
-            let excluded = env::var("XTASK_TEST_EXCLUDE").unwrap_or_else(|_| "".to_owned());
-            let excluded: Vec<_> = excluded.split(',').collect();
+            let excluded = match env::var("XTASK_TEST_EXCLUDE") {
+                Ok(v) => Some(v),
+                Err(env::VarError::NotPresent) => None,
+                Err(e) => bail!(e),
+            };
+            let excluded: Vec<_> = excluded
+                .as_ref()
+                .map(|s| s.split(',').collect())
+                .unwrap_or_default();
             let members = workspace_members()?;
             let members = members.iter().filter(|m| !excluded.contains(&m.as_str()));
             for member in members {

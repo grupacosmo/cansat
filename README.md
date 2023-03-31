@@ -14,10 +14,16 @@ rustup target add thumbv7em-none-eabihf
 ```
 
 ## xtask
-[cargo-xtask](https://github.com/matklad/cargo-xtask) is a way of extending `cargo` with user-defined workflows. 
+[cargo-xtask](https://github.com/matklad/cargo-xtask) is a way of extending `cargo` with user-defined workflows.
+
+Run the following commands for a quick rundown:
 ```
 cargo xtask --help
+
+cargo xtask embed --help
 ```
+
+All workflows are implemented in the `xtask/` directory.
 
 ## Build
 ```
@@ -26,7 +32,12 @@ cargo xtask build
 
 ## Run
 ```bash
-cargo xtask embed cansat-stm32f4
+# Runs default (crates/cansat-stm32f4) crate
+# The default can be overriden with XTASK_EMBED_DEFAUL env variable
+cargo xtask embed
+
+# You can also specify the crate to run manually
+cargo xtask embed -p crates/cansat-stm32f4
 ```
 
 ## Log filters
@@ -34,11 +45,11 @@ You can specify log levels using `DEFMT_LOG` environment variable.
 
 Bash
 ```
-DEFMT_LOG=debug cargo xtask embed cansat-stm32f446
+DEFMT_LOG=debug cargo xtask embed crates/cansat-stm32f446
 ```
 
 Powershell
 ```
-$env:DEFMT_LOG=debug; cargo xtask embed cansat-stm32f446
+$env:DEFMT_LOG=debug; cargo xtask embed crates/cansat-stm32f446
 ```
 See https://defmt.ferrous-systems.com/filtering.html for details.
