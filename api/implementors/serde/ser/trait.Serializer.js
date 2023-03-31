@@ -1,3 +1,0 @@
-(function() {var implementors = {
-"serde_csv_core":[["impl&lt;'ser, 'out&gt; <a class=\"trait\" href=\"https://docs.rs/serde/1.0.159/serde/ser/trait.Serializer.html\" title=\"trait serde::ser::Serializer\">Serializer</a> for &amp;'ser mut <a class=\"struct\" href=\"serde_csv_core/serializer/struct.Serializer.html\" title=\"struct serde_csv_core::serializer::Serializer\">Serializer</a>&lt;'out&gt;"]]
-};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()
