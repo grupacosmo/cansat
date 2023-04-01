@@ -107,6 +107,7 @@ dependencies = [
  "accelerometer",
  "derive_more",
  "heapless",
+ "heapless-bytes",
  "libm",
  "ryu",
  "serde",
@@ -533,6 +534,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "heapless-bytes"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7285eba272c6af3e9f15fb9e1c1b6e7d35aa70580ffe0d47af017e97dfb6f48b"
+dependencies = [
+ "heapless",
+ "serde",
+ "typenum",
+]
+
+[[package]]
 name = "heck"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -896,7 +908,7 @@ dependencies = [
 [[package]]
 name = "serde-csv-core"
 version = "0.1.0"
-source = "git+https://github.com/grupacosmo/serde-csv-core#8ed69a425e5b3334ecb4a42e6c92b9461fc1c966"
+source = "git+https://github.com/grupacosmo/serde-csv-core?rev=907e723#907e723a958ef94e982a9a8afaf66429f042ccca"
 dependencies = [
  "csv-core",
  "itoa",

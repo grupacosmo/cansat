@@ -1,6 +1,6 @@
 use crate::quantity::{Distance, Pressure, Temperature};
 use accelerometer::{vector, Orientation};
-use heapless::Vec;
+use heapless_bytes::Bytes;
 use serde::Serialize;
 
 #[derive(Default, serde::Serialize)]
@@ -14,7 +14,7 @@ pub struct Measurements {
     #[serde(serialize_with = "option_distance_meters")]
     pub altitude: Option<Distance>,
 
-    pub nmea: Option<Vec<u8, 82>>,
+    pub nmea: Option<Bytes<82>>,
 
     #[serde(serialize_with = "option_vector_i16x3")]
     pub acceleration: Option<vector::I16x3>,

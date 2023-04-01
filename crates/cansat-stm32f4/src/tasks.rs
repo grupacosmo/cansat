@@ -12,7 +12,7 @@ pub fn idle(mut ctx: app::idle::Context) -> ! {
         let measurements = read_measurements(&mut ctx);
 
         let mut buf = [0; 1024];
-        let nwritten = match serde_csv_core::to_byte_slice(&measurements, &mut buf) {
+        let nwritten = match serde_csv_core::to_slice(&measurements, &mut buf) {
             Ok(n) => n,
             Err(e) => {
                 defmt::error!(
@@ -44,10 +44,10 @@ fn read_measurements(ctx: &mut app::idle::Context) -> Measurements {
             let altitude = cansat_core::calculate_altitude(Pressure::from_pascals(m.pressure));
 
             defmt::info!(
-                "Temperature: {}°C\r\nPressure: {}hPa\r\nAltitude: {}km",
+                "Temperature: {}°C, Pressure: {}hPa, Altitude: {}m",
                 temperature.as_celsius(),
                 pressure.as_hectos(),
-                altitude.as_kilos()
+                altitude.as_meters()
             );
 
             data.temperature = Some(temperature);
@@ -62,9 +62,11 @@ fn read_measurements(ctx: &mut app::idle::Context) -> Measurements {
         }
     };
 
-    if let Some(nmea) = gps.lock(|gps| gps.last_nmea()) {
+    if let Some(mut nmea) = gps.lock(|gps| gps.last_nmea()) {
+        let clrf_len = 2;
+        nmea.truncate(nmea.len().saturating_sub(clrf_len));
         defmt::info!("NMEA: {=[u8]:a}", &nmea);
-        data.nmea = Some(nmea);
+        data.nmea = Some(nmea.into());
     }
 
     match i2c1_devices.lis3dh.accel_raw() {
@@ -72,7 +74,7 @@ fn read_measurements(ctx: &mut app::idle::Context) -> Measurements {
             let orientation = tracker.update(accel);
 
             defmt::info!(
-                "Acceleration: {}, {}, {}\r\nOrientation: {}",
+                "Acceleration: ({}, {}, {}), Orientation: {}",
                 accel.x,
                 accel.y,
                 accel.z,
