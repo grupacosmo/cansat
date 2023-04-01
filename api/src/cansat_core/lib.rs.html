@@ -43,11 +43,17 @@
 <a href="#43" id="43">43</a>
 <a href="#44" id="44">44</a>
 <a href="#45" id="45">45</a>
+<a href="#46" id="46">46</a>
+<a href="#47" id="47">47</a>
+<a href="#48" id="48">48</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Platform agnostic library for cansat.
 </span><span class="attr">#![deny(unsafe_code)]
 #![no_std]
 
-</span><span class="kw">pub mod </span>quantity;
+</span><span class="kw">pub mod </span>measurements;
+<span class="kw">pub mod </span>quantity;
+
+<span class="kw">pub use </span>measurements::Measurements;
 
 <span class="kw">use </span>quantity::{Angle, Distance, Pressure, Temperature};
 

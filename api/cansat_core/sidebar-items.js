@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":[["calculate_altitude",""],["calculate_altitude_with_temperature",""],["pitch","Aircraft pitch rotation."],["roll","Aircraft roll rotation."]],"mod":[["quantity",""]]};
+window.SIDEBAR_ITEMS = {"fn":[["calculate_altitude",""],["calculate_altitude_with_temperature",""],["pitch","Aircraft pitch rotation."],["roll","Aircraft roll rotation."]],"mod":[["measurements",""],["quantity",""]]};
