@@ -4,6 +4,7 @@ use cansat_core::{
     quantity::{Pressure, Temperature},
     Measurements,
 };
+use heapless::Vec;
 use rtic::Mutex;
 use stm32f4xx_hal::prelude::*;
 
@@ -11,9 +12,8 @@ pub fn idle(mut ctx: app::idle::Context) -> ! {
     loop {
         let measurements = read_measurements(&mut ctx);
 
-        let mut buf = [0; 1024];
-        let nwritten = match serde_csv_core::to_slice(&measurements, &mut buf) {
-            Ok(n) => n,
+        let csv_record: Vec<u8, 1024> = match serde_csv_core::to_vec(&measurements) {
+            Ok(r) => r,
             Err(e) => {
                 defmt::error!(
                     "Failed to create csv byte record {}",
@@ -22,10 +22,9 @@ pub fn idle(mut ctx: app::idle::Context) -> ! {
                 continue;
             }
         };
-        let csv_record = &buf[..nwritten];
 
         let sd_logger = &mut ctx.local.sd_logger;
-        sd_logger.write(csv_record).unwrap();
+        sd_logger.write(&csv_record).unwrap();
     }
 }
 

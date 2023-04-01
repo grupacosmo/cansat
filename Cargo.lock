@@ -908,9 +908,10 @@ dependencies = [
 [[package]]
 name = "serde-csv-core"
 version = "0.1.0"
-source = "git+https://github.com/grupacosmo/serde-csv-core?rev=907e723#907e723a958ef94e982a9a8afaf66429f042ccca"
+source = "git+https://github.com/grupacosmo/serde-csv-core?rev=366ca52#366ca52e767c9bbbf2341fc06bba6f34c7b32b7f"
 dependencies = [
  "csv-core",
+ "heapless",
  "itoa",
  "ryu",
  "serde",
