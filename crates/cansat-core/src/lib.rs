@@ -2,7 +2,10 @@
 #![deny(unsafe_code)]
 #![no_std]
 
+pub mod measurements;
 pub mod quantity;
+
+pub use measurements::Measurements;
 
 use quantity::{Angle, Distance, Pressure, Temperature};
 

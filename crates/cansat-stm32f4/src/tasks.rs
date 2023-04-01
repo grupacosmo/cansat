@@ -1,50 +1,95 @@
 use crate::app;
 use accelerometer::RawAccelerometer;
-use cansat_core::quantity::{Pressure, Temperature};
+use cansat_core::{
+    quantity::{Pressure, Temperature},
+    Measurements,
+};
 use rtic::Mutex;
 use stm32f4xx_hal::prelude::*;
 
-pub fn idle(ctx: app::idle::Context) -> ! {
-    let i2c1_devices = ctx.local.i2c1_devices;
-    let delay = ctx.local.delay;
-    let sd_logger = ctx.local.sd_logger;
-    let mut gps = ctx.shared.gps;
-    let tracker = ctx.local.tracker;
-
+pub fn idle(mut ctx: app::idle::Context) -> ! {
     loop {
-        match i2c1_devices.bme280.measure(delay) {
-            Ok(m) => {
-                let temperature = Temperature::from_celsius(m.temperature);
-                let pressure = Pressure::from_pascals(m.pressure);
+        let measurements = read_measurements(&mut ctx);
 
-                let altitude = cansat_core::calculate_altitude(pressure);
-
-                defmt::info!("Altitude = {} meters above sea level", altitude.as_meters());
-                defmt::info!("Relative Humidity = {}%", m.humidity);
-                defmt::info!("Temperature = {} deg C", temperature.as_celsius());
-                defmt::info!("Pressure = {} hPa", pressure.as_hectos());
-            }
+        let mut buf = [0; 1024];
+        let nwritten = match serde_csv_core::to_slice(&measurements, &mut buf) {
+            Ok(n) => n,
             Err(e) => {
                 defmt::error!(
-                    "Could not read bme280 measurements: {}",
+                    "Failed to create csv byte record {}",
                     defmt::Debug2Format(&e)
                 );
+                continue;
             }
         };
+        let csv_record = &buf[..nwritten];
 
-        if let Some(msg) = gps.lock(|gps| gps.last_nmea()) {
-            defmt::info!("GPS: {=[u8]:a}", &msg);
-            let _ = sd_logger.write(&msg);
-        }
-
-        let accel = i2c1_devices.lis3dh.accel_raw().unwrap();
-        let orientation = tracker.update(accel);
-        defmt::info!("Accelerometer vector {:?}", defmt::Debug2Format(&accel));
-        defmt::info!(
-            "Predicted position: {:?}",
-            defmt::Debug2Format(&orientation)
-        );
+        let sd_logger = &mut ctx.local.sd_logger;
+        sd_logger.write(csv_record).unwrap();
     }
+}
+
+fn read_measurements(ctx: &mut app::idle::Context) -> Measurements {
+    let i2c1_devices = &mut ctx.local.i2c1_devices;
+    let delay = &mut ctx.local.delay;
+    let gps = &mut ctx.shared.gps;
+    let tracker = &mut ctx.local.tracker;
+
+    let mut data = Measurements::default();
+
+    match i2c1_devices.bme280.measure(delay) {
+        Ok(m) => {
+            let temperature = Temperature::from_celsius(m.temperature);
+            let pressure = Pressure::from_pascals(m.pressure);
+            let altitude = cansat_core::calculate_altitude(Pressure::from_pascals(m.pressure));
+
+            defmt::info!(
+                "Temperature: {}°C, Pressure: {}hPa, Altitude: {}m",
+                temperature.as_celsius(),
+                pressure.as_hectos(),
+                altitude.as_meters()
+            );
+
+            data.temperature = Some(temperature);
+            data.pressure = Some(pressure);
+            data.altitude = Some(altitude);
+        }
+        Err(e) => {
+            defmt::error!(
+                "Could not read bme280 measurements: {}",
+                defmt::Debug2Format(&e)
+            );
+        }
+    };
+
+    if let Some(mut nmea) = gps.lock(|gps| gps.last_nmea()) {
+        let clrf_len = 2;
+        nmea.truncate(nmea.len().saturating_sub(clrf_len));
+        defmt::info!("NMEA: {=[u8]:a}", &nmea);
+        data.nmea = Some(nmea.into());
+    }
+
+    match i2c1_devices.lis3dh.accel_raw() {
+        Ok(accel) => {
+            let orientation = tracker.update(accel);
+
+            defmt::info!(
+                "Acceleration: ({}, {}, {}), Orientation: {}",
+                accel.x,
+                accel.y,
+                accel.z,
+                defmt::Debug2Format(&orientation)
+            );
+
+            data.acceleration = Some(accel);
+            data.orientation = Some(orientation);
+        }
+        Err(e) => {
+            defmt::error!("Could not read acceleration: {}", defmt::Debug2Format(&e));
+        }
+    }
+
+    data
 }
 
 /// USART3 interrupt handler that reads data into the gps working buffer
