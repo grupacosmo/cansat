@@ -109,13 +109,13 @@
 <a href="#109" id="109">109</a>
 <a href="#110" id="110">110</a>
 <a href="#111" id="111">111</a>
-<a href="#112" id="112">112</a>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::app;
 <span class="kw">use </span>accelerometer::RawAccelerometer;
 <span class="kw">use </span>cansat_core::{
     quantity::{Pressure, Temperature},
     Measurements,
 };
+<span class="kw">use </span>heapless::Vec;
 <span class="kw">use </span>rtic::Mutex;
 <span class="kw">use </span>stm32f4xx_hal::prelude::<span class="kw-2">*</span>;
 
@@ -123,9 +123,8 @@
     <span class="kw">loop </span>{
         <span class="kw">let </span>measurements = read_measurements(<span class="kw-2">&amp;mut </span>ctx);
 
-        <span class="kw">let </span><span class="kw-2">mut </span>buf = [<span class="number">0</span>; <span class="number">1024</span>];
-        <span class="kw">let </span>nwritten = <span class="kw">match </span>serde_csv_core::to_slice(<span class="kw-2">&amp;</span>measurements, <span class="kw-2">&amp;mut </span>buf) {
-            <span class="prelude-val">Ok</span>(n) =&gt; n,
+        <span class="kw">let </span>csv_record: Vec&lt;u8, <span class="number">1024</span>&gt; = <span class="kw">match </span>serde_csv_core::to_vec(<span class="kw-2">&amp;</span>measurements) {
+            <span class="prelude-val">Ok</span>(r) =&gt; r,
             <span class="prelude-val">Err</span>(e) =&gt; {
                 <span class="macro">defmt::error!</span>(
                     <span class="string">&quot;Failed to create csv byte record {}&quot;</span>,
@@ -134,10 +133,9 @@
                 <span class="kw">continue</span>;
             }
         };
-        <span class="kw">let </span>csv_record = <span class="kw-2">&amp;</span>buf[..nwritten];
 
         <span class="kw">let </span>sd_logger = <span class="kw-2">&amp;mut </span>ctx.local.sd_logger;
-        sd_logger.write(csv_record).unwrap();
+        sd_logger.write(<span class="kw-2">&amp;</span>csv_record).unwrap();
     }
 }
 
