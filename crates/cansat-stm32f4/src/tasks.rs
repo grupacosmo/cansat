@@ -12,7 +12,8 @@ pub fn idle(mut ctx: app::idle::Context) -> ! {
     loop {
         let measurements = read_measurements(&mut ctx);
 
-        let csv_record: Vec<u8, 1024> = match serde_csv_core::to_vec(&measurements) {
+        let mut writer = csv_core::Writer::new();
+        let csv_record: Vec<u8, 1024> = match serde_csv_core::to_vec(&mut writer, &measurements) {
             Ok(r) => r,
             Err(e) => {
                 defmt::error!(

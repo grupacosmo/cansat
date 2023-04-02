@@ -134,6 +134,7 @@ dependencies = [
  "cortex-m 0.7.7",
  "cortex-m-rt",
  "cortex-m-rtic",
+ "csv-core",
  "defmt",
  "defmt-rtt",
  "embedded-sdmmc",
@@ -908,7 +909,8 @@ dependencies = [
 [[package]]
 name = "serde-csv-core"
 version = "0.1.0"
-source = "git+https://github.com/grupacosmo/serde-csv-core?rev=366ca52#366ca52e767c9bbbf2341fc06bba6f34c7b32b7f"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2660cf720c97366b02a7806e47ee192783dc178cff25c9b9362239fccc5b76c4"
 dependencies = [
  "csv-core",
  "heapless",
