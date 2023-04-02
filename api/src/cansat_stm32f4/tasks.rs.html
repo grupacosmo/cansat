@@ -110,6 +110,7 @@
 <a href="#110" id="110">110</a>
 <a href="#111" id="111">111</a>
 <a href="#112" id="112">112</a>
+<a href="#113" id="113">113</a>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::app;
 <span class="kw">use </span>accelerometer::RawAccelerometer;
 <span class="kw">use </span>cansat_core::{
@@ -121,16 +122,17 @@
 <span class="kw">use </span>stm32f4xx_hal::prelude::<span class="kw-2">*</span>;
 
 <span class="kw">pub fn </span>idle(<span class="kw-2">mut </span>ctx: app::idle::Context) -&gt; ! {
+    <span class="kw">let </span><span class="kw-2">mut </span>writer = csv_core::Writer::new();
+
     <span class="kw">loop </span>{
         <span class="kw">let </span>measurements = read_measurements(<span class="kw-2">&amp;mut </span>ctx);
 
-        <span class="kw">let </span><span class="kw-2">mut </span>writer = csv_core::Writer::new();
         <span class="kw">let </span>csv_record: Vec&lt;u8, <span class="number">1024</span>&gt; = <span class="kw">match </span>serde_csv_core::to_vec(<span class="kw-2">&amp;mut </span>writer, <span class="kw-2">&amp;</span>measurements) {
             <span class="prelude-val">Ok</span>(r) =&gt; r,
             <span class="prelude-val">Err</span>(e) =&gt; {
                 <span class="macro">defmt::error!</span>(
-                    <span class="string">&quot;Failed to create csv byte record {}&quot;</span>,
-                    defmt::Debug2Format(<span class="kw-2">&amp;</span>e)
+                    <span class="string">&quot;Failed to create csv byte record: {}&quot;</span>,
+                    defmt::Display2Format(<span class="kw-2">&amp;</span>e)
                 );
                 <span class="kw">continue</span>;
             }
