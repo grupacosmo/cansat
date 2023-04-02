@@ -9,16 +9,17 @@ use rtic::Mutex;
 use stm32f4xx_hal::prelude::*;
 
 pub fn idle(mut ctx: app::idle::Context) -> ! {
+    let mut writer = csv_core::Writer::new();
+
     loop {
         let measurements = read_measurements(&mut ctx);
 
-        let mut writer = csv_core::Writer::new();
         let csv_record: Vec<u8, 1024> = match serde_csv_core::to_vec(&mut writer, &measurements) {
             Ok(r) => r,
             Err(e) => {
                 defmt::error!(
-                    "Failed to create csv byte record {}",
-                    defmt::Debug2Format(&e)
+                    "Failed to create csv byte record: {}",
+                    defmt::Display2Format(&e)
                 );
                 continue;
             }
