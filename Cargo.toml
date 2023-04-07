@@ -4,5 +4,6 @@ members = [
     "crates/cansat-gps",
     "crates/cansat-stm32f4",
     "crates/cansat-test-utils",
+    "crates/cansat-lora",
     "xtask"
 ]

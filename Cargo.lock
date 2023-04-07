@@ -124,6 +124,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "cansat-lora"
+version = "0.1.0"
+dependencies = [
+ "embedded-hal 1.0.0-alpha.8",
+ "heapless",
+]
+
+[[package]]
 name = "cansat-stm32f4"
 version = "0.1.0"
 dependencies = [
@@ -131,6 +139,7 @@ dependencies = [
  "bme280",
  "cansat-core",
  "cansat-gps",
+ "cansat-lora",
  "cortex-m 0.7.7",
  "cortex-m-rt",
  "cortex-m-rtic",

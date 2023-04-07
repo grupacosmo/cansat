@@ -11,6 +11,7 @@ default = []
 [dependencies]
 cansat-core = { path = "../cansat-core" }
 cansat-gps = { path = "../cansat-gps" }
+cansat-lora = { path = "../cansat-lora" }
 cortex-m = { version = "0.7.6", features = ["critical-section-single-core"] }
 cortex-m-rt = "0.7.2"
 cortex-m-rtic = "1.1.3"

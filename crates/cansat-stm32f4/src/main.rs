@@ -9,7 +9,7 @@ mod startup;
 mod tasks;
 
 pub use sd_logger::SdLogger;
-pub use startup::{Bme280, Delay, Gps, I2c1Devices, Led, Monotonic, SdmmcController};
+pub use startup::{Bme280, Delay, Gps, I2c1Devices, Led, Lora, Monotonic, SdmmcController};
 
 use defmt_rtt as _;
 use panic_probe as _;
@@ -31,6 +31,7 @@ mod app {
         sd_logger: SdLogger,
         tracker: accelerometer::Tracker,
         i2c1_devices: I2c1Devices,
+        lora: Lora,
     }
 
     #[monotonic(binds = TIM2, default = true)]
@@ -52,6 +53,7 @@ mod app {
             sd_logger: cansat.sd_logger,
             tracker: cansat.tracker,
             i2c1_devices: cansat.i2c1_devices,
+            lora: cansat.lora,
         };
         let monotonics = init::Monotonics(cansat.monotonic);
 
