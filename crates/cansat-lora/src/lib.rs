@@ -39,7 +39,7 @@ where
             let b = nb::block!(self.serial.read()).map_err(Error::Serial)?;
 
             buffer[ptr] = b;
-            ptr += 1; // (ptr + 1) % buffer.len();
+            ptr = (ptr + 1) % buffer.len();
 
             let response_end = buffer.ends_with(b"\r\n");
             if response_end {
