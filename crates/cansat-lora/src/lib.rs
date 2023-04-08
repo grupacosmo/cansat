@@ -6,8 +6,9 @@ pub enum Error<SerialError>
 where
     SerialError: serial::Error,
 {
-    Serial(SerialError),
     Delay,
+    ResponseError,
+    Serial(SerialError),
     Overflow(u8),
 }
 
@@ -23,6 +24,32 @@ where
         Self { serial }
     }
 
+    fn write_all(&mut self, cmd: &[u8]) -> Result<(), Error<Serial::Error>> {
+        for &b in cmd {
+            nb::block!(self.serial.write(b)).map_err(Error::Serial)?;
+        }
+
+        Ok(())
+    }
+
+    fn read_all(&mut self, buffer: &mut [u8]) -> Result<usize, Error<Serial::Error>> {
+        let mut ptr = 0;
+
+        loop {
+            let b = nb::block!(self.serial.read()).map_err(Error::Serial)?;
+
+            buffer[ptr] = b;
+            ptr += 1; // (ptr + 1) % buffer.len();
+
+            let response_end = buffer.ends_with(b"\r\n");
+            if response_end {
+                break;
+            }
+        }
+
+        Ok(buffer.len())
+    }
+
     pub fn send<D>(
         &mut self,
         cmd: &[u8],
@@ -32,25 +59,14 @@ where
     where
         D: delay::blocking::DelayUs,
     {
-        for &b in cmd {
-            nb::block!(self.serial.write(b)).map_err(Error::Serial)?;
-        }
-
+        self.write_all(cmd)?;
         delay.delay_ms(20).map_err(|_| Error::Delay)?;
-        
-        let mut resp_ptr = 0;
-        loop {
-            let b = nb::block!(self.serial.read()).map_err(Error::Serial)?;
+        let reps_len = self.read_all(response_buffer)?;
 
-            response_buffer[resp_ptr] = b;
-            resp_ptr += 1;
-
-            let response_end = response_buffer.ends_with(b"\r\n");
-            if response_end {
-                break;
-            }
+        if response_buffer.starts_with(b"ERR") {
+            return Err(Error::ResponseError);
         }
 
-        Ok(resp_ptr)
+        Ok(reps_len)
     }
 }
