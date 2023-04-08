@@ -128,7 +128,6 @@ name = "cansat-lora"
 version = "0.1.0"
 dependencies = [
  "embedded-hal 1.0.0-alpha.8",
- "heapless",
 ]
 
 [[package]]

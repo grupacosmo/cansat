@@ -9,7 +9,6 @@ where
     Delay,
     ResponseError,
     Serial(SerialError),
-    Overflow(u8),
 }
 
 pub struct Lora<Serial> {
