@@ -47,7 +47,7 @@ where
             }
         }
 
-        Ok(buffer.len())
+        Ok(ptr)
     }
 
     pub fn send<D>(
