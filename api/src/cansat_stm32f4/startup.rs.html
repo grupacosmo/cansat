@@ -216,6 +216,17 @@
 <a href="#216" id="216">216</a>
 <a href="#217" id="217">217</a>
 <a href="#218" id="218">218</a>
+<a href="#219" id="219">219</a>
+<a href="#220" id="220">220</a>
+<a href="#221" id="221">221</a>
+<a href="#222" id="222">222</a>
+<a href="#223" id="223">223</a>
+<a href="#224" id="224">224</a>
+<a href="#225" id="225">225</a>
+<a href="#226" id="226">226</a>
+<a href="#227" id="227">227</a>
+<a href="#228" id="228">228</a>
+<a href="#229" id="229">229</a>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::SdLogger;
 <span class="kw">use </span>core::convert::Infallible;
 <span class="kw">use </span>stm32f4xx_hal::{
@@ -250,7 +261,7 @@
 <span class="kw">type </span>Tx1 = gpio::PB6&lt;gpio::Alternate&lt;<span class="number">7</span>&gt;&gt;;
 <span class="kw">type </span>Rx1 = gpio::PB7&lt;gpio::Alternate&lt;<span class="number">7</span>&gt;&gt;;
 
-<span class="kw">pub type </span>Spi2Device = embedded_sdmmc::SdMmcSpi&lt;Spi2, Cs2&gt;;
+<span class="kw">type </span>Spi2Device = embedded_sdmmc::SdMmcSpi&lt;Spi2, Cs2&gt;;
 <span class="kw">type </span>Spi2 = spi::Spi2&lt;(Sck2, Miso2, Mosi2)&gt;;
 <span class="kw">type </span>Cs2 = gpio::PB12&lt;gpio::Output&gt;;
 <span class="kw">type </span>Sck2 = gpio::PB13&lt;gpio::Alternate&lt;<span class="number">5</span>&gt;&gt;;
@@ -282,6 +293,19 @@
     <span class="kw">pub </span>cs2: Cs2,
 }
 
+<span class="doccomment">/// Static memory needed for startup.
+///
+/// It&#39;s named `Statik` because `static` is a reserved keyword.
+</span><span class="kw">pub struct </span>Statik {
+    spi2_device: <span class="prelude-ty">Option</span>&lt;Spi2Device&gt;,
+}
+
+<span class="kw">impl </span>Statik {
+    <span class="kw">pub const fn </span>new() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{ spi2_device: <span class="prelude-val">None </span>}
+    }
+}
+
 <span class="attr">#[derive(Debug, derive_more::From)]
 </span><span class="kw">pub enum </span>Error {
     Bme280(Bme280Error),
@@ -302,18 +326,16 @@
 
 <span class="kw">pub type </span><span class="prelude-ty">Result</span>&lt;T&gt; = core::result::Result&lt;T, Error&gt;;
 
-<span class="kw">pub fn </span>init_drivers(
-    <span class="kw-2">mut </span>board: Board,
-    spi2_device: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span><span class="kw-2">mut </span><span class="prelude-ty">Option</span>&lt;Spi2Device&gt;,
-) -&gt; <span class="prelude-ty">Result</span>&lt;CanSat&gt; {
+<span class="kw">pub fn </span>init_drivers(<span class="kw-2">mut </span>board: Board, statik: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span><span class="kw-2">mut </span>Statik) -&gt; <span class="prelude-ty">Result</span>&lt;CanSat&gt; {
     <span class="kw">let </span>i2c1 = board.i2c1;
     <span class="kw">let </span>i2c1_manager = <span class="macro">shared_bus::new_atomic_check!</span>(I2c1 = i2c1).unwrap();
 
     <span class="macro">defmt::info!</span>(<span class="string">&quot;Initializing sd logger&quot;</span>);
     <span class="kw">let </span><span class="kw-2">mut </span>sd_logger = {
         <span class="kw">let </span>controller = {
-            <span class="kw-2">*</span>spi2_device = <span class="prelude-val">Some</span>(embedded_sdmmc::SdMmcSpi::new(board.spi2, board.cs2));
-            <span class="kw">let </span>block_spi2 = spi2_device
+            statik.spi2_device = <span class="prelude-val">Some</span>(embedded_sdmmc::SdMmcSpi::new(board.spi2, board.cs2));
+            <span class="kw">let </span>block_spi2 = statik
+                .spi2_device
                 .as_mut()
                 .unwrap()
                 .acquire()

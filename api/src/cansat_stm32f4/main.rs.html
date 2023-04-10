@@ -113,10 +113,10 @@
     <span class="attr">#[monotonic(binds = TIM2, default = <span class="bool-val">true</span>)]
     </span><span class="kw">type </span>MicrosecMono = Monotonic;
 
-    <span class="attr">#[init(local = [spi2_device: <span class="prelude-ty">Option</span>&lt;startup::Spi2Device&gt; = <span class="prelude-val">None</span>]</span>)]
+    <span class="attr">#[init(local = [statik: startup::Statik = startup::Statik::new()]</span>)]
     <span class="kw">fn </span>init(ctx: init::Context) -&gt; (Shared, Local, init::Monotonics) {
         <span class="kw">let </span>board = startup::init_board(ctx.device);
-        <span class="kw">let </span>cansat = startup::init_drivers(board, ctx.local.spi2_device).unwrap_or_else(|e| {
+        <span class="kw">let </span>cansat = startup::init_drivers(board, ctx.local.statik).unwrap_or_else(|e| {
             <span class="macro">defmt::panic!</span>(<span class="string">&quot;Failed to initialize drivers: {}&quot;</span>, e);
         });
 
