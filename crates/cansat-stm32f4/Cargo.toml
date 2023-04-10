@@ -20,10 +20,11 @@ stm32f4xx-hal = { version = "0.14.0", features = ["stm32f411", "rtic", "defmt"] 
 panic-probe = { version = "0.3.0", features = ["print-defmt"] }
 once_cell = { version = "1.16.0", default-features = false }
 heapless = { version = "0.7.16", features = ["defmt"] }
-bme280 = { git = "https://github.com/grupacosmo/bme280-rs", default-features = false, features = ["defmt"] }
+bme280 = { git = "https://github.com/grupacosmo/bme280-rs", default-features = false, features = ["with_defmt"] }
 embedded-sdmmc = { version = "0.4.0", default-features = false, features = ["defmt-log"] }
 lis3dh = { version = "0.4.2" }
 accelerometer = { version = "0.12.0"}
 shared-bus = { version = "0.2.4", features = ["cortex-m", "eh-alpha"] }
 serde-csv-core = { version = "0.1.0" }
 csv-core = "0.1.10"
+derive_more = { version = "0.99.17", default-features = false, features = ["from"] }

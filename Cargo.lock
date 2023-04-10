@@ -137,6 +137,7 @@ dependencies = [
  "csv-core",
  "defmt",
  "defmt-rtt",
+ "derive_more",
  "embedded-sdmmc",
  "heapless",
  "lis3dh",
