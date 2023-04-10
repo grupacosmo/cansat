@@ -32,7 +32,7 @@ type Serial1 = serial::Serial1<(Tx1, Rx1)>;
 type Tx1 = gpio::PB6<gpio::Alternate<7>>;
 type Rx1 = gpio::PB7<gpio::Alternate<7>>;
 
-pub type Spi2Device = embedded_sdmmc::SdMmcSpi<Spi2, Cs2>;
+type Spi2Device = embedded_sdmmc::SdMmcSpi<Spi2, Cs2>;
 type Spi2 = spi::Spi2<(Sck2, Miso2, Mosi2)>;
 type Cs2 = gpio::PB12<gpio::Output>;
 type Sck2 = gpio::PB13<gpio::Alternate<5>>;
@@ -64,6 +64,19 @@ pub struct Board {
     pub cs2: Cs2,
 }
 
+/// Static memory needed for startup.
+///
+/// It's named `Statik` because `static` is a reserved keyword.
+pub struct Statik {
+    spi2_device: Option<Spi2Device>,
+}
+
+impl Statik {
+    pub const fn new() -> Self {
+        Self { spi2_device: None }
+    }
+}
+
 #[derive(Debug, derive_more::From)]
 pub enum Error {
     Bme280(Bme280Error),
@@ -84,18 +97,16 @@ impl defmt::Format for Error {
 
 pub type Result<T> = core::result::Result<T, Error>;
 
-pub fn init_drivers(
-    mut board: Board,
-    spi2_device: &'static mut Option<Spi2Device>,
-) -> Result<CanSat> {
+pub fn init_drivers(mut board: Board, statik: &'static mut Statik) -> Result<CanSat> {
     let i2c1 = board.i2c1;
     let i2c1_manager = shared_bus::new_atomic_check!(I2c1 = i2c1).unwrap();
 
     defmt::info!("Initializing sd logger");
     let mut sd_logger = {
         let controller = {
-            *spi2_device = Some(embedded_sdmmc::SdMmcSpi::new(board.spi2, board.cs2));
-            let block_spi2 = spi2_device
+            statik.spi2_device = Some(embedded_sdmmc::SdMmcSpi::new(board.spi2, board.cs2));
+            let block_spi2 = statik
+                .spi2_device
                 .as_mut()
                 .unwrap()
                 .acquire()

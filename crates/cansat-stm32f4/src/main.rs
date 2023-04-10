@@ -38,10 +38,10 @@ mod app {
     #[monotonic(binds = TIM2, default = true)]
     type MicrosecMono = Monotonic;
 
-    #[init(local = [spi2_device: Option<startup::Spi2Device> = None])]
+    #[init(local = [statik: startup::Statik = startup::Statik::new()])]
     fn init(ctx: init::Context) -> (Shared, Local, init::Monotonics) {
         let board = startup::init_board(ctx.device);
-        let cansat = startup::init_drivers(board, ctx.local.spi2_device).unwrap_or_else(|e| {
+        let cansat = startup::init_drivers(board, ctx.local.statik).unwrap_or_else(|e| {
             defmt::panic!("Failed to initialize drivers: {}", e);
         });
 
