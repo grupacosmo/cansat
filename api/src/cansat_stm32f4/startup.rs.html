@@ -198,10 +198,26 @@
 <a href="#198" id="198">198</a>
 <a href="#199" id="199">199</a>
 <a href="#200" id="200">200</a>
-</pre><pre class="rust"><code><span class="kw">use crate</span>::{
-    error::{Report, WrapErr},
-    SdLogger,
-};
+<a href="#201" id="201">201</a>
+<a href="#202" id="202">202</a>
+<a href="#203" id="203">203</a>
+<a href="#204" id="204">204</a>
+<a href="#205" id="205">205</a>
+<a href="#206" id="206">206</a>
+<a href="#207" id="207">207</a>
+<a href="#208" id="208">208</a>
+<a href="#209" id="209">209</a>
+<a href="#210" id="210">210</a>
+<a href="#211" id="211">211</a>
+<a href="#212" id="212">212</a>
+<a href="#213" id="213">213</a>
+<a href="#214" id="214">214</a>
+<a href="#215" id="215">215</a>
+<a href="#216" id="216">216</a>
+<a href="#217" id="217">217</a>
+<a href="#218" id="218">218</a>
+</pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::SdLogger;
+<span class="kw">use </span>core::convert::Infallible;
 <span class="kw">use </span>stm32f4xx_hal::{
     gpio, i2c, pac,
     prelude::<span class="kw-2">*</span>,
@@ -215,8 +231,11 @@
 <span class="kw">pub type </span>Gps = cansat_gps::Gps&lt;Serial1&gt;;
 <span class="kw">pub type </span>SdmmcController =
     embedded_sdmmc::Controller&lt;BlockSpi2, DummyClock, MAX_OPEN_DIRS, MAX_OPEN_FILES&gt;;
-<span class="kw">pub type </span>Bme280 = bme280::i2c::BME280&lt;I2c1Proxy&gt;;
+<span class="kw">pub type </span>SdmmcError = embedded_sdmmc::Error&lt;embedded_sdmmc::SdMmcError&gt;;
 <span class="kw">pub type </span>Lis3dh = lis3dh::Lis3dh&lt;lis3dh::Lis3dhI2C&lt;I2c1Proxy&gt;&gt;;
+<span class="kw">pub type </span>Lis3dhError = lis3dh::Error&lt;i2c::Error, Infallible&gt;;
+<span class="kw">pub type </span>Bme280 = bme280::i2c::BME280&lt;I2c1Proxy&gt;;
+<span class="kw">pub type </span>Bme280Error = bme280::Error&lt;i2c::Error&gt;;
 
 <span class="kw">type </span>BlockSpi2 = embedded_sdmmc::BlockSpi&lt;<span class="lifetime">&#39;static</span>, Spi2, Cs2&gt;;
 <span class="kw">const </span>MAX_OPEN_DIRS: usize = <span class="number">4</span>;
@@ -263,10 +282,30 @@
     <span class="kw">pub </span>cs2: Cs2,
 }
 
+<span class="attr">#[derive(Debug, derive_more::From)]
+</span><span class="kw">pub enum </span>Error {
+    Bme280(Bme280Error),
+    Lis3dh(Lis3dhError),
+    SdLogger(SdmmcError),
+}
+
+<span class="kw">impl </span>defmt::Format <span class="kw">for </span>Error {
+    <span class="kw">fn </span>format(<span class="kw-2">&amp;</span><span class="self">self</span>, fmt: defmt::Formatter) {
+        <span class="kw">use </span>defmt::{write, Debug2Format};
+        <span class="kw">match </span><span class="self">self </span>{
+            Error::Bme280(e) =&gt; <span class="macro">write!</span>(fmt, <span class="string">&quot;Failed to initialize BME280: {}&quot;</span>, e),
+            Error::Lis3dh(e) =&gt; <span class="macro">write!</span>(fmt, <span class="string">&quot;Failed to initialize LIS3DH: {}&quot;</span>, Debug2Format(e)),
+            Error::SdLogger(e) =&gt; <span class="macro">write!</span>(fmt, <span class="string">&quot;Failed to initialize SD logger: {}&quot;</span>, e),
+        }
+    }
+}
+
+<span class="kw">pub type </span><span class="prelude-ty">Result</span>&lt;T&gt; = core::result::Result&lt;T, Error&gt;;
+
 <span class="kw">pub fn </span>init_drivers(
     <span class="kw-2">mut </span>board: Board,
     spi2_device: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span><span class="kw-2">mut </span><span class="prelude-ty">Option</span>&lt;Spi2Device&gt;,
-) -&gt; <span class="prelude-ty">Result</span>&lt;CanSat, Report&gt; {
+) -&gt; <span class="prelude-ty">Result</span>&lt;CanSat&gt; {
     <span class="kw">let </span>i2c1 = board.i2c1;
     <span class="kw">let </span>i2c1_manager = <span class="macro">shared_bus::new_atomic_check!</span>(I2c1 = i2c1).unwrap();
 
@@ -278,20 +317,18 @@
                 .as_mut()
                 .unwrap()
                 .acquire()
-                .wrap_err(<span class="string">&quot;Failed to acquire block spi&quot;</span>)<span class="question-mark">?</span>;
+                .map_err(embedded_sdmmc::Error::DeviceError)<span class="question-mark">?</span>;
             SdmmcController::new(block_spi2, DummyClock)
         };
 
-        SdLogger::new(controller).wrap_err(<span class="string">&quot;Failed to initialize SdLogger&quot;</span>)<span class="question-mark">?
+        SdLogger::new(controller)<span class="question-mark">?
     </span>};
-    <span class="kw">let _ </span>= sd_logger.write(<span class="string">b&quot;[NEW RUN]\n&quot;</span>);
+    sd_logger.write(<span class="string">b&quot;[NEW RUN]\n&quot;</span>)<span class="question-mark">?</span>;
 
     <span class="macro">defmt::info!</span>(<span class="string">&quot;Initializing BME280&quot;</span>);
     <span class="kw">let </span>bme280 = {
         <span class="kw">let </span><span class="kw-2">mut </span>bme280 = Bme280::new_primary(i2c1_manager.acquire_i2c());
-        bme280
-            .init(<span class="kw-2">&amp;mut </span>board.delay)
-            .wrap_err(<span class="string">&quot;Failed to initialize BME280&quot;</span>)<span class="question-mark">?</span>;
+        bme280.init(<span class="kw-2">&amp;mut </span>board.delay)<span class="question-mark">?</span>;
         bme280
     };
 
@@ -302,9 +339,8 @@
     };
 
     <span class="macro">defmt::info!</span>(<span class="string">&quot;Initializing LIS3DH&quot;</span>);
-    <span class="kw">let </span><span class="kw-2">mut </span>lis3dh =
-        Lis3dh::new_i2c(i2c1_manager.acquire_i2c(), lis3dh::SlaveAddr::Default).unwrap();
-    lis3dh.set_range(lis3dh::Range::G8).unwrap();
+    <span class="kw">let </span><span class="kw-2">mut </span>lis3dh = Lis3dh::new_i2c(i2c1_manager.acquire_i2c(), lis3dh::SlaveAddr::Default)<span class="question-mark">?</span>;
+    lis3dh.set_range(lis3dh::Range::G8)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>tracker = accelerometer::Tracker::new(<span class="number">3700.0</span>);
     <span class="kw">let </span>i2c1_devices = I2c1Devices { bme280, lis3dh };

@@ -71,18 +71,22 @@
 <a href="#71" id="71">71</a>
 <a href="#72" id="72">72</a>
 <a href="#73" id="73">73</a>
+<a href="#74" id="74">74</a>
+<a href="#75" id="75">75</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Binary crate targeting stm32f4 family microcontrollers.
 </span><span class="attr">#![deny(unsafe_code)]
 #![no_main]
 #![no_std]
 
-</span><span class="kw">mod </span>error;
-<span class="kw">mod </span>sd_logger;
+</span><span class="kw">mod </span>sd_logger;
 <span class="kw">mod </span>startup;
 <span class="kw">mod </span>tasks;
 
 <span class="kw">pub use </span>sd_logger::SdLogger;
-<span class="kw">pub use </span>startup::{Bme280, Delay, Gps, I2c1Devices, Led, Monotonic, SdmmcController};
+<span class="kw">pub use </span>startup::{
+    Bme280, Bme280Error, Delay, Gps, I2c1Devices, Led, Lis3dh, Lis3dhError, Monotonic,
+    SdmmcController, SdmmcError,
+};
 
 <span class="kw">use </span>defmt_rtt <span class="kw">as _</span>;
 <span class="kw">use </span>panic_probe <span class="kw">as _</span>;
@@ -113,7 +117,7 @@
     <span class="kw">fn </span>init(ctx: init::Context) -&gt; (Shared, Local, init::Monotonics) {
         <span class="kw">let </span>board = startup::init_board(ctx.device);
         <span class="kw">let </span>cansat = startup::init_drivers(board, ctx.local.spi2_device).unwrap_or_else(|e| {
-            <span class="macro">defmt::panic!</span>(<span class="string">&quot;Drivers initialization failed: {}&quot;</span>, e);
+            <span class="macro">defmt::panic!</span>(<span class="string">&quot;Failed to initialize drivers: {}&quot;</span>, e);
         });
 
         blink::spawn().unwrap();
