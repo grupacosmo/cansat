@@ -3,7 +3,7 @@ use nom::{
     bytes::complete::{tag, take_till, take_while1},
     character::complete::{i8, line_ending},
     combinator::{cut, map},
-    sequence::pair,
+    sequence::{delimited, pair, terminated},
 };
 
 #[derive(Debug, PartialEq, Eq)]
@@ -49,54 +49,41 @@ pub fn response(input: &[u8]) -> IResult<&[u8], Response> {
 }
 
 fn header(input: &[u8]) -> IResult<&[u8], &[u8]> {
-    let (input, _prefix) = tag("+")(input).map_nom_err(|_: Error| Error::NoPrefix)?;
-    let (input, header) = take_while1(|c| (b'A'..=b'Z').contains(&c))(input)
-        .map_nom_err(|_: Error| Error::BadCommand)?;
-    let (input, _delimiter) = tag(": ")(input).map_nom_err(|_: Error| Error::NoDelimiter)?;
-
-    Ok((input, header))
+    let prefix = map_err(tag("+"), |_: Error| Error::NoPrefix);
+    let header = map_err(take_while1(|c| (b'A'..=b'Z').contains(&c)), |_: Error| {
+        Error::BadCommand
+    });
+    let delimiter = map_err(tag(": "), |_: Error| Error::NoDelimiter);
+    delimited(prefix, header, delimiter)(input)
 }
 
 fn content(input: &[u8]) -> IResult<&[u8], ResponseContent> {
-    let (input, data) = alt((
+    let content = alt((
         map(error, ResponseContent::Error),
         map(data, ResponseContent::Data),
-    ))(input)?;
-    let (input, _) = line_ending(input).map_nom_err(|_: Error| Error::NoTerminator)?;
-    Ok((input, data))
+    ));
+    let terminator = map_err(line_ending, |_: Error| Error::NoTerminator);
+    terminated(content, terminator)(input)
 }
 
 fn error(input: &[u8]) -> IResult<&[u8], i8> {
-    let (input, _) = tag("ERROR(")(input)?;
-    let (input, code) = cut(i8)(input).map_nom_err(|_: Error| Error::BadErrorCode)?;
-    let (input, _) = cut(tag(")"))(input).map_nom_err(|_: Error| Error::UnclosedErrorParen)?;
-    Ok((input, code))
+    let opening = tag("ERROR(");
+    let code = map_err(cut(i8), |_: Error| Error::BadErrorCode);
+    let closing = map_err(cut(tag(")")), |_: Error| Error::UnclosedErrorParen);
+    delimited(opening, code, closing)(input)
 }
 
 fn data(input: &[u8]) -> IResult<&[u8], &[u8]> {
     take_till(|c| b"\r\n".contains(&c))(input)
 }
 
-/// Extension for `Result<T, nom::Err<E>>` to simplify error mapping.
-trait MapNomErrExt {
-    type Unwrapped;
-    type Wrapped<E2>;
-
-    fn map_nom_err<E2, F>(self, f: F) -> Self::Wrapped<E2>
-    where
-        F: Fn(Self::Unwrapped) -> E2;
-}
-
-impl<T, E1> MapNomErrExt for Result<T, nom::Err<E1>> {
-    type Unwrapped = E1;
-    type Wrapped<E> = Result<T, nom::Err<E>>;
-
-    fn map_nom_err<E2, F>(self, f: F) -> Self::Wrapped<E2>
-    where
-        F: Fn(Self::Unwrapped) -> E2,
-    {
-        self.map_err(|e| e.map(f))
-    }
+/// Parser combinator that maps error
+fn map_err<I, O, E1, E2, F, G>(mut parser: F, mut f: G) -> impl FnMut(I) -> nom::IResult<I, O, E2>
+where
+    F: nom::Parser<I, O, E1>,
+    G: FnMut(E1) -> E2,
+{
+    move |input: I| parser.parse(input).map_err(|e| e.map(&mut f))
 }
 
 #[cfg(test)]
