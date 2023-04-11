@@ -1,14 +1,18 @@
 #![no_std]
 
+mod parse;
+
 use embedded_hal::{self, delay, nb, serial};
 
+#[derive(Debug)]
 pub enum Error<SerialError>
 where
     SerialError: serial::Error,
 {
     Delay,
-    ResponseError,
+    Response(i8),
     Serial(SerialError),
+    Parse,
 }
 
 pub struct Lora<Serial> {
@@ -40,7 +44,7 @@ where
             buffer[ptr] = b;
             ptr = (ptr + 1) % buffer.len();
 
-            let response_end = buffer.ends_with(b"\r\n");
+            let response_end = buffer[..ptr].ends_with(b"\r\n");
             if response_end {
                 break;
             }
@@ -62,8 +66,10 @@ where
         delay.delay_ms(20).map_err(|_| Error::Delay)?;
         let reps_len = self.read_all(response_buffer)?;
 
-        if response_buffer.starts_with(b"ERR") {
-            return Err(Error::ResponseError);
+        let (_, response) =
+            parse::response(&response_buffer[..reps_len]).map_err(|_| Error::Parse)?;
+        if let parse::ResponseContent::Error(code) = response.content {
+            return Err(Error::Response(code));
         }
 
         Ok(reps_len)
