@@ -13,6 +13,7 @@ where
     Response(i8),
     Serial(SerialError),
     Parse,
+    Overflow
 }
 
 pub struct Lora<Serial> {
@@ -36,21 +37,21 @@ where
     }
 
     fn read_all(&mut self, buffer: &mut [u8]) -> Result<usize, Error<Serial::Error>> {
-        let mut ptr = 0;
+        let mut i = 0;
 
         loop {
             let b = nb::block!(self.serial.read()).map_err(Error::Serial)?;
 
-            buffer[ptr] = b;
-            ptr = (ptr + 1) % buffer.len();
+            *buffer.get_mut(i).ok_or(Error::Overflow)? = b;
+            i += 1;
 
-            let response_end = buffer[..ptr].ends_with(b"\r\n");
+            let response_end = buffer[..i].ends_with(b"\r\n");
             if response_end {
                 break;
             }
         }
 
-        Ok(ptr)
+        Ok(i)
     }
 
     pub fn send<D>(
