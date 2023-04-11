@@ -109,7 +109,7 @@ pub fn init_drivers(
     };
 
     defmt::info!("Initializing LORA");
-    let lora = { Lora::new(board.serial6) };
+    let lora = Lora::new(board.serial6);
 
     defmt::info!("Initializing LIS3DH");
     let mut lis3dh =
