@@ -41,8 +41,6 @@ impl<I> nom::error::ParseError<I> for Error {
     }
 }
 
-type NomError<'a> = nom::error::Error<&'a [u8]>;
-
 pub fn response(input: &[u8]) -> IResult<&[u8], Response> {
     map(pair(header, content), |(header, content)| Response {
         header,
@@ -51,14 +49,10 @@ pub fn response(input: &[u8]) -> IResult<&[u8], Response> {
 }
 
 fn header(input: &[u8]) -> IResult<&[u8], &[u8]> {
-    let result = tag("+")(input);
-    let (input, _prefix) = map_nom_err(result, |_: NomError| Error::NoPrefix)?;
-
-    let result = take_while1(|c| (b'A'..b'Z').contains(&c))(input);
-    let (input, header) = map_nom_err(result, |_: NomError| Error::BadCommand)?;
-
-    let result = tag(": ")(input);
-    let (input, _delimiter) = map_nom_err(result, |_: NomError| Error::NoDelimiter)?;
+    let (input, _prefix) = tag("+")(input).map_nom_err(|_: Error| Error::NoPrefix)?;
+    let (input, header) = take_while1(|c| (b'A'..=b'Z').contains(&c))(input)
+        .map_nom_err(|_: Error| Error::BadCommand)?;
+    let (input, _delimiter) = tag(": ")(input).map_nom_err(|_: Error| Error::NoDelimiter)?;
 
     Ok((input, header))
 }
@@ -68,22 +62,14 @@ fn content(input: &[u8]) -> IResult<&[u8], ResponseContent> {
         map(error, ResponseContent::Error),
         map(data, ResponseContent::Data),
     ))(input)?;
-
-    let result = line_ending(input);
-    let (input, _) = map_nom_err(result, |_: NomError| Error::NoTerminator)?;
-
+    let (input, _) = line_ending(input).map_nom_err(|_: Error| Error::NoTerminator)?;
     Ok((input, data))
 }
 
 fn error(input: &[u8]) -> IResult<&[u8], i8> {
     let (input, _) = tag("ERROR(")(input)?;
-
-    let result = cut(i8)(input);
-    let (input, code) = map_nom_err(result, |_: NomError| Error::BadErrorCode)?;
-
-    let result = cut(tag(")"))(input);
-    let (input, _) = map_nom_err(result, |_: NomError| Error::UnclosedErrorParen)?;
-
+    let (input, code) = cut(i8)(input).map_nom_err(|_: Error| Error::BadErrorCode)?;
+    let (input, _) = cut(tag(")"))(input).map_nom_err(|_: Error| Error::UnclosedErrorParen)?;
     Ok((input, code))
 }
 
@@ -91,13 +77,25 @@ fn data(input: &[u8]) -> IResult<&[u8], &[u8]> {
     take_till(|c| b"\r\n".contains(&c))(input)
 }
 
-pub fn map_nom_err<I, O, E1, E2, F>(r: nom::IResult<I, O, E1>, f: F) -> nom::IResult<I, O, E2>
-where
-    F: Fn(E1) -> E2,
-{
-    match r {
-        Ok(v) => Ok(v),
-        Err(e) => Err(e.map(f)),
+/// Extension for `Result<T, nom::Err<E>>` to simplify error mapping.
+trait MapNomErrExt {
+    type Unwrapped;
+    type Wrapped<E2>;
+
+    fn map_nom_err<E2, F>(self, f: F) -> Self::Wrapped<E2>
+    where
+        F: Fn(Self::Unwrapped) -> E2;
+}
+
+impl<T, E1> MapNomErrExt for Result<T, nom::Err<E1>> {
+    type Unwrapped = E1;
+    type Wrapped<E> = Result<T, nom::Err<E>>;
+
+    fn map_nom_err<E2, F>(self, f: F) -> Self::Wrapped<E2>
+    where
+        F: Fn(Self::Unwrapped) -> E2,
+    {
+        self.map_err(|e| e.map(f))
     }
 }
 
