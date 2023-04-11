@@ -13,7 +13,7 @@ where
     Response(i8),
     Serial(SerialError),
     Parse,
-    Overflow
+    Overflow,
 }
 
 pub struct Lora<Serial> {
@@ -26,6 +26,17 @@ where
 {
     pub fn new(serial: Serial) -> Self {
         Self { serial }
+    }
+
+    fn drain(&mut self) -> Result<(), Error<Serial::Error>> {
+        loop {
+            match self.serial.read() {
+                Ok(_) => (),
+                Err(nb::Error::WouldBlock) => break,
+                Err(nb::Error::Other(e)) => return Err(Error::Serial(e)),
+            }
+        }
+        Ok(())
     }
 
     fn write_all(&mut self, cmd: &[u8]) -> Result<(), Error<Serial::Error>> {
@@ -69,7 +80,9 @@ where
 
         let (_, response) =
             parse::response(&response_buffer[..reps_len]).map_err(|_| Error::Parse)?;
+
         if let parse::ResponseContent::Error(code) = response.content {
+            self.drain()?;
             return Err(Error::Response(code));
         }
 
