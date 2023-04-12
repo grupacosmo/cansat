@@ -32,12 +32,12 @@ cargo xtask build
 
 ## Run
 ```bash
-# Runs default (crates/cansat-stm32f4) crate
-# The default can be overriden with XTASK_EMBED_DEFAUL env variable
+# Runs the default binary crate (cansat-stm32f4)
+# The default can be overriden with XTASK_EMBED_DEFAULT env variable in .cargo/config.toml
 cargo xtask embed
 
 # You can also specify the crate to run manually
-cargo xtask embed -p crates/cansat-stm32f4
+cargo xtask embed -p cansat-stm32f4
 ```
 
 ## Log filters

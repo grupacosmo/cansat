@@ -3,6 +3,6 @@ xtask = "run --package xtask --"
 
 [env]
 CARGO_WORKSPACE_DIR = { value = "", relative = true }
-XTASK_EMBED_DEFAULT = "crates/cansat-stm32f4"
-XTASK_TEST_EXCLUDE = "crates/cansat-stm32f4"
+XTASK_EMBED_DEFAULT = "cansat-stm32f4"
+XTASK_TEST_EXCLUDE = "cansat-stm32f4"
 DEFMT_LOG = "info"

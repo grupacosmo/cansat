@@ -4,10 +4,11 @@
 
 use clap::{Parser, Subcommand};
 use colored::*;
-use eyre::{bail, eyre, Context};
+use eyre::{bail, eyre, Context, ContextCompat};
 use std::{
     env,
-    path::Path,
+    ffi::OsString,
+    path::{Path, PathBuf},
     process::{Command, ExitCode},
 };
 
@@ -20,28 +21,34 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Cmd {
-    /// Run `cargo embed` on a default or specified package
+    /// `cd` into specified or default package and run `cargo embed`
     #[clap(visible_alias = "e")]
     Embed {
-        /// Path to the package
+        /// Name of the package
         ///
         /// If not provided a default specified in XTASK_EMBED_DEFAULT env variable will be used.
         #[arg(short, long)]
-        pkg_name: Option<String>,
+        package: Option<OsString>,
         /// Arguments for `cargo embed`
         args: Vec<String>,
     },
-    /// `cd` and build each package
+    /// `cd` into each package and run `cargo build`
     #[clap(visible_alias = "b")]
     Build {
+        /// Name of the package
+        #[arg(short, long)]
+        package: Option<OsString>,
         /// Arguments for `cargo build`
         args: Vec<String>,
     },
-    /// `cd` and test each package
+    /// `cd` into each package and run `cargo test`
     ///
     /// Packages can be excluded with XTASK_TEST_EXCLUDE environment variable.
     #[clap(visible_alias = "t")]
     Test {
+        /// Name of the package
+        #[arg(short, long)]
+        package: Option<OsString>,
         /// Arguments for `cargo test`
         args: Vec<String>,
     },
@@ -50,34 +57,42 @@ enum Cmd {
 fn run() -> eyre::Result<()> {
     let cli = Cli::parse();
     match cli.cmd {
-        Cmd::Embed {
-            pkg_name: pkg_path,
-            args,
-        } => {
+        Cmd::Embed { package, args } => {
+            let members = workspace_members()?;
+
             let default = match env::var("XTASK_EMBED_DEFAULT") {
-                Ok(v) => Some(v),
+                Ok(v) => Some(v.into()),
                 Err(env::VarError::NotPresent) => None,
                 Err(e) => bail!(e),
             };
-            let dir = pkg_path.or(default).ok_or(eyre!(
-                "No pkg to run.\
-                 Either pass the path to the crate with `-p <path>` option, \
-                 or define XTASK_EMBED_DEFAULT env variable."
+
+            let package = package.or(default).ok_or(eyre!(
+                "No package to run.\
+                    Either pass the name to the crate with `-p <package>` oprion, \
+                    or define XTASK_EMBED_DEFAULT=<package> env variable."
             ))?;
+
+            let path = members
+                .iter()
+                .find(|path| path.file_name().unwrap() == &package)
+                .wrap_err("Thre is no such package")?;
+
             Command::new("cargo")
                 .arg("embed")
                 .args(&args)
-                .current_dir(&dir)
+                .current_dir(path)
                 .status()?;
         }
-        Cmd::Build { args } => {
+        Cmd::Build { package, args } => {
             let members = workspace_members()?;
-            for member in members.iter().filter(|m| m != &"xtask") {
+
+            let build = |member: &PathBuf| {
                 let msg = format!(
-                    "xtask: Running `cargo build{}` in `{member}` package",
+                    "   xtask: Running `cargo build{}` in `{}`",
                     format_cmd_args(&args)
                         .map(|s| " ".to_owned() + &s)
-                        .unwrap_or_else(|| "".to_owned())
+                        .unwrap_or_else(|| "".to_owned()),
+                    member.display()
                 )
                 .blue()
                 .bold();
@@ -88,28 +103,33 @@ fn run() -> eyre::Result<()> {
                     .current_dir(member)
                     .status()?;
                 if !status.success() {
-                    bail!("`cargo build` failed for {member}");
+                    bail!("`cargo build` failed for {}", member.display());
+                }
+                Ok(())
+            };
+
+            if let Some(package) = package {
+                let member = members
+                    .iter()
+                    .find(|path| path.file_name().unwrap() == &package)
+                    .wrap_err("Thre is no such package")?;
+                build(member)?;
+            } else {
+                for member in members.iter().filter(|m| m != &Path::new("xtask")) {
+                    build(member)?;
                 }
             }
         }
-        Cmd::Test { args } => {
-            let excluded = match env::var("XTASK_TEST_EXCLUDE") {
-                Ok(v) => Some(v),
-                Err(env::VarError::NotPresent) => None,
-                Err(e) => bail!(e),
-            };
-            let excluded: Vec<_> = excluded
-                .as_ref()
-                .map(|s| s.split(',').collect())
-                .unwrap_or_default();
+        Cmd::Test { package, args } => {
             let members = workspace_members()?;
-            let members = members.iter().filter(|m| !excluded.contains(&m.as_str()));
-            for member in members {
+
+            let test = |member: &PathBuf| {
                 let msg = format!(
-                    "xtask: Running `cargo test{}` in `{member}` package",
+                    "   xtask: Running `cargo test{}` in `{}`",
                     format_cmd_args(&args)
                         .map(|s| " ".to_owned() + &s)
-                        .unwrap_or_else(|| "".to_owned())
+                        .unwrap_or_else(|| "".to_owned()),
+                    member.display()
                 )
                 .blue()
                 .bold();
@@ -120,7 +140,33 @@ fn run() -> eyre::Result<()> {
                     .current_dir(member)
                     .status()?;
                 if !status.success() {
-                    bail!("`cargo test` failed for {member}");
+                    bail!("`cargo test` failed for {}", member.display());
+                }
+                Ok(())
+            };
+
+            if let Some(package) = package {
+                let member = members
+                    .iter()
+                    .find(|path| path.file_name().unwrap() == &package)
+                    .wrap_err("Thre is no such package")?;
+                test(member)?;
+            } else {
+                let excluded = match env::var("XTASK_TEST_EXCLUDE") {
+                    Ok(v) => Some(v),
+                    Err(env::VarError::NotPresent) => None,
+                    Err(e) => bail!(e),
+                };
+                let excluded: Vec<OsString> = excluded
+                    .as_ref()
+                    .map(|s| s.split(',').map(|s| s.into()).collect())
+                    .unwrap_or_default();
+                let members = members
+                    .iter()
+                    .filter(|m| !excluded.contains(&m.file_name().unwrap().to_os_string()));
+
+                for member in members {
+                    test(member)?;
                 }
             }
         }
@@ -128,7 +174,7 @@ fn run() -> eyre::Result<()> {
     Ok(())
 }
 
-fn workspace_members() -> eyre::Result<Vec<String>> {
+fn workspace_members() -> eyre::Result<Vec<PathBuf>> {
     let dir = env::var("CARGO_WORKSPACE_DIR")
         .wrap_err("`CARGO_WORKSPACE_DIR` env variable is missing")?;
     let dir = Path::new(&dir);
@@ -138,7 +184,10 @@ fn workspace_members() -> eyre::Result<Vec<String>> {
     let members = manifest
         .workspace
         .ok_or_else(|| eyre!("No `workspace` field in Cargo.toml"))?
-        .members;
+        .members
+        .iter()
+        .map(|s| s.into())
+        .collect();
     Ok(members)
 }
 
