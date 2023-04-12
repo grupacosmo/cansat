@@ -81,7 +81,7 @@ fn embed(package: Option<OsString>, args: Vec<String>) -> eyre::Result<()> {
 
     let path = members
         .iter()
-        .find(|path| path.file_name().unwrap() == &package)
+        .find(|path| path.file_name().unwrap() == package)
         .wrap_err("Thre is no such package")?;
 
     Command::new("cargo")
@@ -116,7 +116,7 @@ fn build(package: Option<OsString>, args: Vec<String>) -> eyre::Result<()> {
     if let Some(package) = package {
         let member = members
             .iter()
-            .find(|path| path.file_name().unwrap() == &package)
+            .find(|path| path.file_name().unwrap() == package)
             .wrap_err("Thre is no such package")?;
         build(member)?;
     } else {
@@ -151,7 +151,7 @@ fn test(package: Option<OsString>, args: Vec<String>) -> eyre::Result<()> {
     if let Some(package) = package {
         let member = members
             .iter()
-            .find(|path| path.file_name().unwrap() == &package)
+            .find(|path| path.file_name().unwrap() == package)
             .wrap_err("Thre is no such package")?;
         test(member)?;
     } else {
