@@ -207,6 +207,9 @@
 <a href="#207" id="207">207</a>
 <a href="#208" id="208">208</a>
 <a href="#209" id="209">209</a>
+<a href="#210" id="210">210</a>
+<a href="#211" id="211">211</a>
+<a href="#212" id="212">212</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Custom commands for cargo.
 //!
 //! See [cargo-xtask](https://github.com/matklad/cargo-xtask) for details.
@@ -266,120 +269,121 @@
 <span class="kw">fn </span>run() -&gt; eyre::Result&lt;()&gt; {
     <span class="kw">let </span>cli = Cli::parse();
     <span class="kw">match </span>cli.cmd {
-        Cmd::Embed { package, args } =&gt; {
-            <span class="kw">let </span>members = workspace_members()<span class="question-mark">?</span>;
-
-            <span class="kw">let </span>default = <span class="kw">match </span>env::var(<span class="string">&quot;XTASK_EMBED_DEFAULT&quot;</span>) {
-                <span class="prelude-val">Ok</span>(v) =&gt; <span class="prelude-val">Some</span>(v.into()),
-                <span class="prelude-val">Err</span>(env::VarError::NotPresent) =&gt; <span class="prelude-val">None</span>,
-                <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">bail!</span>(e),
-            };
-
-            <span class="kw">let </span>package = package.or(default).ok_or(<span class="macro">eyre!</span>(
-                <span class="string">&quot;No package to run.\
-                    Either pass the name to the crate with `-p &lt;package&gt;` oprion, \
-                    or define XTASK_EMBED_DEFAULT=&lt;package&gt; env variable.&quot;
-            </span>))<span class="question-mark">?</span>;
-
-            <span class="kw">let </span>path = members
-                .iter()
-                .find(|path| path.file_name().unwrap() == <span class="kw-2">&amp;</span>package)
-                .wrap_err(<span class="string">&quot;Thre is no such package&quot;</span>)<span class="question-mark">?</span>;
-
-            Command::new(<span class="string">&quot;cargo&quot;</span>)
-                .arg(<span class="string">&quot;embed&quot;</span>)
-                .args(<span class="kw-2">&amp;</span>args)
-                .current_dir(path)
-                .status()<span class="question-mark">?</span>;
-        }
-        Cmd::Build { package, args } =&gt; {
-            <span class="kw">let </span>members = workspace_members()<span class="question-mark">?</span>;
-
-            <span class="kw">let </span>build = |member: <span class="kw-2">&amp;</span>PathBuf| {
-                <span class="kw">let </span>msg = <span class="macro">format!</span>(
-                    <span class="string">&quot;   xtask: Running `cargo build{}` in `{}`&quot;</span>,
-                    format_cmd_args(<span class="kw-2">&amp;</span>args)
-                        .map(|s| <span class="string">&quot; &quot;</span>.to_owned() + <span class="kw-2">&amp;</span>s)
-                        .unwrap_or_else(|| <span class="string">&quot;&quot;</span>.to_owned()),
-                    member.display()
-                )
-                .blue()
-                .bold();
-                <span class="macro">println!</span>(<span class="string">&quot;{msg}&quot;</span>);
-                <span class="kw">let </span>status = Command::new(<span class="string">&quot;cargo&quot;</span>)
-                    .arg(<span class="string">&quot;build&quot;</span>)
-                    .args(<span class="kw-2">&amp;</span>args)
-                    .current_dir(member)
-                    .status()<span class="question-mark">?</span>;
-                <span class="kw">if </span>!status.success() {
-                    <span class="macro">bail!</span>(<span class="string">&quot;`cargo build` failed for {}&quot;</span>, member.display());
-                }
-                <span class="prelude-val">Ok</span>(())
-            };
-
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(package) = package {
-                <span class="kw">let </span>member = members
-                    .iter()
-                    .find(|path| path.file_name().unwrap() == <span class="kw-2">&amp;</span>package)
-                    .wrap_err(<span class="string">&quot;Thre is no such package&quot;</span>)<span class="question-mark">?</span>;
-                build(member)<span class="question-mark">?</span>;
-            } <span class="kw">else </span>{
-                <span class="kw">for </span>member <span class="kw">in </span>members.iter().filter(|m| m != <span class="kw-2">&amp;</span>Path::new(<span class="string">&quot;xtask&quot;</span>)) {
-                    build(member)<span class="question-mark">?</span>;
-                }
-            }
-        }
-        Cmd::Test { package, args } =&gt; {
-            <span class="kw">let </span>members = workspace_members()<span class="question-mark">?</span>;
-
-            <span class="kw">let </span>test = |member: <span class="kw-2">&amp;</span>PathBuf| {
-                <span class="kw">let </span>msg = <span class="macro">format!</span>(
-                    <span class="string">&quot;   xtask: Running `cargo test{}` in `{}`&quot;</span>,
-                    format_cmd_args(<span class="kw-2">&amp;</span>args)
-                        .map(|s| <span class="string">&quot; &quot;</span>.to_owned() + <span class="kw-2">&amp;</span>s)
-                        .unwrap_or_else(|| <span class="string">&quot;&quot;</span>.to_owned()),
-                    member.display()
-                )
-                .blue()
-                .bold();
-                <span class="macro">println!</span>(<span class="string">&quot;{msg}&quot;</span>);
-                <span class="kw">let </span>status = Command::new(<span class="string">&quot;cargo&quot;</span>)
-                    .arg(<span class="string">&quot;test&quot;</span>)
-                    .args(<span class="kw-2">&amp;</span>args)
-                    .current_dir(member)
-                    .status()<span class="question-mark">?</span>;
-                <span class="kw">if </span>!status.success() {
-                    <span class="macro">bail!</span>(<span class="string">&quot;`cargo test` failed for {}&quot;</span>, member.display());
-                }
-                <span class="prelude-val">Ok</span>(())
-            };
-
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(package) = package {
-                <span class="kw">let </span>member = members
-                    .iter()
-                    .find(|path| path.file_name().unwrap() == <span class="kw-2">&amp;</span>package)
-                    .wrap_err(<span class="string">&quot;Thre is no such package&quot;</span>)<span class="question-mark">?</span>;
-                test(member)<span class="question-mark">?</span>;
-            } <span class="kw">else </span>{
-                <span class="kw">let </span>excluded = <span class="kw">match </span>env::var(<span class="string">&quot;XTASK_TEST_EXCLUDE&quot;</span>) {
-                    <span class="prelude-val">Ok</span>(v) =&gt; <span class="prelude-val">Some</span>(v),
-                    <span class="prelude-val">Err</span>(env::VarError::NotPresent) =&gt; <span class="prelude-val">None</span>,
-                    <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">bail!</span>(e),
-                };
-                <span class="kw">let </span>excluded: Vec&lt;OsString&gt; = excluded
-                    .as_ref()
-                    .map(|s| s.split(<span class="string">&#39;,&#39;</span>).map(|s| s.into()).collect())
-                    .unwrap_or_default();
-                <span class="kw">let </span>members = members
-                    .iter()
-                    .filter(|m| !excluded.contains(<span class="kw-2">&amp;</span>m.file_name().unwrap().to_os_string()));
-
-                <span class="kw">for </span>member <span class="kw">in </span>members {
-                    test(member)<span class="question-mark">?</span>;
-                }
-            }
-        }
+        Cmd::Embed { package, args } =&gt; embed(package, args)<span class="question-mark">?</span>,
+        Cmd::Build { package, args } =&gt; build(package, args)<span class="question-mark">?</span>,
+        Cmd::Test { package, args } =&gt; test(package, args)<span class="question-mark">?</span>,
     };
+    <span class="prelude-val">Ok</span>(())
+}
+
+<span class="kw">fn </span>embed(package: <span class="prelude-ty">Option</span>&lt;OsString&gt;, args: Vec&lt;String&gt;) -&gt; eyre::Result&lt;()&gt; {
+    <span class="kw">let </span>members = workspace_members()<span class="question-mark">?</span>;
+
+    <span class="kw">let </span>default = <span class="kw">match </span>env::var(<span class="string">&quot;XTASK_EMBED_DEFAULT&quot;</span>) {
+        <span class="prelude-val">Ok</span>(v) =&gt; <span class="prelude-val">Some</span>(v.into()),
+        <span class="prelude-val">Err</span>(env::VarError::NotPresent) =&gt; <span class="prelude-val">None</span>,
+        <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">bail!</span>(e),
+    };
+
+    <span class="kw">let </span>package = package.or(default).ok_or(<span class="macro">eyre!</span>(
+        <span class="string">&quot;No package to run.\
+            Either pass the name to the crate with `-p &lt;package&gt;` oprion, \
+            or define XTASK_EMBED_DEFAULT=&lt;package&gt; env variable.&quot;
+    </span>))<span class="question-mark">?</span>;
+
+    <span class="kw">let </span>path = members
+        .iter()
+        .find(|path| path.file_name().unwrap() == <span class="kw-2">&amp;</span>package)
+        .wrap_err(<span class="string">&quot;Thre is no such package&quot;</span>)<span class="question-mark">?</span>;
+
+    Command::new(<span class="string">&quot;cargo&quot;</span>)
+        .arg(<span class="string">&quot;embed&quot;</span>)
+        .args(<span class="kw-2">&amp;</span>args)
+        .current_dir(path)
+        .status()<span class="question-mark">?</span>;
+    <span class="prelude-val">Ok</span>(())
+}
+
+<span class="kw">fn </span>build(package: <span class="prelude-ty">Option</span>&lt;OsString&gt;, args: Vec&lt;String&gt;) -&gt; eyre::Result&lt;()&gt; {
+    <span class="kw">let </span>members = workspace_members()<span class="question-mark">?</span>;
+
+    <span class="kw">let </span>build = |member: <span class="kw-2">&amp;</span>PathBuf| {
+        <span class="kw">let </span>msg = <span class="macro">format!</span>(
+            <span class="string">&quot;   xtask: Running `{}` in `{}`&quot;</span>,
+            format_cmd(<span class="string">&quot;cargo build&quot;</span>, <span class="kw-2">&amp;</span>args),
+            member.display()
+        );
+        <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, msg.blue().bold());
+        <span class="kw">let </span>status = Command::new(<span class="string">&quot;cargo&quot;</span>)
+            .arg(<span class="string">&quot;build&quot;</span>)
+            .args(<span class="kw-2">&amp;</span>args)
+            .current_dir(member)
+            .status()<span class="question-mark">?</span>;
+        <span class="kw">if </span>!status.success() {
+            <span class="macro">bail!</span>(<span class="string">&quot;`cargo build` failed for {}&quot;</span>, member.display());
+        }
+        <span class="prelude-val">Ok</span>(())
+    };
+
+    <span class="kw">if let </span><span class="prelude-val">Some</span>(package) = package {
+        <span class="kw">let </span>member = members
+            .iter()
+            .find(|path| path.file_name().unwrap() == <span class="kw-2">&amp;</span>package)
+            .wrap_err(<span class="string">&quot;Thre is no such package&quot;</span>)<span class="question-mark">?</span>;
+        build(member)<span class="question-mark">?</span>;
+    } <span class="kw">else </span>{
+        <span class="kw">for </span>member <span class="kw">in </span>members.iter().filter(|m| m != <span class="kw-2">&amp;</span>Path::new(<span class="string">&quot;xtask&quot;</span>)) {
+            build(member)<span class="question-mark">?</span>;
+        }
+    }
+    <span class="prelude-val">Ok</span>(())
+}
+
+<span class="kw">fn </span>test(package: <span class="prelude-ty">Option</span>&lt;OsString&gt;, args: Vec&lt;String&gt;) -&gt; eyre::Result&lt;()&gt; {
+    <span class="kw">let </span>members = workspace_members()<span class="question-mark">?</span>;
+
+    <span class="kw">let </span>test = |member: <span class="kw-2">&amp;</span>PathBuf| {
+        <span class="kw">let </span>msg = <span class="macro">format!</span>(
+            <span class="string">&quot;   xtask: Running `{}` in `{}`&quot;</span>,
+            format_cmd(<span class="string">&quot;cargo test&quot;</span>, <span class="kw-2">&amp;</span>args),
+            member.display()
+        );
+        <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, msg.blue().bold());
+        <span class="kw">let </span>status = Command::new(<span class="string">&quot;cargo&quot;</span>)
+            .arg(<span class="string">&quot;test&quot;</span>)
+            .args(<span class="kw-2">&amp;</span>args)
+            .current_dir(member)
+            .status()<span class="question-mark">?</span>;
+        <span class="kw">if </span>!status.success() {
+            <span class="macro">bail!</span>(<span class="string">&quot;`cargo test` failed for {}&quot;</span>, member.display());
+        }
+        <span class="prelude-val">Ok</span>(())
+    };
+
+    <span class="kw">if let </span><span class="prelude-val">Some</span>(package) = package {
+        <span class="kw">let </span>member = members
+            .iter()
+            .find(|path| path.file_name().unwrap() == <span class="kw-2">&amp;</span>package)
+            .wrap_err(<span class="string">&quot;Thre is no such package&quot;</span>)<span class="question-mark">?</span>;
+        test(member)<span class="question-mark">?</span>;
+    } <span class="kw">else </span>{
+        <span class="kw">let </span>excluded = <span class="kw">match </span>env::var(<span class="string">&quot;XTASK_TEST_EXCLUDE&quot;</span>) {
+            <span class="prelude-val">Ok</span>(v) =&gt; <span class="prelude-val">Some</span>(v),
+            <span class="prelude-val">Err</span>(env::VarError::NotPresent) =&gt; <span class="prelude-val">None</span>,
+            <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">bail!</span>(e),
+        };
+        <span class="kw">let </span>excluded: Vec&lt;OsString&gt; = excluded
+            .as_ref()
+            .map(|s| s.split(<span class="string">&#39;,&#39;</span>).map(|s| s.into()).collect())
+            .unwrap_or_default();
+        <span class="kw">let </span>members = members
+            .iter()
+            .filter(|m| !excluded.contains(<span class="kw-2">&amp;</span>m.file_name().unwrap().to_os_string()));
+
+        <span class="kw">for </span>member <span class="kw">in </span>members {
+            test(member)<span class="question-mark">?</span>;
+        }
+    }
     <span class="prelude-val">Ok</span>(())
 }
 
@@ -400,12 +404,14 @@
     <span class="prelude-val">Ok</span>(members)
 }
 
-<span class="kw">fn </span>format_cmd_args(args: <span class="kw-2">&amp;</span>[String]) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt; {
-    <span class="kw">if </span>args.is_empty() {
-        <span class="prelude-val">None
-    </span>} <span class="kw">else </span>{
-        <span class="prelude-val">Some</span>(args.join(<span class="string">&quot; &quot;</span>))
+<span class="kw">fn </span>format_cmd(cmd: <span class="kw-2">&amp;</span>str, args: <span class="kw-2">&amp;</span>[String]) -&gt; String {
+    <span class="kw">let </span><span class="kw-2">mut </span>out = String::new();
+    out += cmd;
+    <span class="kw">for </span>arg <span class="kw">in </span>args {
+        out += <span class="string">&quot; &quot;</span>;
+        out += arg;
     }
+    out
 }
 
 <span class="kw">fn </span>main() -&gt; ExitCode {
