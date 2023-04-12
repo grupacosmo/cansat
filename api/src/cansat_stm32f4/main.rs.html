@@ -73,6 +73,12 @@
 <a href="#73" id="73">73</a>
 <a href="#74" id="74">74</a>
 <a href="#75" id="75">75</a>
+<a href="#76" id="76">76</a>
+<a href="#77" id="77">77</a>
+<a href="#78" id="78">78</a>
+<a href="#79" id="79">79</a>
+<a href="#80" id="80">80</a>
+<a href="#81" id="81">81</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Binary crate targeting stm32f4 family microcontrollers.
 </span><span class="attr">#![deny(unsafe_code)]
 #![no_main]
@@ -88,8 +94,14 @@
     SdmmcController, SdmmcError,
 };
 
+<span class="attr">#[cfg(all(debug_assertions))]
+</span><span class="kw">use </span>panic_probe <span class="kw">as _</span>;
+<span class="attr">#[cfg(all(not(debug_assertions), feature = <span class="string">&quot;panic-reset&quot;</span>))]
+</span><span class="kw">use </span>panic_reset <span class="kw">as _</span>;
+<span class="attr">#[cfg(all(not(debug_assertions), not(feature = <span class="string">&quot;panic-reset&quot;</span>)))]
+</span><span class="macro">compile_error!</span>(<span class="string">&quot;Run `--release` builds with `--no-default-features --features=panic-reset` flags&quot;</span>);
+
 <span class="kw">use </span>defmt_rtt <span class="kw">as _</span>;
-<span class="kw">use </span>panic_probe <span class="kw">as _</span>;
 <span class="kw">use </span>tasks::<span class="kw-2">*</span>;
 
 <span class="attr">#[rtic::app(device = stm32f4xx_hal::pac, dispatchers = [EXTI0, EXTI1]</span>)]
