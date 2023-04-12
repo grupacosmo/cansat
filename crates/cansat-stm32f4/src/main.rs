@@ -13,11 +13,14 @@ pub use startup::{
     SdmmcController, SdmmcError,
 };
 
-use defmt_rtt as _;
-#[cfg(debug_assertions)]
+#[cfg(all(debug_assertions))]
 use panic_probe as _;
-#[cfg(not(debug_assertions))]
+#[cfg(all(not(debug_assertions), feature = "panic-reset"))]
 use panic_reset as _;
+#[cfg(all(not(debug_assertions), not(feature = "panic-reset")))]
+compile_error!("Run `--release` builds with `--no-default-features --features=panic-reset` flags");
+
+use defmt_rtt as _;
 use tasks::*;
 
 #[rtic::app(device = stm32f4xx_hal::pac, dispatchers = [EXTI0, EXTI1])]
