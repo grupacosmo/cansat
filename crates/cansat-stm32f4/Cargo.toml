@@ -28,3 +28,4 @@ shared-bus = { version = "0.2.4", features = ["cortex-m", "eh-alpha"] }
 serde-csv-core = { version = "0.1.0" }
 csv-core = "0.1.10"
 derive_more = { version = "0.99.17", default-features = false, features = ["from"] }
+panic-reset = "0.1.1"

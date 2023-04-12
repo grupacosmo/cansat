@@ -14,7 +14,10 @@ pub use startup::{
 };
 
 use defmt_rtt as _;
+#[cfg(debug_assertions)]
 use panic_probe as _;
+#[cfg(not(debug_assertions))]
+use panic_reset as _;
 use tasks::*;
 
 #[rtic::app(device = stm32f4xx_hal::pac, dispatchers = [EXTI0, EXTI1])]
