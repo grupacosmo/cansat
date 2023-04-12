@@ -293,7 +293,7 @@
 
     <span class="kw">let </span>path = members
         .iter()
-        .find(|path| path.file_name().unwrap() == <span class="kw-2">&amp;</span>package)
+        .find(|path| path.file_name().unwrap() == package)
         .wrap_err(<span class="string">&quot;Thre is no such package&quot;</span>)<span class="question-mark">?</span>;
 
     Command::new(<span class="string">&quot;cargo&quot;</span>)
@@ -328,7 +328,7 @@
     <span class="kw">if let </span><span class="prelude-val">Some</span>(package) = package {
         <span class="kw">let </span>member = members
             .iter()
-            .find(|path| path.file_name().unwrap() == <span class="kw-2">&amp;</span>package)
+            .find(|path| path.file_name().unwrap() == package)
             .wrap_err(<span class="string">&quot;Thre is no such package&quot;</span>)<span class="question-mark">?</span>;
         build(member)<span class="question-mark">?</span>;
     } <span class="kw">else </span>{
@@ -363,7 +363,7 @@
     <span class="kw">if let </span><span class="prelude-val">Some</span>(package) = package {
         <span class="kw">let </span>member = members
             .iter()
-            .find(|path| path.file_name().unwrap() == <span class="kw-2">&amp;</span>package)
+            .find(|path| path.file_name().unwrap() == package)
             .wrap_err(<span class="string">&quot;Thre is no such package&quot;</span>)<span class="question-mark">?</span>;
         test(member)<span class="question-mark">?</span>;
     } <span class="kw">else </span>{
