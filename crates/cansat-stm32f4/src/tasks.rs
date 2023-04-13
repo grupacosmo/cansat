@@ -26,7 +26,10 @@ pub fn idle(mut ctx: app::idle::Context) -> ! {
         };
 
         let sd_logger = &mut ctx.local.sd_logger;
-        sd_logger.write(&csv_record).unwrap();
+
+        if let Some(sd_logger) = sd_logger {
+            sd_logger.write(&csv_record).unwrap();
+        }
     }
 }
 
@@ -38,30 +41,32 @@ fn read_measurements(ctx: &mut app::idle::Context) -> Measurements {
 
     let mut data = Measurements::default();
 
-    match i2c1_devices.bme280.measure(delay) {
-        Ok(m) => {
-            let temperature = Temperature::from_celsius(m.temperature);
-            let pressure = Pressure::from_pascals(m.pressure);
-            let altitude = cansat_core::calculate_altitude(Pressure::from_pascals(m.pressure));
+    if let Some(bme280) = &mut i2c1_devices.bme280 {
+        match bme280.measure(delay) {
+            Ok(m) => {
+                let temperature = Temperature::from_celsius(m.temperature);
+                let pressure = Pressure::from_pascals(m.pressure);
+                let altitude = cansat_core::calculate_altitude(Pressure::from_pascals(m.pressure));
 
-            defmt::info!(
-                "Temperature: {}°C, Pressure: {}hPa, Altitude: {}m",
-                temperature.as_celsius(),
-                pressure.as_hectos(),
-                altitude.as_meters()
-            );
+                defmt::info!(
+                    "Temperature: {}°C, Pressure: {}hPa, Altitude: {}m",
+                    temperature.as_celsius(),
+                    pressure.as_hectos(),
+                    altitude.as_meters()
+                );
 
-            data.temperature = Some(temperature);
-            data.pressure = Some(pressure);
-            data.altitude = Some(altitude);
+                data.temperature = Some(temperature);
+                data.pressure = Some(pressure);
+                data.altitude = Some(altitude);
+            }
+            Err(e) => {
+                defmt::error!(
+                    "Could not read bme280 measurements: {}",
+                    defmt::Debug2Format(&e)
+                );
+            }
         }
-        Err(e) => {
-            defmt::error!(
-                "Could not read bme280 measurements: {}",
-                defmt::Debug2Format(&e)
-            );
-        }
-    };
+    }
 
     if let Some(mut nmea) = gps.lock(|gps| gps.last_nmea()) {
         let clrf_len = 2;
@@ -70,23 +75,25 @@ fn read_measurements(ctx: &mut app::idle::Context) -> Measurements {
         data.nmea = Some(nmea.into());
     }
 
-    match i2c1_devices.lis3dh.accel_raw() {
-        Ok(accel) => {
-            let orientation = tracker.update(accel);
+    if let Some(lis3dh) = &mut i2c1_devices.lis3dh {
+        match lis3dh.accel_raw() {
+            Ok(accel) => {
+                let orientation = tracker.update(accel);
 
-            defmt::info!(
-                "Acceleration: ({}, {}, {}), Orientation: {}",
-                accel.x,
-                accel.y,
-                accel.z,
-                defmt::Debug2Format(&orientation)
-            );
+                defmt::info!(
+                    "Acceleration: ({}, {}, {}), Orientation: {}",
+                    accel.x,
+                    accel.y,
+                    accel.z,
+                    defmt::Debug2Format(&orientation)
+                );
 
-            data.acceleration = Some(accel);
-            data.orientation = Some(orientation);
-        }
-        Err(e) => {
-            defmt::error!("Could not read acceleration: {}", defmt::Debug2Format(&e));
+                data.acceleration = Some(accel);
+                data.orientation = Some(orientation);
+            }
+            Err(e) => {
+                defmt::error!("Could not read acceleration: {}", defmt::Debug2Format(&e));
+            }
         }
     }
 
@@ -97,10 +104,7 @@ fn read_measurements(ctx: &mut app::idle::Context) -> Measurements {
 pub fn gps_irq(ctx: app::gps_irq::Context) {
     let mut gps = ctx.shared.gps;
     if let Err(e) = gps.lock(|gps| gps.read_serial()) {
-        defmt::error!(
-            "Failed to read from gps' serial: {}",
-            defmt::Debug2Format(&e)
-        );
+        defmt::error!("Failed to read gps' serial: {}", e);
     };
 }
 

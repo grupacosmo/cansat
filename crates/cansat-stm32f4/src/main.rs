@@ -36,7 +36,7 @@ mod app {
     struct Local {
         delay: Delay,
         led: Led,
-        sd_logger: SdLogger,
+        sd_logger: Option<SdLogger>,
         tracker: accelerometer::Tracker,
         i2c1_devices: I2c1Devices,
     }
@@ -48,7 +48,7 @@ mod app {
     fn init(ctx: init::Context) -> (Shared, Local, init::Monotonics) {
         let board = startup::init_board(ctx.device);
         let cansat = startup::init_drivers(board, ctx.local.statik).unwrap_or_else(|e| {
-            defmt::panic!("Failed to initialize drivers: {}", e);
+            defmt::panic!("Initalization error: {}", e);
         });
 
         blink::spawn().unwrap();
