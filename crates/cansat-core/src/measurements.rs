@@ -78,9 +78,9 @@ impl defmt::Format for Measurements {
         defmt::write!(
             fmt,
             "temp: {} °C, pres: {} hPa, alt: {} m, accel: {}, orient: {}, nmea: {=[u8]:a}",
-            self.temperature.map(|v| v.as_celsius()).unwrap_or_default(),
-            self.pressure.map(|v| v.as_hectos()).unwrap_or_default(),
-            self.altitude.map(|v| v.as_meters()).unwrap_or_default(),
+            self.temperature.unwrap_or_default().as_celsius(),
+            self.pressure.unwrap_or_default().as_hectos(),
+            self.altitude.unwrap_or_default().as_meters(),
             self.acceleration
                 .map(|v| (v.x, v.y, v.z))
                 .unwrap_or_default(),
