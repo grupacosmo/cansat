@@ -14,6 +14,8 @@ pub fn idle(mut ctx: app::idle::Context) -> ! {
     loop {
         let measurements = read_measurements(&mut ctx);
 
+        defmt::info!("{}", measurements);
+
         let csv_record: Vec<u8, 1024> = match serde_csv_core::to_vec(&mut writer, &measurements) {
             Ok(r) => r,
             Err(e) => {
@@ -46,14 +48,7 @@ fn read_measurements(ctx: &mut app::idle::Context) -> Measurements {
             Ok(m) => {
                 let temperature = Temperature::from_celsius(m.temperature);
                 let pressure = Pressure::from_pascals(m.pressure);
-                let altitude = cansat_core::calculate_altitude(Pressure::from_pascals(m.pressure));
-
-                defmt::info!(
-                    "Temperature: {}°C, Pressure: {}hPa, Altitude: {}m",
-                    temperature.as_celsius(),
-                    pressure.as_hectos(),
-                    altitude.as_meters()
-                );
+                let altitude = cansat_core::calculate_altitude(pressure);
 
                 data.temperature = Some(temperature);
                 data.pressure = Some(pressure);
@@ -71,7 +66,6 @@ fn read_measurements(ctx: &mut app::idle::Context) -> Measurements {
     if let Some(mut nmea) = gps.lock(|gps| gps.last_nmea()) {
         let clrf_len = 2;
         nmea.truncate(nmea.len().saturating_sub(clrf_len));
-        defmt::info!("NMEA: {=[u8]:a}", &nmea);
         data.nmea = Some(nmea.into());
     }
 
@@ -79,15 +73,6 @@ fn read_measurements(ctx: &mut app::idle::Context) -> Measurements {
         match lis3dh.accel_raw() {
             Ok(accel) => {
                 let orientation = tracker.update(accel);
-
-                defmt::info!(
-                    "Acceleration: ({}, {}, {}), Orientation: {}",
-                    accel.x,
-                    accel.y,
-                    accel.z,
-                    defmt::Debug2Format(&orientation)
-                );
-
                 data.acceleration = Some(accel);
                 data.orientation = Some(orientation);
             }
