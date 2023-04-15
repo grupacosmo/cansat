@@ -53,7 +53,13 @@ where
         loop {
             let b = nb::block!(self.serial.read()).map_err(Error::Serial)?;
 
-            *buffer.get_mut(i).ok_or(Error::Overflow)? = b;
+            match buffer.get_mut(i) {
+                Some(i) => *i = b,
+                None => {
+                    self.drain()?;
+                    return Err(Error::Overflow);
+                }
+            }
             i += 1;
 
             let response_end = buffer[..i].ends_with(b"\r\n");
@@ -82,7 +88,6 @@ where
             parse::response(&response_buffer[..reps_len]).map_err(|_| Error::Parse)?;
 
         if let parse::ResponseContent::Error(code) = response.content {
-            self.drain()?;
             return Err(Error::Response(code));
         }
 
