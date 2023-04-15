@@ -2,7 +2,7 @@
 
 mod parse;
 
-use embedded_hal::{self, delay, nb, serial};
+use embedded_hal::{self, nb, serial};
 
 #[derive(Debug)]
 pub enum Error<SerialError>
@@ -71,17 +71,12 @@ where
         Ok(i)
     }
 
-    pub fn send<D>(
+    pub fn send(
         &mut self,
         cmd: &[u8],
         response_buffer: &mut [u8],
-        delay: &mut D,
-    ) -> Result<usize, Error<Serial::Error>>
-    where
-        D: delay::blocking::DelayUs,
-    {
+    ) -> Result<usize, Error<Serial::Error>> {
         self.write_all(cmd)?;
-        delay.delay_ms(20).map_err(|_| Error::Delay)?;
         let reps_len = self.read_all(response_buffer)?;
 
         let (_, response) =
