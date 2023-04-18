@@ -10,7 +10,6 @@ where
     SerialError: serial::Error,
 {
     Delay,
-    Response(i8),
     Serial(SerialError),
     Parse,
     Overflow,
@@ -78,14 +77,6 @@ where
     ) -> Result<usize, Error<Serial::Error>> {
         self.write_all(cmd)?;
         let reps_len = self.read_all(response_buffer)?;
-
-        let (_, response) =
-            parse::response(&response_buffer[..reps_len]).map_err(|_| Error::Parse)?;
-
-        if let parse::ResponseContent::Error(code) = response.content {
-            return Err(Error::Response(code));
-        }
-
         Ok(reps_len)
     }
 }
