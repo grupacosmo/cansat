@@ -59,6 +59,6 @@ DEFMT_LOG=debug cargo xtask embed
 
 Powershell
 ```powershell
-$env:DEFMT_LOG=debug; cargo xtask embed
+$env:DEFMT_LOG="debug"; cargo xtask embed
 ```
 See https://defmt.ferrous-systems.com/filtering.html for details.

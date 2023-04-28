@@ -3,7 +3,7 @@
 
 mod double_buf;
 
-use core::fmt::Debug;
+use core::fmt::{Debug, Display};
 use double_buf::DoubleBuf;
 use embedded_hal::{nb, serial};
 use heapless::Vec;
@@ -38,12 +38,22 @@ pub struct Gps<Serial> {
 }
 
 #[derive(Debug)]
-pub enum Error<SerialError>
-where
-    SerialError: serial::Error,
-{
+pub enum Error<SerialError> {
     Serial(SerialError),
     Overflow(u8),
+}
+
+impl<SerialError> defmt::Format for Error<SerialError>
+where
+    SerialError: Display,
+{
+    fn format(&self, fmt: defmt::Formatter) {
+        use defmt::{write, Display2Format};
+        match self {
+            Self::Serial(e) => write!(fmt, "Serial error: {}", Display2Format(&e)),
+            Self::Overflow(e) => write!(fmt, "Buffer overflow: {}", e),
+        }
+    }
 }
 
 impl<Serial> Gps<Serial> {

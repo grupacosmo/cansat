@@ -72,3 +72,20 @@ where
 {
     v.map(orientation_to_str).serialize(serializer)
 }
+
+impl defmt::Format for Measurements {
+    fn format(&self, fmt: defmt::Formatter) {
+        defmt::write!(
+            fmt,
+            "temp: {} °C, pres: {} hPa, alt: {} m, accel: {}, orient: {}, nmea: {=[u8]:a}",
+            self.temperature.unwrap_or_default().as_celsius(),
+            self.pressure.unwrap_or_default().as_hectos(),
+            self.altitude.unwrap_or_default().as_meters(),
+            self.acceleration
+                .map(|v| (v.x, v.y, v.z))
+                .unwrap_or_default(),
+            self.orientation.as_ref().map(defmt::Debug2Format),
+            self.nmea.as_ref().map(|v| &v[..]).unwrap_or(&[])
+        );
+    }
+}
