@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":[["LocalResources","Local resources `init` has access to"]]};
+window.SIDEBAR_ITEMS = {"struct":["LocalResources"]};

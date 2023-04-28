@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":[["Cmd",""]],"fn":[["build",""],["embed",""],["format_cmd",""],["main",""],["run",""],["test",""],["workspace_members",""]],"struct":[["Cli",""]]};
+window.SIDEBAR_ITEMS = {"enum":["Cmd"],"fn":["build","embed","format_cmd","main","run","test","workspace_members"],"struct":["Cli"]};

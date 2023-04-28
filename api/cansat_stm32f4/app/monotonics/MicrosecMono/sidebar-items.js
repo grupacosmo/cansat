@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":[["now","Read the current time from this monotonic"]]};
+window.SIDEBAR_ITEMS = {"fn":["now"]};

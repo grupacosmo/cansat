@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":[["FILENAME",""]],"struct":[["SdLogger",""]]};
+window.SIDEBAR_ITEMS = {"constant":["FILENAME"],"struct":["SdLogger"]};

@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":[["mock","Mock types."]]};
+window.SIDEBAR_ITEMS = {"mod":["mock"]};
