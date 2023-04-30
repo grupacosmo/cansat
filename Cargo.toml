@@ -1,8 +1,0 @@
-[workspace]
-members = [
-    "crates/cansat-core",
-    "crates/cansat-gps",
-    "crates/cansat-stm32f4",
-    "crates/cansat-test-utils",
-    "xtask"
-]
