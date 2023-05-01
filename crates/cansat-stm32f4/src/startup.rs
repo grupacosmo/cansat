@@ -1,7 +1,5 @@
-use crate::{
-    error::{Report, WrapErr},
-    SdLogger,
-};
+use crate::SdLogger;
+use core::convert::Infallible;
 use stm32f4xx_hal::{
     gpio, i2c, pac,
     prelude::*,
@@ -16,8 +14,11 @@ pub type Gps = cansat_gps::Gps<Serial1>;
 pub type Lora = cansat_lora::Lora<Serial6>;
 pub type SdmmcController =
     embedded_sdmmc::Controller<BlockSpi2, DummyClock, MAX_OPEN_DIRS, MAX_OPEN_FILES>;
-pub type Bme280 = bme280::i2c::BME280<I2c1Proxy>;
+pub type SdmmcError = embedded_sdmmc::Error<embedded_sdmmc::SdMmcError>;
 pub type Lis3dh = lis3dh::Lis3dh<lis3dh::Lis3dhI2C<I2c1Proxy>>;
+pub type Lis3dhError = lis3dh::Error<i2c::Error, Infallible>;
+pub type Bme280 = bme280::i2c::BME280<I2c1Proxy>;
+pub type Bme280Error = bme280::Error<i2c::Error>;
 
 type BlockSpi2 = embedded_sdmmc::BlockSpi<'static, Spi2, Cs2>;
 const MAX_OPEN_DIRS: usize = 4;
@@ -36,7 +37,7 @@ type Serial6 = serial::Serial6<(Tx6, Rx6)>;
 type Tx6 = gpio::PA11<gpio::Alternate<8>>;
 type Rx6 = gpio::PA12<gpio::Alternate<8>>;
 
-pub type Spi2Device = embedded_sdmmc::SdMmcSpi<Spi2, Cs2>;
+type Spi2Device = embedded_sdmmc::SdMmcSpi<Spi2, Cs2>;
 type Spi2 = spi::Spi2<(Sck2, Miso2, Mosi2)>;
 type Cs2 = gpio::PB12<gpio::Output>;
 type Sck2 = gpio::PB13<gpio::Alternate<5>>;
@@ -70,35 +71,64 @@ pub struct Board {
     pub cs2: Cs2,
 }
 
-pub fn init_drivers(
-    mut board: Board,
-    spi2_device: &'static mut Option<Spi2Device>,
-) -> Result<CanSat, Report> {
+/// Static memory needed for startup.
+///
+/// It's named `Statik` because `static` is a reserved keyword.
+pub struct Statik {
+    spi2_device: Option<Spi2Device>,
+}
+
+impl Statik {
+    pub const fn new() -> Self {
+        Self { spi2_device: None }
+    }
+}
+
+#[derive(Debug, derive_more::From)]
+pub enum Error {
+    Bme280(Bme280Error),
+    Lis3dh(Lis3dhError),
+    SdLogger(SdmmcError),
+}
+
+impl defmt::Format for Error {
+    fn format(&self, fmt: defmt::Formatter) {
+        use defmt::{write, Debug2Format};
+        match self {
+            Error::Bme280(e) => write!(fmt, "Failed to initialize BME280: {}", e),
+            Error::Lis3dh(e) => write!(fmt, "Failed to initialize LIS3DH: {}", Debug2Format(e)),
+            Error::SdLogger(e) => write!(fmt, "Failed to initialize SD logger: {}", e),
+        }
+    }
+}
+
+pub type Result<T> = core::result::Result<T, Error>;
+
+pub fn init_drivers(mut board: Board, statik: &'static mut Statik) -> Result<CanSat> {
     let i2c1 = board.i2c1;
     let i2c1_manager = shared_bus::new_atomic_check!(I2c1 = i2c1).unwrap();
 
     defmt::info!("Initializing sd logger");
     let mut sd_logger = {
         let controller = {
-            *spi2_device = Some(embedded_sdmmc::SdMmcSpi::new(board.spi2, board.cs2));
-            let block_spi2 = spi2_device
+            statik.spi2_device = Some(embedded_sdmmc::SdMmcSpi::new(board.spi2, board.cs2));
+            let block_spi2 = statik
+                .spi2_device
                 .as_mut()
                 .unwrap()
                 .acquire()
-                .wrap_err("Failed to acquire block spi")?;
+                .map_err(embedded_sdmmc::Error::DeviceError)?;
             SdmmcController::new(block_spi2, DummyClock)
         };
 
-        SdLogger::new(controller).wrap_err("Failed to initialize SdLogger")?
+        SdLogger::new(controller)?
     };
-    let _ = sd_logger.write(b"[NEW RUN]\n");
+    sd_logger.write(b"[NEW RUN]\n")?;
 
     defmt::info!("Initializing BME280");
     let bme280 = {
         let mut bme280 = Bme280::new_primary(i2c1_manager.acquire_i2c());
-        bme280
-            .init(&mut board.delay)
-            .wrap_err("Failed to initialize BME280")?;
+        bme280.init(&mut board.delay)?;
         bme280
     };
 
@@ -112,9 +142,8 @@ pub fn init_drivers(
     let lora = Lora::new(board.serial6);
 
     defmt::info!("Initializing LIS3DH");
-    let mut lis3dh =
-        Lis3dh::new_i2c(i2c1_manager.acquire_i2c(), lis3dh::SlaveAddr::Default).unwrap();
-    lis3dh.set_range(lis3dh::Range::G8).unwrap();
+    let mut lis3dh = Lis3dh::new_i2c(i2c1_manager.acquire_i2c(), lis3dh::SlaveAddr::Default)?;
+    lis3dh.set_range(lis3dh::Range::G8)?;
 
     let tracker = accelerometer::Tracker::new(3700.0);
     let i2c1_devices = I2c1Devices { bme280, lis3dh };

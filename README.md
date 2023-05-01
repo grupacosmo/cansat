@@ -44,12 +44,12 @@ cargo xtask embed -p crates/cansat-stm32f4
 You can specify log levels using `DEFMT_LOG` environment variable.
 
 Bash
-```
-DEFMT_LOG=debug cargo xtask embed crates/cansat-stm32f446
+```bash
+DEFMT_LOG=debug cargo xtask embed
 ```
 
 Powershell
-```
-$env:DEFMT_LOG=debug; cargo xtask embed crates/cansat-stm32f446
+```powershell
+$env:DEFMT_LOG=debug; cargo xtask embed
 ```
 See https://defmt.ferrous-systems.com/filtering.html for details.

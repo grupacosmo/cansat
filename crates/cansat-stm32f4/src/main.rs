@@ -3,13 +3,15 @@
 #![no_main]
 #![no_std]
 
-mod error;
 mod sd_logger;
 mod startup;
 mod tasks;
 
 pub use sd_logger::SdLogger;
-pub use startup::{Bme280, Delay, Gps, I2c1Devices, Led, Lora, Monotonic, SdmmcController};
+pub use startup::{
+    Bme280, Bme280Error, Delay, Gps, I2c1Devices, Led, Lis3dh, Lis3dhError, Monotonic,
+    SdmmcController, SdmmcError, Lora
+};
 
 use defmt_rtt as _;
 use panic_probe as _;
@@ -37,11 +39,11 @@ mod app {
     #[monotonic(binds = TIM2, default = true)]
     type MicrosecMono = Monotonic;
 
-    #[init(local = [spi2_device: Option<startup::Spi2Device> = None])]
+    #[init(local = [statik: startup::Statik = startup::Statik::new()])]
     fn init(ctx: init::Context) -> (Shared, Local, init::Monotonics) {
         let board = startup::init_board(ctx.device);
-        let cansat = startup::init_drivers(board, ctx.local.spi2_device).unwrap_or_else(|e| {
-            defmt::panic!("Drivers initialization failed: {}", e);
+        let cansat = startup::init_drivers(board, ctx.local.statik).unwrap_or_else(|e| {
+            defmt::panic!("Failed to initialize drivers: {}", e);
         });
 
         blink::spawn().unwrap();
