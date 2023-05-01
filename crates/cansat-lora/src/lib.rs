@@ -1,6 +1,6 @@
 #![no_std]
 
-mod parse;
+pub mod parse;
 
 use embedded_hal::{self, nb, serial};
 
