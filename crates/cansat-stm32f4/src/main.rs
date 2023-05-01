@@ -9,8 +9,8 @@ mod tasks;
 
 pub use sd_logger::SdLogger;
 pub use startup::{
-    Bme280, Bme280Error, Delay, Gps, I2c1Devices, Led, Lis3dh, Lis3dhError, Monotonic,
-    SdmmcController, SdmmcError, Lora
+    Bme280, Bme280Error, Delay, Gps, I2c1Devices, Led, Lis3dh, Lis3dhError, Lora, Monotonic,
+    SdmmcController, SdmmcError,
 };
 
 #[cfg(all(debug_assertions))]
