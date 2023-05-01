@@ -13,8 +13,14 @@ pub use startup::{
     SdmmcController, SdmmcError, Lora
 };
 
-use defmt_rtt as _;
+#[cfg(all(debug_assertions))]
 use panic_probe as _;
+#[cfg(all(not(debug_assertions), feature = "panic-reset"))]
+use panic_reset as _;
+#[cfg(all(not(debug_assertions), not(feature = "panic-reset")))]
+compile_error!("Run `--release` builds with `--no-default-features --features=panic-reset` flags");
+
+use defmt_rtt as _;
 use tasks::*;
 
 #[rtic::app(device = stm32f4xx_hal::pac, dispatchers = [EXTI0, EXTI1])]
@@ -30,7 +36,7 @@ mod app {
     struct Local {
         delay: Delay,
         led: Led,
-        sd_logger: SdLogger,
+        sd_logger: Option<SdLogger>,
         tracker: accelerometer::Tracker,
         i2c1_devices: I2c1Devices,
         lora: Lora,
@@ -43,7 +49,7 @@ mod app {
     fn init(ctx: init::Context) -> (Shared, Local, init::Monotonics) {
         let board = startup::init_board(ctx.device);
         let cansat = startup::init_drivers(board, ctx.local.statik).unwrap_or_else(|e| {
-            defmt::panic!("Failed to initialize drivers: {}", e);
+            defmt::panic!("Initalization error: {}", e);
         });
 
         blink::spawn().unwrap();

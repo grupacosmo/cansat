@@ -6,6 +6,7 @@ use stm32f4xx_hal::{
     serial, spi,
     timer::{monotonic::MonoTimerUs, DelayUs},
 };
+use tap::prelude::*;
 
 pub type Monotonic = MonoTimerUs<pac::TIM2>;
 pub type Delay = DelayUs<pac::TIM3>;
@@ -50,14 +51,14 @@ pub struct CanSat {
     pub led: Led,
     pub gps: Gps,
     pub lora: Lora,
-    pub sd_logger: SdLogger,
+    pub sd_logger: Option<SdLogger>,
     pub tracker: accelerometer::Tracker,
     pub i2c1_devices: I2c1Devices,
 }
 
 pub struct I2c1Devices {
-    pub bme280: Bme280,
-    pub lis3dh: Lis3dh,
+    pub bme280: Option<Bme280>,
+    pub lis3dh: Option<Lis3dh>,
 }
 
 pub struct Board {
@@ -84,69 +85,50 @@ impl Statik {
     }
 }
 
-#[derive(Debug, derive_more::From)]
+#[derive(Debug)]
 pub enum Error {
-    Bme280(Bme280Error),
-    Lis3dh(Lis3dhError),
-    SdLogger(SdmmcError),
+    ConsumingDevices,
 }
 
 impl defmt::Format for Error {
     fn format(&self, fmt: defmt::Formatter) {
-        use defmt::{write, Debug2Format};
         match self {
-            Error::Bme280(e) => write!(fmt, "Failed to initialize BME280: {}", e),
-            Error::Lis3dh(e) => write!(fmt, "Failed to initialize LIS3DH: {}", Debug2Format(e)),
-            Error::SdLogger(e) => write!(fmt, "Failed to initialize SD logger: {}", e),
+            Self::ConsumingDevices => defmt::write!(
+                fmt,
+                "Failed to initialize all the consuming peripheral devices"
+            ),
         }
     }
 }
 
-pub type Result<T> = core::result::Result<T, Error>;
-
-pub fn init_drivers(mut board: Board, statik: &'static mut Statik) -> Result<CanSat> {
+pub fn init_drivers(mut board: Board, statik: &'static mut Statik) -> Result<CanSat, Error> {
     let i2c1 = board.i2c1;
-    let i2c1_manager = shared_bus::new_atomic_check!(I2c1 = i2c1).unwrap();
+    let shared_i2c1 = shared_bus::new_atomic_check!(I2c1 = i2c1).unwrap();
 
-    defmt::info!("Initializing sd logger");
-    let mut sd_logger = {
-        let controller = {
-            statik.spi2_device = Some(embedded_sdmmc::SdMmcSpi::new(board.spi2, board.cs2));
-            let block_spi2 = statik
-                .spi2_device
-                .as_mut()
-                .unwrap()
-                .acquire()
-                .map_err(embedded_sdmmc::Error::DeviceError)?;
-            SdmmcController::new(block_spi2, DummyClock)
-        };
+    let sd_logger = init_sd_logger(board.spi2, board.cs2, statik)
+        .tap_err(|e| defmt::error!("Failed to initialize SD logger: {}", e))
+        .ok();
 
-        SdLogger::new(controller)?
-    };
-    sd_logger.write(b"[NEW RUN]\n")?;
+    // TODO: init lora here
 
-    defmt::info!("Initializing BME280");
-    let bme280 = {
-        let mut bme280 = Bme280::new_primary(i2c1_manager.acquire_i2c());
-        bme280.init(&mut board.delay)?;
-        bme280
-    };
+    // TODO: append `&& lora.is_none()` to the condition
+    if sd_logger.is_none() {
+        return Err(Error::ConsumingDevices);
+    }
 
-    defmt::info!("Initializing GPS");
-    let gps = {
-        board.serial1.listen(serial::Event::Rxne);
-        Gps::new(board.serial1)
-    };
+    let bme280 = init_bme280(shared_i2c1.acquire_i2c(), &mut board.delay)
+        .tap_err(|e| defmt::error!("Failed to initialize BME280: {}", e))
+        .ok();
 
     defmt::info!("Initializing LORA");
     let lora = Lora::new(board.serial6);
 
-    defmt::info!("Initializing LIS3DH");
-    let mut lis3dh = Lis3dh::new_i2c(i2c1_manager.acquire_i2c(), lis3dh::SlaveAddr::Default)?;
-    lis3dh.set_range(lis3dh::Range::G8)?;
-
+    let lis3dh = init_lis3dh(shared_i2c1.acquire_i2c())
+        .tap_err(|e| defmt::error!("Failed to initialize LIS3DH: {}", defmt::Debug2Format(&e)))
+        .ok();
     let tracker = accelerometer::Tracker::new(3700.0);
-    let i2c1_devices = I2c1Devices { bme280, lis3dh };
+
+    let gps = init_gps(board.serial1);
 
     Ok(CanSat {
         monotonic: board.monotonic,
@@ -156,8 +138,41 @@ pub fn init_drivers(mut board: Board, statik: &'static mut Statik) -> Result<Can
         lora,
         sd_logger,
         tracker,
-        i2c1_devices,
+        i2c1_devices: I2c1Devices { bme280, lis3dh },
     })
+}
+
+fn init_sd_logger(spi: Spi2, cs: Cs2, statik: &'static mut Statik) -> Result<SdLogger, SdmmcError> {
+    defmt::info!("Initializing sd logger");
+
+    statik.spi2_device = Some(embedded_sdmmc::SdMmcSpi::new(spi, cs));
+    let spi_device = statik.spi2_device.as_mut().unwrap();
+    let block_spi = spi_device.acquire().map_err(SdmmcError::DeviceError)?;
+    let controller = SdmmcController::new(block_spi, DummyClock);
+    SdLogger::new(controller)
+}
+
+fn init_bme280(i2c: I2c1Proxy, delay: &mut Delay) -> Result<Bme280, Bme280Error> {
+    defmt::info!("Initializing BME280");
+
+    let mut bme280 = Bme280::new_primary(i2c);
+    bme280.init(delay)?;
+    Ok(bme280)
+}
+
+fn init_gps(mut serial: Serial1) -> Gps {
+    defmt::info!("Initializing GPS");
+
+    serial.listen(serial::Event::Rxne);
+    Gps::new(serial)
+}
+
+fn init_lis3dh(i2c: I2c1Proxy) -> Result<Lis3dh, Lis3dhError> {
+    defmt::info!("Initializing LIS3DH");
+
+    let mut lis3dh = Lis3dh::new_i2c(i2c, lis3dh::SlaveAddr::Default)?;
+    lis3dh.set_range(lis3dh::Range::G8)?;
+    Ok(lis3dh)
 }
 
 pub fn init_board(device: pac::Peripherals) -> Board {

@@ -1,7 +1,7 @@
 use core::f32::consts::PI;
 use derive_more::{Add, Div, Mul, Sub};
 
-#[derive(PartialEq, Clone, Copy, PartialOrd, Add, Sub, Mul, Div)]
+#[derive(Default, PartialEq, Clone, Copy, PartialOrd, Add, Sub, Mul, Div)]
 pub struct Pressure(f32);
 
 impl Pressure {
@@ -30,7 +30,7 @@ impl core::ops::Div for Pressure {
     }
 }
 
-#[derive(PartialEq, Clone, Copy, PartialOrd, Add, Sub, Mul, Div)]
+#[derive(Default, PartialEq, Clone, Copy, PartialOrd, Add, Sub, Mul, Div)]
 pub struct Temperature(f32);
 
 impl Temperature {
@@ -51,7 +51,7 @@ impl Temperature {
     }
 }
 
-#[derive(PartialEq, Clone, Copy, PartialOrd, Add, Sub, Mul, Div)]
+#[derive(Default, PartialEq, Clone, Copy, PartialOrd, Add, Sub, Mul, Div)]
 pub struct Distance(f32);
 
 impl Distance {
@@ -80,7 +80,7 @@ impl core::ops::Div for Distance {
     }
 }
 
-#[derive(PartialEq, Clone, Copy, PartialOrd, Add, Sub, Mul, Div)]
+#[derive(Default, PartialEq, Clone, Copy, PartialOrd, Add, Sub, Mul, Div)]
 pub struct Angle(f32);
 
 impl Angle {
