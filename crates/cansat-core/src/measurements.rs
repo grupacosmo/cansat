@@ -14,7 +14,7 @@ pub struct Measurements {
     #[serde(serialize_with = "option_distance_meters")]
     pub altitude: Option<Distance>,
 
-    pub nmea: Option<Bytes<82>>,
+    pub nmea: Option<Bytes<256>>,
 
     #[serde(serialize_with = "option_vector_i16x3")]
     pub acceleration: Option<vector::I16x3>,
@@ -78,14 +78,16 @@ impl defmt::Format for Measurements {
         defmt::write!(
             fmt,
             "temp: {} °C, pres: {} hPa, alt: {} m, accel: {}, orient: {}, nmea: {=[u8]:a}",
-            self.temperature.unwrap_or_default().as_celsius(),
+            self.temperature
+                .unwrap_or(Temperature::from_celsius(0.0))
+                .as_celsius(),
             self.pressure.unwrap_or_default().as_hectos(),
             self.altitude.unwrap_or_default().as_meters(),
             self.acceleration
                 .map(|v| (v.x, v.y, v.z))
                 .unwrap_or_default(),
             self.orientation.as_ref().map(defmt::Debug2Format),
-            self.nmea.as_ref().map(|v| &v[..]).unwrap_or(&[])
+            self.nmea.as_ref().unwrap_or(&Bytes::new())
         );
     }
 }

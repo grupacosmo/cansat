@@ -9,11 +9,12 @@ use embedded_hal::{nb, serial};
 use heapless::Vec;
 
 /// Maximum length of an NMEA message including $ and [CR][LF].
-pub const MAX_NMEA_LEN: usize = 82;
+pub const MAX_NMEA_LEN: usize = 256;
 
 /// Gps driver.
 ///
 /// It implements double buffering to ensure that you can always read the latest message received.
+/// `MAX_NMEA_LEN` is a maximum length of an NMEA message including $ and [CR][LF].
 ///
 /// # Examples
 /// ```
@@ -31,7 +32,7 @@ pub const MAX_NMEA_LEN: usize = 82;
 ///     }
 /// };
 /// ```
-pub struct Gps<Serial> {
+pub struct Gps<Serial, const MAX_NMEA_LEN: usize> {
     serial: Serial,
     bufs: DoubleBuf<u8, MAX_NMEA_LEN>,
     has_nmea: bool,
@@ -41,6 +42,12 @@ pub struct Gps<Serial> {
 pub enum Error<SerialError> {
     Serial(SerialError),
     Overflow(u8),
+}
+
+impl<SerialError> From<SerialError> for Error<SerialError> {
+    fn from(value: SerialError) -> Self {
+        Self::Serial(value)
+    }
 }
 
 impl<SerialError> defmt::Format for Error<SerialError>
@@ -56,7 +63,7 @@ where
     }
 }
 
-impl<Serial> Gps<Serial> {
+impl<Serial, const MAX_NMEA_LEN: usize> Gps<Serial, MAX_NMEA_LEN> {
     pub fn new(serial: Serial) -> Self {
         Self {
             serial,
@@ -71,14 +78,14 @@ impl<Serial> Gps<Serial> {
     }
 }
 
-impl<Serial> Gps<Serial>
+impl<Serial, const MAX_NMEA_LEN: usize> Gps<Serial, MAX_NMEA_LEN>
 where
     Serial: serial::nb::Read,
 {
     /// Reads a single character from serial in a blocking mode and stores it in an internal buffer.
     /// On success, returns the read byte and a flag indicating whether a message was terminated.
     pub fn read_serial(&mut self) -> Result<(u8, bool), Error<Serial::Error>> {
-        let b = nb::block!(self.serial.read()).map_err(Error::Serial)?;
+        let b = nb::block!(self.serial.read())?;
         let write_buf = self.bufs.write();
         write_buf.push(b).map_err(Error::Overflow)?;
 
@@ -91,5 +98,17 @@ where
         }
 
         Ok((b, is_terminated))
+    }
+}
+
+impl<Serial, const MAX_NMEA_LEN: usize> Gps<Serial, MAX_NMEA_LEN>
+where
+    Serial: serial::nb::Write,
+{
+    pub fn send(&mut self, input: &[u8]) -> Result<(), Error<Serial::Error>> {
+        for &b in input {
+            nb::block!(self.serial.write(b))?;
+        }
+        Ok(())
     }
 }

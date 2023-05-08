@@ -30,7 +30,7 @@ impl core::ops::Div for Pressure {
     }
 }
 
-#[derive(Default, PartialEq, Clone, Copy, PartialOrd, Add, Sub, Mul, Div)]
+#[derive(PartialEq, Clone, Copy, PartialOrd, Add, Sub, Mul, Div)]
 pub struct Temperature(f32);
 
 impl Temperature {

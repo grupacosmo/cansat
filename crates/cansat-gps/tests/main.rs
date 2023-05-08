@@ -8,7 +8,7 @@ const SECOND_MSG: &[u8] = b"$GPGLL,,,,,080619.00,V,N*4C\r\n";
 #[test]
 fn gps_last_nmea_returns_none_if_no_msg_received() {
     let uart = mock::Serial::new(FIRST_MSG.to_owned());
-    let mut gps = Gps::new(uart);
+    let mut gps: Gps<_, 82> = Gps::new(uart);
 
     gps.read_serial().unwrap();
     gps.read_serial().unwrap();
@@ -19,7 +19,7 @@ fn gps_last_nmea_returns_none_if_no_msg_received() {
 #[test]
 fn gps_last_nmea_returns_msg_if_msg_received() {
     let uart = mock::Serial::new(FIRST_MSG.to_owned());
-    let mut gps = Gps::new(uart);
+    let mut gps: Gps<_, 82> = Gps::new(uart);
 
     while let (_, _is_msg_terminated @ false) = gps.read_serial().unwrap() {}
 
@@ -29,7 +29,7 @@ fn gps_last_nmea_returns_msg_if_msg_received() {
 #[test]
 fn gps_last_nmea_returns_first_msg_if_second_not_yet_terminated() {
     let uart = mock::Serial::new([FIRST_MSG, SECOND_MSG].concat());
-    let mut gps = Gps::new(uart);
+    let mut gps: Gps<_, 82> = Gps::new(uart);
     let mut rng = rand::thread_rng();
 
     while let (_, _is_msg_terminated @ false) = gps.read_serial().unwrap() {}
@@ -44,7 +44,7 @@ fn gps_last_nmea_returns_first_msg_if_second_not_yet_terminated() {
 #[test]
 fn gps_last_nmea_returns_second_read_msg() {
     let uart = mock::Serial::new([FIRST_MSG, SECOND_MSG].concat());
-    let mut gps = Gps::new(uart);
+    let mut gps: Gps<_, 82> = Gps::new(uart);
 
     while let (_, _is_msg_terminated @ false) = gps.read_serial().unwrap() {}
     while let (_, _is_msg_terminated @ false) = gps.read_serial().unwrap() {}

@@ -11,7 +11,8 @@ use tap::prelude::*;
 pub type Monotonic = MonoTimerUs<pac::TIM2>;
 pub type Delay = DelayUs<pac::TIM3>;
 pub type Led = gpio::PC13<gpio::Output>;
-pub type Gps = cansat_gps::Gps<Serial1>;
+pub type Gps = cansat_gps::Gps<Serial1, 256>;
+pub type GpsError = cansat_gps::Error<stm32f4xx_hal::serial::Error>;
 pub type SdmmcController =
     embedded_sdmmc::Controller<BlockSpi2, DummyClock, MAX_OPEN_DIRS, MAX_OPEN_FILES>;
 pub type SdmmcError = embedded_sdmmc::Error<embedded_sdmmc::SdMmcError>;
@@ -80,16 +81,15 @@ impl Statik {
 
 #[derive(Debug)]
 pub enum Error {
-    ConsumingDevices,
+    CriticalDevice,
 }
 
 impl defmt::Format for Error {
     fn format(&self, fmt: defmt::Formatter) {
         match self {
-            Self::ConsumingDevices => defmt::write!(
-                fmt,
-                "Failed to initialize all the consuming peripheral devices"
-            ),
+            Self::CriticalDevice => {
+                defmt::write!(fmt, "Failed to initialize a critical peripheral device")
+            }
         }
     }
 }
@@ -106,7 +106,7 @@ pub fn init_drivers(mut board: Board, statik: &'static mut Statik) -> Result<Can
 
     // TODO: append `&& lora.is_none()` to the condition
     if sd_logger.is_none() {
-        return Err(Error::ConsumingDevices);
+        return Err(Error::CriticalDevice);
     }
 
     let bme280 = init_bme280(shared_i2c1.acquire_i2c(), &mut board.delay)
@@ -118,7 +118,10 @@ pub fn init_drivers(mut board: Board, statik: &'static mut Statik) -> Result<Can
         .ok();
     let tracker = accelerometer::Tracker::new(3700.0);
 
-    let gps = init_gps(board.serial1);
+    let gps = init_gps(board.serial1).map_err(|e| {
+        defmt::error!("Failed to initialize GPS: {}", defmt::Debug2Format(&e));
+        Error::CriticalDevice
+    })?;
 
     Ok(CanSat {
         monotonic: board.monotonic,
@@ -138,7 +141,10 @@ fn init_sd_logger(spi: Spi2, cs: Cs2, statik: &'static mut Statik) -> Result<SdL
     let spi_device = statik.spi2_device.as_mut().unwrap();
     let block_spi = spi_device.acquire().map_err(SdmmcError::DeviceError)?;
     let controller = SdmmcController::new(block_spi, DummyClock);
-    SdLogger::new(controller)
+    let mut logger = SdLogger::new(controller)?;
+    // controller does some long initialization on first write
+    logger.write(b"\n")?;
+    Ok(logger)
 }
 
 fn init_bme280(i2c: I2c1Proxy, delay: &mut Delay) -> Result<Bme280, Bme280Error> {
@@ -149,11 +155,31 @@ fn init_bme280(i2c: I2c1Proxy, delay: &mut Delay) -> Result<Bme280, Bme280Error>
     Ok(bme280)
 }
 
-fn init_gps(mut serial: Serial1) -> Gps {
+fn init_gps(mut serial: Serial1) -> Result<Gps, GpsError> {
     defmt::info!("Initializing GPS");
 
     serial.listen(serial::Event::Rxne);
-    Gps::new(serial)
+    let mut gps = Gps::new(serial);
+
+    let set_gll_output_rate = b"$PUBX,40,GLL,0,0,0,0,0,0*5C\r\n";
+    gps.send(set_gll_output_rate)?;
+
+    let set_gsa_output_rate = b"$PUBX,40,GSA,0,0,0,0,0,0*4E\r\n";
+    gps.send(set_gsa_output_rate)?;
+
+    let set_gsv_output_rate = b"$PUBX,40,GSV,0,0,0,0,0,0*59\r\n";
+    gps.send(set_gsv_output_rate)?;
+
+    let set_gga_output_rate = b"$PUBX,40,GGA,0,1,0,0,0,0*5B\r\n";
+    gps.send(set_gga_output_rate)?;
+
+    let set_vtg_output_rate = b"$PUBX,40,VTG,0,0,0,0,0,0*5E\r\n";
+    gps.send(set_vtg_output_rate)?;
+
+    let set_rmc_output_rate = b"$PUBX,40,RMC,0,0,0,0,0,0*47\r\n";
+    gps.send(set_rmc_output_rate)?;
+
+    Ok(gps)
 }
 
 fn init_lis3dh(i2c: I2c1Proxy) -> Result<Lis3dh, Lis3dhError> {
