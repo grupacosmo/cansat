@@ -21,8 +21,9 @@ pub const MAX_NMEA_LEN: usize = 256;
 /// # use cansat_test_utils::mock;
 /// # let uart = cansat_test_utils::mock::Serial::new([b'\r', b'\n']);
 /// use cansat_gps::Gps;
+/// use heapless::Vec;
 ///
-/// let mut gps = Gps::new(uart);
+/// let mut gps: Gps<_, 82> = Gps::new(uart);
 ///
 /// let msg = loop {
 ///     let (b, is_new_msg) = gps.read_serial().unwrap();
