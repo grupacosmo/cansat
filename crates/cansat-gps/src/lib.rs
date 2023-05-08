@@ -8,8 +8,10 @@ use double_buf::DoubleBuf;
 use embedded_hal::{nb, serial};
 use heapless::Vec;
 
-/// Maximum length of an NMEA message including $ and [CR][LF].
-pub const MAX_NMEA_LEN: usize = 256;
+/// Maximum length of a standard NMEA message including $ and [CR][LF].
+///
+/// Note that not all messages adhere to this standard, for example GGA.
+pub const STANDARD_MAX_NMEA_LEN: usize = 82;
 
 /// Gps driver.
 ///
