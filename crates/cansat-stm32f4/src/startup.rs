@@ -1,9 +1,9 @@
 use crate::SdLogger;
 use core::convert::Infallible;
 use stm32f4xx_hal::{
-    gpio, i2c, pac,
+    gpio, i2c::{self, I2c1}, pac,
     prelude::*,
-    serial, spi,
+    serial, spi::{self, Spi2}, serial::Serial1,
     timer::{monotonic::MonoTimerUs, DelayUs},
 };
 use tap::prelude::*;
@@ -22,24 +22,11 @@ pub type Bme280 = bme280::i2c::BME280<I2c1Proxy>;
 pub type Bme280Error = bme280::Error<i2c::Error>;
 
 type BlockSpi2 = embedded_sdmmc::BlockSpi<'static, Spi2, Cs2>;
+type Spi2Device = embedded_sdmmc::SdMmcSpi<Spi2, Cs2>;
+type Cs2 = gpio::PB12<gpio::Output>;
 const MAX_OPEN_DIRS: usize = 4;
 const MAX_OPEN_FILES: usize = 4;
-
 type I2c1Proxy = shared_bus::I2cProxy<'static, shared_bus::AtomicCheckMutex<I2c1>>;
-type I2c1 = i2c::I2c1<(Scl1, Sda1)>;
-type Scl1 = gpio::PB8<gpio::Alternate<4, gpio::OpenDrain>>;
-type Sda1 = gpio::PB9<gpio::Alternate<4, gpio::OpenDrain>>;
-
-type Serial1 = serial::Serial1<(Tx1, Rx1)>;
-type Tx1 = gpio::PB6<gpio::Alternate<7>>;
-type Rx1 = gpio::PB7<gpio::Alternate<7>>;
-
-type Spi2Device = embedded_sdmmc::SdMmcSpi<Spi2, Cs2>;
-type Spi2 = spi::Spi2<(Sck2, Miso2, Mosi2)>;
-type Cs2 = gpio::PB12<gpio::Output>;
-type Sck2 = gpio::PB13<gpio::Alternate<5>>;
-type Miso2 = gpio::PB14<gpio::Alternate<5>>;
-type Mosi2 = gpio::PB15<gpio::Alternate<5>>;
 
 pub struct CanSat {
     pub monotonic: Monotonic,
