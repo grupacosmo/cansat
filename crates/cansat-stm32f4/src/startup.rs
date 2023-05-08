@@ -1,9 +1,13 @@
 use crate::SdLogger;
 use core::convert::Infallible;
 use stm32f4xx_hal::{
-    gpio, i2c::{self, I2c1}, pac,
+    gpio,
+    i2c::{self, I2c1},
+    pac,
     prelude::*,
-    serial, spi::{self, Spi2}, serial::Serial1,
+    serial,
+    serial::Serial1,
+    spi::{self, Spi2},
     timer::{monotonic::MonoTimerUs, DelayUs},
 };
 use tap::prelude::*;
