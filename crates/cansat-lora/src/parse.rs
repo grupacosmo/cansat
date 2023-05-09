@@ -50,7 +50,7 @@ pub fn response(input: &[u8]) -> IResult<&[u8], Response> {
 
 fn header(input: &[u8]) -> IResult<&[u8], &[u8]> {
     let prefix = map_err(tag("+"), |_: Error| Error::NoPrefix);
-    let header = map_err(take_while1(|c| (b'A'..=b'Z').contains(&c)), |_: Error| {
+    let header = map_err(take_while1(|c: u8| c.is_ascii_uppercase()), |_: Error| {
         Error::BadCommand
     });
     let delimiter = map_err(tag(": "), |_: Error| Error::NoDelimiter);
