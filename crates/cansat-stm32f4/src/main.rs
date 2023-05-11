@@ -39,7 +39,6 @@ mod app {
         sd_logger: Option<SdLogger>,
         tracker: accelerometer::Tracker,
         i2c1_devices: I2c1Devices,
-        lora: Lora,
     }
 
     #[monotonic(binds = TIM2, default = true)]
@@ -61,7 +60,6 @@ mod app {
             sd_logger: cansat.sd_logger,
             tracker: cansat.tracker,
             i2c1_devices: cansat.i2c1_devices,
-            lora: cansat.lora,
         };
         let monotonics = init::Monotonics(cansat.monotonic);
 
