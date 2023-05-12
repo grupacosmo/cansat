@@ -242,6 +242,29 @@
 <a href="#242" id="242">242</a>
 <a href="#243" id="243">243</a>
 <a href="#244" id="244">244</a>
+<a href="#245" id="245">245</a>
+<a href="#246" id="246">246</a>
+<a href="#247" id="247">247</a>
+<a href="#248" id="248">248</a>
+<a href="#249" id="249">249</a>
+<a href="#250" id="250">250</a>
+<a href="#251" id="251">251</a>
+<a href="#252" id="252">252</a>
+<a href="#253" id="253">253</a>
+<a href="#254" id="254">254</a>
+<a href="#255" id="255">255</a>
+<a href="#256" id="256">256</a>
+<a href="#257" id="257">257</a>
+<a href="#258" id="258">258</a>
+<a href="#259" id="259">259</a>
+<a href="#260" id="260">260</a>
+<a href="#261" id="261">261</a>
+<a href="#262" id="262">262</a>
+<a href="#263" id="263">263</a>
+<a href="#264" id="264">264</a>
+<a href="#265" id="265">265</a>
+<a href="#266" id="266">266</a>
+<a href="#267" id="267">267</a>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::SdLogger;
 <span class="kw">use </span>core::convert::Infallible;
 <span class="kw">use </span>stm32f4xx_hal::{
@@ -256,6 +279,7 @@
 <span class="kw">pub type </span>Delay = DelayUs&lt;pac::TIM3&gt;;
 <span class="kw">pub type </span>Led = gpio::PC13&lt;gpio::Output&gt;;
 <span class="kw">pub type </span>Gps = cansat_gps::Gps&lt;Serial1&gt;;
+<span class="kw">pub type </span>Lora = cansat_lora::Lora&lt;Serial6&gt;;
 <span class="kw">pub type </span>SdmmcController =
     embedded_sdmmc::Controller&lt;BlockSpi2, DummyClock, MAX_OPEN_DIRS, MAX_OPEN_FILES&gt;;
 <span class="kw">pub type </span>SdmmcError = embedded_sdmmc::Error&lt;embedded_sdmmc::SdMmcError&gt;;
@@ -277,6 +301,10 @@
 <span class="kw">type </span>Tx1 = gpio::PB6&lt;gpio::Alternate&lt;<span class="number">7</span>&gt;&gt;;
 <span class="kw">type </span>Rx1 = gpio::PB7&lt;gpio::Alternate&lt;<span class="number">7</span>&gt;&gt;;
 
+<span class="kw">type </span>Serial6 = serial::Serial6&lt;(Tx6, Rx6)&gt;;
+<span class="kw">type </span>Tx6 = gpio::PA11&lt;gpio::Alternate&lt;<span class="number">8</span>&gt;&gt;;
+<span class="kw">type </span>Rx6 = gpio::PA12&lt;gpio::Alternate&lt;<span class="number">8</span>&gt;&gt;;
+
 <span class="kw">type </span>Spi2Device = embedded_sdmmc::SdMmcSpi&lt;Spi2, Cs2&gt;;
 <span class="kw">type </span>Spi2 = spi::Spi2&lt;(Sck2, Miso2, Mosi2)&gt;;
 <span class="kw">type </span>Cs2 = gpio::PB12&lt;gpio::Output&gt;;
@@ -289,6 +317,7 @@
     <span class="kw">pub </span>delay: Delay,
     <span class="kw">pub </span>led: Led,
     <span class="kw">pub </span>gps: Gps,
+    <span class="kw">pub </span>lora: Lora,
     <span class="kw">pub </span>sd_logger: <span class="prelude-ty">Option</span>&lt;SdLogger&gt;,
     <span class="kw">pub </span>tracker: accelerometer::Tracker,
     <span class="kw">pub </span>i2c1_devices: I2c1Devices,
@@ -305,6 +334,7 @@
     <span class="kw">pub </span>led: Led,
     <span class="kw">pub </span>i2c1: I2c1,
     <span class="kw">pub </span>serial1: Serial1,
+    <span class="kw">pub </span>serial6: Serial6,
     <span class="kw">pub </span>spi2: Spi2,
     <span class="kw">pub </span>cs2: Cs2,
 }
@@ -357,6 +387,9 @@
         .tap_err(|e| <span class="macro">defmt::error!</span>(<span class="string">&quot;Failed to initialize BME280: {}&quot;</span>, e))
         .ok();
 
+    <span class="macro">defmt::info!</span>(<span class="string">&quot;Initializing LORA&quot;</span>);
+    <span class="kw">let </span>lora = Lora::new(board.serial6);
+
     <span class="kw">let </span>lis3dh = init_lis3dh(shared_i2c1.acquire_i2c())
         .tap_err(|e| <span class="macro">defmt::error!</span>(<span class="string">&quot;Failed to initialize LIS3DH: {}&quot;</span>, defmt::Debug2Format(<span class="kw-2">&amp;</span>e)))
         .ok();
@@ -369,6 +402,7 @@
         delay: board.delay,
         led: board.led,
         gps,
+        lora,
         sd_logger,
         tracker,
         i2c1_devices: I2c1Devices { bme280, lis3dh },
@@ -414,6 +448,7 @@
     <span class="kw">let </span>monotonic = device.TIM2.monotonic_us(<span class="kw-2">&amp;</span>clocks);
     <span class="kw">let </span>delay = device.TIM3.delay_us(<span class="kw-2">&amp;</span>clocks);
 
+    <span class="kw">let </span>gpioa = device.GPIOA.split();
     <span class="kw">let </span>gpiob = device.GPIOB.split();
     <span class="kw">let </span>gpioc = device.GPIOC.split();
 
@@ -461,12 +496,23 @@
             .expect(<span class="string">&quot;Invalid USART1 config&quot;</span>)
     };
 
+    <span class="kw">let </span>serial6 = {
+        <span class="kw">let </span>tx6 = gpioa.pa11.into_alternate();
+        <span class="kw">let </span>rx6 = gpioa.pa12.into_alternate();
+        <span class="kw">let </span>config = serial::Config::default().baudrate(<span class="number">9600</span>.bps());
+        device
+            .USART6
+            .serial((tx6, rx6), config, <span class="kw-2">&amp;</span>clocks)
+            .expect(<span class="string">&quot;Invalid USART6 config&quot;</span>)
+    };
+
     Board {
         monotonic,
         delay,
         led,
         i2c1,
         serial1,
+        serial6,
         spi2,
         cs2,
     }
