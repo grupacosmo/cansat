@@ -1,0 +1,3 @@
+(function() {var implementors = {
+"cansat_gps":[["impl&lt;SerialError&gt; <a class=\"trait\" href=\"https://doc.rust-lang.org/1.69.0/core/convert/trait.From.html\" title=\"trait core::convert::From\">From</a>&lt;SerialError&gt; for <a class=\"enum\" href=\"cansat_gps/enum.Error.html\" title=\"enum cansat_gps::Error\">Error</a>&lt;SerialError&gt;"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

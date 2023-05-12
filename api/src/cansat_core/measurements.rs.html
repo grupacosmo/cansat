@@ -89,6 +89,48 @@
 <a href="#89" id="89">89</a>
 <a href="#90" id="90">90</a>
 <a href="#91" id="91">91</a>
+<a href="#92" id="92">92</a>
+<a href="#93" id="93">93</a>
+<a href="#94" id="94">94</a>
+<a href="#95" id="95">95</a>
+<a href="#96" id="96">96</a>
+<a href="#97" id="97">97</a>
+<a href="#98" id="98">98</a>
+<a href="#99" id="99">99</a>
+<a href="#100" id="100">100</a>
+<a href="#101" id="101">101</a>
+<a href="#102" id="102">102</a>
+<a href="#103" id="103">103</a>
+<a href="#104" id="104">104</a>
+<a href="#105" id="105">105</a>
+<a href="#106" id="106">106</a>
+<a href="#107" id="107">107</a>
+<a href="#108" id="108">108</a>
+<a href="#109" id="109">109</a>
+<a href="#110" id="110">110</a>
+<a href="#111" id="111">111</a>
+<a href="#112" id="112">112</a>
+<a href="#113" id="113">113</a>
+<a href="#114" id="114">114</a>
+<a href="#115" id="115">115</a>
+<a href="#116" id="116">116</a>
+<a href="#117" id="117">117</a>
+<a href="#118" id="118">118</a>
+<a href="#119" id="119">119</a>
+<a href="#120" id="120">120</a>
+<a href="#121" id="121">121</a>
+<a href="#122" id="122">122</a>
+<a href="#123" id="123">123</a>
+<a href="#124" id="124">124</a>
+<a href="#125" id="125">125</a>
+<a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::quantity::{Distance, Pressure, Temperature};
 <span class="kw">use </span>accelerometer::{vector, Orientation};
 <span class="kw">use </span>heapless_bytes::Bytes;
@@ -105,7 +147,7 @@
     <span class="attr">#[serde(serialize_with = <span class="string">&quot;option_distance_meters&quot;</span>)]
     </span><span class="kw">pub </span>altitude: <span class="prelude-ty">Option</span>&lt;Distance&gt;,
 
-    <span class="kw">pub </span>nmea: <span class="prelude-ty">Option</span>&lt;Bytes&lt;<span class="number">82</span>&gt;&gt;,
+    <span class="kw">pub </span>nmea: <span class="prelude-ty">Option</span>&lt;Bytes&lt;<span class="number">256</span>&gt;&gt;,
 
     <span class="attr">#[serde(serialize_with = <span class="string">&quot;option_vector_i16x3&quot;</span>)]
     </span><span class="kw">pub </span>acceleration: <span class="prelude-ty">Option</span>&lt;vector::I16x3&gt;,
@@ -168,16 +210,58 @@
     <span class="kw">fn </span>format(<span class="kw-2">&amp;</span><span class="self">self</span>, fmt: defmt::Formatter) {
         <span class="macro">defmt::write!</span>(
             fmt,
-            <span class="string">&quot;temp: {} °C, pres: {} hPa, alt: {} m, accel: {}, orient: {}, nmea: {=[u8]:a}&quot;</span>,
-            <span class="self">self</span>.temperature.unwrap_or_default().as_celsius(),
-            <span class="self">self</span>.pressure.unwrap_or_default().as_hectos(),
-            <span class="self">self</span>.altitude.unwrap_or_default().as_meters(),
-            <span class="self">self</span>.acceleration
-                .map(|v| (v.x, v.y, v.z))
-                .unwrap_or_default(),
-            <span class="self">self</span>.orientation.as_ref().map(defmt::Debug2Format),
-            <span class="self">self</span>.nmea.as_ref().map(|v| <span class="kw-2">&amp;</span>v[..]).unwrap_or(<span class="kw-2">&amp;</span>[])
+            <span class="string">&quot;temp: {}, pres: {}, alt: {}, accel: {}, orient: {}, nmea: {}&quot;</span>,
+            OrError(<span class="kw-2">&amp;</span><span class="self">self</span>.temperature.map(Celsius)),
+            OrError(<span class="kw-2">&amp;</span><span class="self">self</span>.pressure.map(HectoPascals)),
+            OrError(<span class="kw-2">&amp;</span><span class="self">self</span>.altitude.map(Meters)),
+            OrError(<span class="kw-2">&amp;</span><span class="self">self</span>.acceleration.map(|v| (v.x, v.y, v.z))),
+            OrError(<span class="kw-2">&amp;</span><span class="self">self</span>.orientation.as_ref().map(defmt::Debug2Format)),
+            OrError(<span class="kw-2">&amp;</span><span class="self">self</span>.nmea.as_ref().map(|v| Ascii(v)))
         );
+    }
+}
+
+<span class="kw">struct </span>Celsius(<span class="kw">pub </span>Temperature);
+
+<span class="kw">impl </span>defmt::Format <span class="kw">for </span>Celsius {
+    <span class="kw">fn </span>format(<span class="kw-2">&amp;</span><span class="self">self</span>, fmt: defmt::Formatter) {
+        <span class="macro">defmt::write!</span>(fmt, <span class="string">&quot;{} °C&quot;</span>, <span class="self">self</span>.<span class="number">0</span>.as_celsius());
+    }
+}
+
+<span class="kw">struct </span>HectoPascals(<span class="kw">pub </span>Pressure);
+
+<span class="kw">impl </span>defmt::Format <span class="kw">for </span>HectoPascals {
+    <span class="kw">fn </span>format(<span class="kw-2">&amp;</span><span class="self">self</span>, fmt: defmt::Formatter) {
+        <span class="macro">defmt::write!</span>(fmt, <span class="string">&quot;{} hPa&quot;</span>, <span class="self">self</span>.<span class="number">0</span>.as_hectos());
+    }
+}
+
+<span class="kw">struct </span>Meters(<span class="kw">pub </span>Distance);
+
+<span class="kw">impl </span>defmt::Format <span class="kw">for </span>Meters {
+    <span class="kw">fn </span>format(<span class="kw-2">&amp;</span><span class="self">self</span>, fmt: defmt::Formatter) {
+        <span class="macro">defmt::write!</span>(fmt, <span class="string">&quot;{} m&quot;</span>, <span class="self">self</span>.<span class="number">0</span>.as_meters());
+    }
+}
+
+<span class="kw">struct </span>Ascii&lt;<span class="lifetime">&#39;a</span>&gt;(<span class="kw">pub </span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]);
+
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; defmt::Format <span class="kw">for </span>Ascii&lt;<span class="lifetime">&#39;a</span>&gt; {
+    <span class="kw">fn </span>format(<span class="kw-2">&amp;</span><span class="self">self</span>, fmt: defmt::Formatter) {
+        <span class="macro">defmt::write!</span>(fmt, <span class="string">&quot;{=[u8]:a}&quot;</span>, <span class="self">self</span>.<span class="number">0</span>);
+    }
+}
+
+<span class="kw">struct </span>OrError&lt;<span class="lifetime">&#39;a</span>, T&gt;(<span class="kw">pub </span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><span class="prelude-ty">Option</span>&lt;T&gt;);
+
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, T: defmt::Format&gt; defmt::Format <span class="kw">for </span>OrError&lt;<span class="lifetime">&#39;a</span>, T&gt; {
+    <span class="kw">fn </span>format(<span class="kw-2">&amp;</span><span class="self">self</span>, fmt: defmt::Formatter) {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(v) = <span class="self">self</span>.<span class="number">0 </span>{
+            <span class="macro">defmt::write!</span>(fmt, <span class="string">&quot;{}&quot;</span>, v);
+        } <span class="kw">else </span>{
+            <span class="macro">defmt::write!</span>(fmt, <span class="string">&quot;ERROR&quot;</span>);
+        }
     }
 }
 </code></pre></div>

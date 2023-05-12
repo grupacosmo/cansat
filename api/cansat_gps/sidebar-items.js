@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["MAX_NMEA_LEN"],"enum":["Error"],"struct":["Gps"]};
+window.SIDEBAR_ITEMS = {"constant":["STANDARD_MAX_NMEA_LEN"],"enum":["Error"],"struct":["Gps"]};

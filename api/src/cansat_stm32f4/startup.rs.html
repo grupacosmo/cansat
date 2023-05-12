@@ -265,12 +265,27 @@
 <a href="#265" id="265">265</a>
 <a href="#266" id="266">266</a>
 <a href="#267" id="267">267</a>
+<a href="#268" id="268">268</a>
+<a href="#269" id="269">269</a>
+<a href="#270" id="270">270</a>
+<a href="#271" id="271">271</a>
+<a href="#272" id="272">272</a>
+<a href="#273" id="273">273</a>
+<a href="#274" id="274">274</a>
+<a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
+<a href="#278" id="278">278</a>
+<a href="#279" id="279">279</a>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::SdLogger;
 <span class="kw">use </span>core::convert::Infallible;
 <span class="kw">use </span>stm32f4xx_hal::{
-    gpio, i2c, pac,
+    gpio,
+    i2c::{<span class="self">self</span>, I2c1},
+    pac,
     prelude::<span class="kw-2">*</span>,
-    serial, spi,
+    serial::{<span class="self">self</span>, Serial1, Serial6},
+    spi::{<span class="self">self</span>, Spi2},
     timer::{monotonic::MonoTimerUs, DelayUs},
 };
 <span class="kw">use </span>tap::prelude::<span class="kw-2">*</span>;
@@ -278,7 +293,8 @@
 <span class="kw">pub type </span>Monotonic = MonoTimerUs&lt;pac::TIM2&gt;;
 <span class="kw">pub type </span>Delay = DelayUs&lt;pac::TIM3&gt;;
 <span class="kw">pub type </span>Led = gpio::PC13&lt;gpio::Output&gt;;
-<span class="kw">pub type </span>Gps = cansat_gps::Gps&lt;Serial1&gt;;
+<span class="kw">pub type </span>Gps = cansat_gps::Gps&lt;Serial1, <span class="number">256</span>&gt;;
+<span class="kw">pub type </span>GpsError = cansat_gps::Error&lt;serial::Error&gt;;
 <span class="kw">pub type </span>Lora = cansat_lora::Lora&lt;Serial6&gt;;
 <span class="kw">pub type </span>SdmmcController =
     embedded_sdmmc::Controller&lt;BlockSpi2, DummyClock, MAX_OPEN_DIRS, MAX_OPEN_FILES&gt;;
@@ -289,28 +305,11 @@
 <span class="kw">pub type </span>Bme280Error = bme280::Error&lt;i2c::Error&gt;;
 
 <span class="kw">type </span>BlockSpi2 = embedded_sdmmc::BlockSpi&lt;<span class="lifetime">&#39;static</span>, Spi2, Cs2&gt;;
+<span class="kw">type </span>Spi2Device = embedded_sdmmc::SdMmcSpi&lt;Spi2, Cs2&gt;;
+<span class="kw">type </span>Cs2 = gpio::PB12&lt;gpio::Output&gt;;
 <span class="kw">const </span>MAX_OPEN_DIRS: usize = <span class="number">4</span>;
 <span class="kw">const </span>MAX_OPEN_FILES: usize = <span class="number">4</span>;
-
 <span class="kw">type </span>I2c1Proxy = shared_bus::I2cProxy&lt;<span class="lifetime">&#39;static</span>, shared_bus::AtomicCheckMutex&lt;I2c1&gt;&gt;;
-<span class="kw">type </span>I2c1 = i2c::I2c1&lt;(Scl1, Sda1)&gt;;
-<span class="kw">type </span>Scl1 = gpio::PB8&lt;gpio::Alternate&lt;<span class="number">4</span>, gpio::OpenDrain&gt;&gt;;
-<span class="kw">type </span>Sda1 = gpio::PB9&lt;gpio::Alternate&lt;<span class="number">4</span>, gpio::OpenDrain&gt;&gt;;
-
-<span class="kw">type </span>Serial1 = serial::Serial1&lt;(Tx1, Rx1)&gt;;
-<span class="kw">type </span>Tx1 = gpio::PB6&lt;gpio::Alternate&lt;<span class="number">7</span>&gt;&gt;;
-<span class="kw">type </span>Rx1 = gpio::PB7&lt;gpio::Alternate&lt;<span class="number">7</span>&gt;&gt;;
-
-<span class="kw">type </span>Serial6 = serial::Serial6&lt;(Tx6, Rx6)&gt;;
-<span class="kw">type </span>Tx6 = gpio::PA11&lt;gpio::Alternate&lt;<span class="number">8</span>&gt;&gt;;
-<span class="kw">type </span>Rx6 = gpio::PA12&lt;gpio::Alternate&lt;<span class="number">8</span>&gt;&gt;;
-
-<span class="kw">type </span>Spi2Device = embedded_sdmmc::SdMmcSpi&lt;Spi2, Cs2&gt;;
-<span class="kw">type </span>Spi2 = spi::Spi2&lt;(Sck2, Miso2, Mosi2)&gt;;
-<span class="kw">type </span>Cs2 = gpio::PB12&lt;gpio::Output&gt;;
-<span class="kw">type </span>Sck2 = gpio::PB13&lt;gpio::Alternate&lt;<span class="number">5</span>&gt;&gt;;
-<span class="kw">type </span>Miso2 = gpio::PB14&lt;gpio::Alternate&lt;<span class="number">5</span>&gt;&gt;;
-<span class="kw">type </span>Mosi2 = gpio::PB15&lt;gpio::Alternate&lt;<span class="number">5</span>&gt;&gt;;
 
 <span class="kw">pub struct </span>CanSat {
     <span class="kw">pub </span>monotonic: Monotonic,
@@ -354,16 +353,15 @@
 
 <span class="attr">#[derive(Debug)]
 </span><span class="kw">pub enum </span>Error {
-    ConsumingDevices,
+    CriticalDevice,
 }
 
 <span class="kw">impl </span>defmt::Format <span class="kw">for </span>Error {
     <span class="kw">fn </span>format(<span class="kw-2">&amp;</span><span class="self">self</span>, fmt: defmt::Formatter) {
         <span class="kw">match </span><span class="self">self </span>{
-            <span class="self">Self</span>::ConsumingDevices =&gt; <span class="macro">defmt::write!</span>(
-                fmt,
-                <span class="string">&quot;Failed to initialize all the consuming peripheral devices&quot;
-            </span>),
+            <span class="self">Self</span>::CriticalDevice =&gt; {
+                <span class="macro">defmt::write!</span>(fmt, <span class="string">&quot;Failed to initialize a critical peripheral device&quot;</span>)
+            }
         }
     }
 }
@@ -380,7 +378,7 @@
 
     // TODO: append `&amp;&amp; lora.is_none()` to the condition
     </span><span class="kw">if </span>sd_logger.is_none() {
-        <span class="kw">return </span><span class="prelude-val">Err</span>(Error::ConsumingDevices);
+        <span class="kw">return </span><span class="prelude-val">Err</span>(Error::CriticalDevice);
     }
 
     <span class="kw">let </span>bme280 = init_bme280(shared_i2c1.acquire_i2c(), <span class="kw-2">&amp;mut </span>board.delay)
@@ -395,7 +393,10 @@
         .ok();
     <span class="kw">let </span>tracker = accelerometer::Tracker::new(<span class="number">3700.0</span>);
 
-    <span class="kw">let </span>gps = init_gps(board.serial1);
+    <span class="kw">let </span>gps = init_gps(board.serial1).map_err(|e| {
+        <span class="macro">defmt::error!</span>(<span class="string">&quot;Failed to initialize GPS: {}&quot;</span>, defmt::Debug2Format(<span class="kw-2">&amp;</span>e));
+        Error::CriticalDevice
+    })<span class="question-mark">?</span>;
 
     <span class="prelude-val">Ok</span>(CanSat {
         monotonic: board.monotonic,
@@ -416,7 +417,10 @@
     <span class="kw">let </span>spi_device = statik.spi2_device.as_mut().unwrap();
     <span class="kw">let </span>block_spi = spi_device.acquire().map_err(SdmmcError::DeviceError)<span class="question-mark">?</span>;
     <span class="kw">let </span>controller = SdmmcController::new(block_spi, DummyClock);
-    SdLogger::new(controller)
+    <span class="kw">let </span><span class="kw-2">mut </span>logger = SdLogger::new(controller)<span class="question-mark">?</span>;
+    <span class="comment">// controller does some long initialization on first write
+    </span>logger.write(<span class="string">b&quot;\n&quot;</span>)<span class="question-mark">?</span>;
+    <span class="prelude-val">Ok</span>(logger)
 }
 
 <span class="kw">fn </span>init_bme280(i2c: I2c1Proxy, delay: <span class="kw-2">&amp;mut </span>Delay) -&gt; <span class="prelude-ty">Result</span>&lt;Bme280, Bme280Error&gt; {
@@ -427,11 +431,31 @@
     <span class="prelude-val">Ok</span>(bme280)
 }
 
-<span class="kw">fn </span>init_gps(<span class="kw-2">mut </span>serial: Serial1) -&gt; Gps {
+<span class="kw">fn </span>init_gps(<span class="kw-2">mut </span>serial: Serial1) -&gt; <span class="prelude-ty">Result</span>&lt;Gps, GpsError&gt; {
     <span class="macro">defmt::info!</span>(<span class="string">&quot;Initializing GPS&quot;</span>);
 
     serial.listen(serial::Event::Rxne);
-    Gps::new(serial)
+    <span class="kw">let </span><span class="kw-2">mut </span>gps = Gps::new(serial);
+
+    <span class="kw">let </span>set_gll_output_rate = <span class="string">b&quot;$PUBX,40,GLL,0,0,0,0,0,0*5C\r\n&quot;</span>;
+    gps.send(set_gll_output_rate)<span class="question-mark">?</span>;
+
+    <span class="kw">let </span>set_gsa_output_rate = <span class="string">b&quot;$PUBX,40,GSA,0,0,0,0,0,0*4E\r\n&quot;</span>;
+    gps.send(set_gsa_output_rate)<span class="question-mark">?</span>;
+
+    <span class="kw">let </span>set_gsv_output_rate = <span class="string">b&quot;$PUBX,40,GSV,0,0,0,0,0,0*59\r\n&quot;</span>;
+    gps.send(set_gsv_output_rate)<span class="question-mark">?</span>;
+
+    <span class="kw">let </span>set_gga_output_rate = <span class="string">b&quot;$PUBX,40,GGA,0,1,0,0,0,0*5B\r\n&quot;</span>;
+    gps.send(set_gga_output_rate)<span class="question-mark">?</span>;
+
+    <span class="kw">let </span>set_vtg_output_rate = <span class="string">b&quot;$PUBX,40,VTG,0,0,0,0,0,0*5E\r\n&quot;</span>;
+    gps.send(set_vtg_output_rate)<span class="question-mark">?</span>;
+
+    <span class="kw">let </span>set_rmc_output_rate = <span class="string">b&quot;$PUBX,40,RMC,0,0,0,0,0,0*47\r\n&quot;</span>;
+    gps.send(set_rmc_output_rate)<span class="question-mark">?</span>;
+
+    <span class="prelude-val">Ok</span>(gps)
 }
 
 <span class="kw">fn </span>init_lis3dh(i2c: I2c1Proxy) -&gt; <span class="prelude-ty">Result</span>&lt;Lis3dh, Lis3dhError&gt; {
