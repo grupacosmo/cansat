@@ -14,7 +14,7 @@ pub struct Measurements {
     #[serde(serialize_with = "option_distance_meters")]
     pub altitude: Option<Distance>,
 
-    pub nmea: Option<Bytes<82>>,
+    pub nmea: Option<Bytes<256>>,
 
     #[serde(serialize_with = "option_vector_i16x3")]
     pub acceleration: Option<vector::I16x3>,
@@ -77,15 +77,57 @@ impl defmt::Format for Measurements {
     fn format(&self, fmt: defmt::Formatter) {
         defmt::write!(
             fmt,
-            "temp: {} °C, pres: {} hPa, alt: {} m, accel: {}, orient: {}, nmea: {=[u8]:a}",
-            self.temperature.unwrap_or_default().as_celsius(),
-            self.pressure.unwrap_or_default().as_hectos(),
-            self.altitude.unwrap_or_default().as_meters(),
-            self.acceleration
-                .map(|v| (v.x, v.y, v.z))
-                .unwrap_or_default(),
-            self.orientation.as_ref().map(defmt::Debug2Format),
-            self.nmea.as_ref().map(|v| &v[..]).unwrap_or(&[])
+            "temp: {}, pres: {}, alt: {}, accel: {}, orient: {}, nmea: {}",
+            OrError(&self.temperature.map(Celsius)),
+            OrError(&self.pressure.map(HectoPascals)),
+            OrError(&self.altitude.map(Meters)),
+            OrError(&self.acceleration.map(|v| (v.x, v.y, v.z))),
+            OrError(&self.orientation.as_ref().map(defmt::Debug2Format)),
+            OrError(&self.nmea.as_ref().map(|v| Ascii(v)))
         );
+    }
+}
+
+struct Celsius(pub Temperature);
+
+impl defmt::Format for Celsius {
+    fn format(&self, fmt: defmt::Formatter) {
+        defmt::write!(fmt, "{} °C", self.0.as_celsius());
+    }
+}
+
+struct HectoPascals(pub Pressure);
+
+impl defmt::Format for HectoPascals {
+    fn format(&self, fmt: defmt::Formatter) {
+        defmt::write!(fmt, "{} hPa", self.0.as_hectos());
+    }
+}
+
+struct Meters(pub Distance);
+
+impl defmt::Format for Meters {
+    fn format(&self, fmt: defmt::Formatter) {
+        defmt::write!(fmt, "{} m", self.0.as_meters());
+    }
+}
+
+struct Ascii<'a>(pub &'a [u8]);
+
+impl<'a> defmt::Format for Ascii<'a> {
+    fn format(&self, fmt: defmt::Formatter) {
+        defmt::write!(fmt, "{=[u8]:a}", self.0);
+    }
+}
+
+struct OrError<'a, T>(pub &'a Option<T>);
+
+impl<'a, T: defmt::Format> defmt::Format for OrError<'a, T> {
+    fn format(&self, fmt: defmt::Formatter) {
+        if let Some(v) = self.0 {
+            defmt::write!(fmt, "{}", v);
+        } else {
+            defmt::write!(fmt, "ERROR");
+        }
     }
 }
