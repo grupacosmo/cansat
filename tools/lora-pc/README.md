@@ -1,4 +1,4 @@
-# LoRa Receiver 
+# LoRa PC 
 
 ## Installation
 
