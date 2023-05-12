@@ -5,8 +5,7 @@ use stm32f4xx_hal::{
     i2c::{self, I2c1},
     pac,
     prelude::*,
-    serial,
-    serial::Serial1,
+    serial::{self, Serial1, Serial6},
     spi::{self, Spi2},
     timer::{monotonic::MonoTimerUs, DelayUs},
 };
@@ -16,7 +15,8 @@ pub type Monotonic = MonoTimerUs<pac::TIM2>;
 pub type Delay = DelayUs<pac::TIM3>;
 pub type Led = gpio::PC13<gpio::Output>;
 pub type Gps = cansat_gps::Gps<Serial1, 256>;
-pub type GpsError = cansat_gps::Error<stm32f4xx_hal::serial::Error>;
+pub type GpsError = cansat_gps::Error<serial::Error>;
+pub type Lora = cansat_lora::Lora<Serial6>;
 pub type SdmmcController =
     embedded_sdmmc::Controller<BlockSpi2, DummyClock, MAX_OPEN_DIRS, MAX_OPEN_FILES>;
 pub type SdmmcError = embedded_sdmmc::Error<embedded_sdmmc::SdMmcError>;
@@ -37,6 +37,7 @@ pub struct CanSat {
     pub delay: Delay,
     pub led: Led,
     pub gps: Gps,
+    pub lora: Lora,
     pub sd_logger: Option<SdLogger>,
     pub tracker: accelerometer::Tracker,
     pub i2c1_devices: I2c1Devices,
@@ -53,6 +54,7 @@ pub struct Board {
     pub led: Led,
     pub i2c1: I2c1,
     pub serial1: Serial1,
+    pub serial6: Serial6,
     pub spi2: Spi2,
     pub cs2: Cs2,
 }
@@ -104,6 +106,9 @@ pub fn init_drivers(mut board: Board, statik: &'static mut Statik) -> Result<Can
         .tap_err(|e| defmt::error!("Failed to initialize BME280: {}", e))
         .ok();
 
+    defmt::info!("Initializing LORA");
+    let lora = Lora::new(board.serial6);
+
     let lis3dh = init_lis3dh(shared_i2c1.acquire_i2c())
         .tap_err(|e| defmt::error!("Failed to initialize LIS3DH: {}", defmt::Debug2Format(&e)))
         .ok();
@@ -119,6 +124,7 @@ pub fn init_drivers(mut board: Board, statik: &'static mut Statik) -> Result<Can
         delay: board.delay,
         led: board.led,
         gps,
+        lora,
         sd_logger,
         tracker,
         i2c1_devices: I2c1Devices { bme280, lis3dh },
@@ -187,6 +193,7 @@ pub fn init_board(device: pac::Peripherals) -> Board {
     let monotonic = device.TIM2.monotonic_us(&clocks);
     let delay = device.TIM3.delay_us(&clocks);
 
+    let gpioa = device.GPIOA.split();
     let gpiob = device.GPIOB.split();
     let gpioc = device.GPIOC.split();
 
@@ -234,12 +241,23 @@ pub fn init_board(device: pac::Peripherals) -> Board {
             .expect("Invalid USART1 config")
     };
 
+    let serial6 = {
+        let tx6 = gpioa.pa11.into_alternate();
+        let rx6 = gpioa.pa12.into_alternate();
+        let config = serial::Config::default().baudrate(9600.bps());
+        device
+            .USART6
+            .serial((tx6, rx6), config, &clocks)
+            .expect("Invalid USART6 config")
+    };
+
     Board {
         monotonic,
         delay,
         led,
         i2c1,
         serial1,
+        serial6,
         spi2,
         cs2,
     }

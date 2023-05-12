@@ -132,6 +132,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "cansat-lora"
+version = "0.1.0"
+dependencies = [
+ "embedded-hal 1.0.0-alpha.8",
+ "nom",
+]
+
+[[package]]
 name = "cansat-stm32f4"
 version = "0.1.0"
 dependencies = [
@@ -139,6 +147,7 @@ dependencies = [
  "bme280",
  "cansat-core",
  "cansat-gps",
+ "cansat-lora",
  "cortex-m 0.7.7",
  "cortex-m-rt",
  "cortex-m-rtic",
@@ -688,6 +697,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "minimal-lexical"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "68354c5c6bd36d73ff3feceb05efa59b6acb7626617f4962be322a825e61f79a"
+
+[[package]]
 name = "nb"
 version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -703,6 +718,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8d5439c4ad607c3c23abf66de8c8bf57ba8adcd1f129e699851a6e43935d339d"
 dependencies = [
  "defmt",
+]
+
+[[package]]
+name = "nom"
+version = "7.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d273983c5a657a70a3e8f2a01329822f3b8c8172b73826411a55751e404a0a4a"
+dependencies = [
+ "memchr",
+ "minimal-lexical",
 ]
 
 [[package]]
