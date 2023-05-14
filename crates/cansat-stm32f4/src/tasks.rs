@@ -4,6 +4,7 @@ use cansat_core::{
     quantity::{Pressure, Temperature},
     Measurements,
 };
+use cansat_lora::parse;
 use heapless::Vec;
 use rtic::Mutex;
 use stm32f4xx_hal::prelude::*;
@@ -13,8 +14,13 @@ pub fn idle(mut ctx: app::idle::Context) -> ! {
 
     loop {
         let measurements = read_measurements(&mut ctx);
-
         defmt::info!("{}", measurements);
+
+        let lora = &mut ctx.local.lora;
+
+        if let Some(lora) = lora {
+            send_lora_package(lora);
+        }
 
         let csv_record: Vec<u8, 1024> = match serde_csv_core::to_vec(&mut writer, &measurements) {
             Ok(r) => r,
@@ -83,6 +89,23 @@ fn read_measurements(ctx: &mut app::idle::Context) -> Measurements {
     }
 
     data
+}
+
+fn send_lora_package(lora: &mut crate::Lora) {
+    let mut resp_buffer: [u8; 255] = [0; 255];
+
+    match lora.send(b"AT+TEST=TXLRSTR,\"TEST_MSG\"\r\n", &mut resp_buffer) {
+        Ok(resp_len) => {
+            if let Err(e) = parse::response(&resp_buffer) {
+                defmt::error!("Lora error reponse: {}", defmt::Debug2Format(&e));
+            } else {
+                defmt::error!("Lora package sent {}", resp_len);
+            }
+        }
+        Err(e) => {
+            defmt::error!("Could not send lora package: {}", defmt::Debug2Format(&e));
+        }
+    }
 }
 
 /// USART3 interrupt handler that reads data into the gps working buffer
