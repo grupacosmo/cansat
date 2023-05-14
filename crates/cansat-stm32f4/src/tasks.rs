@@ -19,7 +19,9 @@ pub fn idle(mut ctx: app::idle::Context) -> ! {
         let lora = &mut ctx.local.lora;
 
         if let Some(lora) = lora {
+            let delay = &mut ctx.local.delay;
             send_lora_package(lora);
+            delay.delay_ms(1000 as u32);
         }
 
         let csv_record: Vec<u8, 1024> = match serde_csv_core::to_vec(&mut writer, &measurements) {
