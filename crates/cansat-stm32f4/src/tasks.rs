@@ -100,3 +100,11 @@ pub fn blink(ctx: app::blink::Context) {
     defmt::debug!("Blink");
     app::blink::spawn_after(1.secs()).unwrap();
 }
+
+/// Toggle buzzer every second
+pub fn buzz(ctx: app::buzz::Context) {
+    let buzzer = ctx.local.buzzer;
+    buzzer.toggle();
+    defmt::debug!("Buzz");
+    app::buzz::spawn_after(1.secs()).unwrap();
+}

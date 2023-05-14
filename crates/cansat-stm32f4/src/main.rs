@@ -9,7 +9,7 @@ mod tasks;
 
 pub use sd_logger::SdLogger;
 pub use startup::{
-    Bme280, Bme280Error, Delay, Gps, I2c1Devices, Led, Lis3dh, Lis3dhError, Lora, Monotonic,
+    Bme280, Bme280Error, Delay, Gps, I2c1Devices, Led, Buzzer, Lis3dh, Lis3dhError, Lora, Monotonic,
     SdmmcController, SdmmcError,
 };
 
@@ -36,6 +36,7 @@ mod app {
     struct Local {
         delay: Delay,
         led: Led,
+        buzzer: Buzzer,
         sd_logger: Option<SdLogger>,
         tracker: accelerometer::Tracker,
         i2c1_devices: I2c1Devices,
@@ -52,11 +53,13 @@ mod app {
         });
 
         blink::spawn().unwrap();
+        buzz::spawn().unwrap();
 
         let shared = Shared { gps: cansat.gps };
         let local = Local {
             delay: cansat.delay,
             led: cansat.led,
+            buzzer: cansat.buzzer,
             sd_logger: cansat.sd_logger,
             tracker: cansat.tracker,
             i2c1_devices: cansat.i2c1_devices,
@@ -77,5 +80,8 @@ mod app {
 
         #[task(local = [led], priority = 1)]
         fn blink(ctx: blink::Context);
+
+        #[task(local = [buzzer], priority = 1)]
+        fn buzz(ctx: buzz::Context);
     }
 }

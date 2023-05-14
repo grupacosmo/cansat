@@ -14,6 +14,7 @@ use tap::prelude::*;
 pub type Monotonic = MonoTimerUs<pac::TIM2>;
 pub type Delay = DelayUs<pac::TIM3>;
 pub type Led = gpio::PC13<gpio::Output>;
+pub type Buzzer = gpio::PA8<gpio::Output>;
 pub type Gps = cansat_gps::Gps<Serial1, 256>;
 pub type GpsError = cansat_gps::Error<serial::Error>;
 pub type Lora = cansat_lora::Lora<Serial6>;
@@ -36,6 +37,7 @@ pub struct CanSat {
     pub monotonic: Monotonic,
     pub delay: Delay,
     pub led: Led,
+    pub buzzer: Buzzer,
     pub gps: Gps,
     pub lora: Lora,
     pub sd_logger: Option<SdLogger>,
@@ -52,6 +54,7 @@ pub struct Board {
     pub monotonic: Monotonic,
     pub delay: Delay,
     pub led: Led,
+    pub buzzer: Buzzer,
     pub i2c1: I2c1,
     pub serial1: Serial1,
     pub serial6: Serial6,
@@ -123,6 +126,7 @@ pub fn init_drivers(mut board: Board, statik: &'static mut Statik) -> Result<Can
         monotonic: board.monotonic,
         delay: board.delay,
         led: board.led,
+        buzzer: board.buzzer,
         gps,
         lora,
         sd_logger,
@@ -198,6 +202,7 @@ pub fn init_board(device: pac::Peripherals) -> Board {
     let gpioc = device.GPIOC.split();
 
     let led = gpioc.pc13.into_push_pull_output();
+    let buzzer = gpioa.pa8.into_push_pull_output();
 
     let i2c1 = {
         let scl1 = gpiob
@@ -255,6 +260,7 @@ pub fn init_board(device: pac::Peripherals) -> Board {
         monotonic,
         delay,
         led,
+        buzzer,
         i2c1,
         serial1,
         serial6,
