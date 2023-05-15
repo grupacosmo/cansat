@@ -1,0 +1,44 @@
+name: docs
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+      - name: Install mdbook
+        run: |
+          mkdir bin
+          curl -sSL https://github.com/rust-lang/mdBook/releases/download/v0.4.14/mdbook-v0.4.14-x86_64-unknown-linux-gnu.tar.gz | tar -xz --directory=bin
+          echo "$(pwd)/bin" >> $GITHUB_PATH
+      - name: Build getting-started
+        run: |
+          cd docs/getting-started
+          mdbook build
+      - name: Deploy getting-started
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./docs/getting-started/book
+          destination_dir: getting-started
+      - name: Run doc command
+        uses: actions-rs/cargo@v1
+        with:
+          command: doc
+          args: --no-deps
+      - name: Deploy docs
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./target/doc
+          destination_dir: api

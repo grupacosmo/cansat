@@ -1,0 +1,22 @@
+[package]
+name = "cansat-core"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+libm = "0.2.6"
+ryu = "1.0.13"
+heapless = { version = "0.7.16", default-features = false, features = ["serde"] }
+accelerometer = "0.12.0"
+serde = { version = "1.0.159", default-features = false, features = ["derive"] }
+heapless-bytes = "0.3.0"
+defmt = "0.3.4"
+
+[dependencies.derive_more]
+version = "0.99.17"
+default-features = false
+features = [
+    "add", "mul",
+]

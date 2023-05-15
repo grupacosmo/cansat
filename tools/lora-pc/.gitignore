@@ -1,0 +1,3 @@
+src/data/*
+.venv
+__pycache__

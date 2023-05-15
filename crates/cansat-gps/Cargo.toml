@@ -1,0 +1,15 @@
+[package]
+name = "cansat-gps"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+defmt = "0.3.4"
+embedded-hal = "1.0.0-alpha.8"
+heapless = { version = "0.7.16", default-features = false }
+
+[dev-dependencies]
+cansat-test-utils = { path = "../cansat-test-utils" }
+rand = "0.8.5"

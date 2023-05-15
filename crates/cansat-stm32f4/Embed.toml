@@ -1,0 +1,11 @@
+[default.general]
+chip = "STM32F411CEUx"
+
+[default.rtt]
+enabled = true
+channels = [
+    { up = 0, name = "defmt", format = "Defmt" },
+]
+
+[default.gdb]
+enabled = false

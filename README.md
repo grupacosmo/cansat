@@ -1,67 +1,64 @@
-# CanSat - LoRa Python module
+# CanSat
+Bare-metal software for the sounding rocket payload.
 
-## Installation
+[Getting Started](https://grupacosmo.github.io/cansat/getting-started/index.html)
 
-Python v. 3.11.2 was used for development.
+[API Reference](https://grupacosmo.github.io/cansat/api/cansat_stm32f4/index.html)
 
-I recommend to use Python virtual environment e.g. built-in `venv` for running code:
+## Prerequisites
+* libusb:
 
-- Create a virtual environment
-```sh
-python -m venv .venv
+    See [installation instructions](https://github.com/probe-rs/probe-rs/tree/master/cargo-embed#prerequisites).
+
+* [cargo-embed](https://github.com/probe-rs/cargo-embed):
+
+    ```bash
+    cargo install cargo-embed
+    ```
+
+* `thumbv7em-none-eabihf` platform target:
+
+    ```bash
+    rustup target add thumbv7em-none-eabihf
+    ```
+
+## xtask
+[cargo-xtask](https://github.com/matklad/cargo-xtask) is a way of extending `cargo` with user-defined workflows.
+
+Run the following commands for a quick rundown:
+```
+cargo xtask --help
+
+cargo xtask embed --help
 ```
 
-- Enable virtual environment
-  - on Windows Powershell
-  ```powershell
-  .\.venv\Scripts\activate
-  ```
-  - on Mac/Linux
-  ```sh
-  source .venv/bin/activate
-  ```
+All workflows are implemented in the `xtask/` directory.
 
-- Install the Python dependencies on the virtual environment
-```sh
-python -m pip install -r requirements.txt
+## Build
 ```
-- Access the source folder
-```sh
-cd src
+cargo xtask build
 ```
 
-- Start the program
-```sh
-python reciever.py
+## Run
+```bash
+# Runs the default binary crate (cansat-stm32f4)
+# The default can be overriden with XTASK_EMBED_DEFAULT env variable in .cargo/config.toml
+cargo xtask embed
+
+# You can also specify the crate to run manually
+cargo xtask embed -p cansat-stm32f4
 ```
 
-## Sending and receiving messages
+## Log filters
+You can specify log levels using `DEFMT_LOG` environment variable.
 
-There are two Python programs. `transmitter.py` and `receiver.py`. If used together corectly few things could be obtained:
+Bash
+```bash
+DEFMT_LOG=debug cargo xtask embed
+```
 
-- Sending/reading any string: 
-  
-  In `transmitter.py` use method `lora_transmitter.send_any_string("Hello from LoRa")`.
-  
-  In `receiver.py` use method `lora_reciever.listen(parse="string")`.
-- Comparing timestamps:
-  
-  In `transmitter.py` use method `lora_transmitter.send_timestamp()`.
-  
-  In `receiver.py` use method `lora_reciever.listen(parse="timestamp")`.
-
-  This will allow you to compare timestamp of send and recieved message to check the delay between them. Manipulate serial port timeout, or distance between LoRa modules to check the difference
-- Parsing only GPS data
-  
-  In `transmitter.py` use method `lora_transmitter.send_gps_data()`.
-  
-  In `receiver.py` use method `lora_reciever.listen(parse="gps_only")`.
-
-  This will parse GPS data when only this data is in CSV format.
-- Parsing full cansat data including
-  
-  In `transmitter.py` use method `lora_transmitter.send_full_canast_data()`.
-  
-  In `receiver.py` use method `lora_reciever.listen(parse="gps_cansat")`.
-
-  This will parse data from cansat (all sensors) + parse the GPS data if it's embedded in CSV file with doublequotes
+Powershell
+```powershell
+$env:DEFMT_LOG="debug"; cargo xtask embed
+```
+See https://defmt.ferrous-systems.com/filtering.html for details.
