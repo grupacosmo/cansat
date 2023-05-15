@@ -151,7 +151,7 @@ fn init_lora(serial6: Serial6) -> Result<Lora, LoraError> {
     const COMMANDS: [&str; 3] = ["AT\r\n", "AT+MODE=TEST\r\n", "AT+UART=TIMEOUT,4000\r\n"];
 
     for cmd in COMMANDS {
-        let resp_len = lora.send(cmd.as_bytes(), &mut resp_buffer)?;
+        let resp_len = lora.transmit(cmd.as_bytes(), &mut resp_buffer)?;
         cansat_lora::parse_response(&resp_buffer)?;
         defmt::info!("LORA_INIT response: {=[u8]:a}", resp_buffer[..resp_len]);
     }

@@ -25,15 +25,29 @@ where
         Self { serial }
     }
 
-    fn drain(&mut self) -> Result<(), Error<Serial::Error>> {
+    pub fn into_serial(self) -> Serial {
+        self.serial
+    }
+
+    pub fn transmit(
+        &mut self,
+        cmd: &[u8],
+        response: &mut [u8],
+    ) -> Result<usize, Error<Serial::Error>> {
+        self.write_all(cmd)?;
+        let nread = self.read_all(response)?;
+        Ok(nread)
+    }
+
+    /// Drains serial until it hits `\r\n`
+    fn drain(&mut self, mut last_byte: Option<u8>) -> Result<(), Error<Serial::Error>> {
         loop {
-            match self.serial.read() {
-                Ok(_) => (),
-                Err(nb::Error::WouldBlock) => break,
-                Err(nb::Error::Other(e)) => return Err(Error::Serial(e)),
+            let b = nb::block!(self.serial.read()).map_err(Error::Serial)?;
+            if last_byte == Some(b'\r') && b == b'\n' {
+                break Ok(());
             }
+            last_byte = Some(b);
         }
-        Ok(())
     }
 
     fn write_all(&mut self, cmd: &[u8]) -> Result<(), Error<Serial::Error>> {
@@ -46,36 +60,24 @@ where
 
     fn read_all(&mut self, buffer: &mut [u8]) -> Result<usize, Error<Serial::Error>> {
         let mut i = 0;
-
         loop {
+            let is_overflow = i == buffer.len();
+            if is_overflow {
+                // ignore error if communication failed
+                let _ = self.drain(buffer.last().cloned());
+                break Err(Error::Overflow);
+            }
+
             let b = nb::block!(self.serial.read()).map_err(Error::Serial)?;
 
-            match buffer.get_mut(i) {
-                Some(i) => *i = b,
-                None => {
-                    self.drain()?;
-                    return Err(Error::Overflow);
-                }
-            }
+            buffer[i] = b;
             i += 1;
 
             let response_end = buffer[..i].ends_with(b"\r\n");
             if response_end {
-                break;
+                break Ok(i);
             }
         }
-
-        Ok(i)
-    }
-
-    pub fn send(
-        &mut self,
-        cmd: &[u8],
-        response_buffer: &mut [u8],
-    ) -> Result<usize, Error<Serial::Error>> {
-        self.write_all(cmd)?;
-        let reps_len = self.read_all(response_buffer)?;
-        Ok(reps_len)
     }
 }
 

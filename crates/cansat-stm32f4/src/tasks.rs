@@ -95,7 +95,7 @@ fn read_measurements(ctx: &mut app::idle::Context) -> Measurements {
 fn send_lora_package(lora: &mut crate::Lora) {
     let mut resp_buffer: [u8; 255] = [0; 255];
 
-    match lora.send(b"AT+TEST=TXLRSTR,\"TEST_MSG\"\r\n", &mut resp_buffer) {
+    match lora.transmit(b"AT+TEST=TXLRSTR,\"TEST_MSG\"\r\n", &mut resp_buffer) {
         Ok(resp_len) => {
             if let Err(e) = cansat_lora::parse_response(&resp_buffer) {
                 defmt::error!("Lora error reponse: {}", defmt::Debug2Format(&e));

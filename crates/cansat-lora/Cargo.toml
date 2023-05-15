@@ -13,3 +13,6 @@ nom = { version = "7.1.3", default-features = false }
 version = "0.99.17"
 default-features = false
 features = ["from"]
+
+[dev-dependencies]
+cansat-test-utils = { path = "../cansat-test-utils" }
