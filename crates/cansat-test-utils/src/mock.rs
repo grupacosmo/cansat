@@ -62,11 +62,11 @@ impl<I> serial::nb::Write for Serial<I> {
     ///
     /// ```
     /// use cansat_test_utils::mock::Serial;
-    /// use embedded_hal::{nb, serial::nb::Read};
+    /// use embedded_hal::{nb, serial::nb::Write};
     ///
-    /// let mut serial = Serial::new([]);
-    /// assert_eq!(serial.write(0x12), Ok());
-    /// assert_eq!(serial.tx_data, 0x12);
+    /// let mut serial = Serial::new(Vec::<u8>::new());
+    /// assert_eq!(serial.write(0x12), Ok(()));
+    /// assert_eq!(serial.rx_data, &[0x12]);
     /// ```
     fn write(&mut self, word: u8) -> nb::Result<(), Self::Error> {
         self.rx_data.push(word);
