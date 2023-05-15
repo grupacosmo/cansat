@@ -5,8 +5,18 @@ import time
 import csv
 from termcolor import colored
 
+# TODO: Test serial port behavior:
+
+# [ ] check what is write_timeout - probably the same as UART timeout in LoRa device: AT+UART=TIMEOUT
+# "AT parser inside the modem start counts from first "AT" character is received, 
+# when counter overflows, a "Input timeout" event will be triggered."
+
+# [ ] compare writelines | write - timeout, behavior 
+
+# [ ] compare readlines | readline | read - timeout, behavior
 
 class Receiver():
+    # TODO: add saving to file
     def __init__(self, port_name, baudrate=9600, timeout=1.0):
         self.device = serial.Serial()
         self.device.port = port_name
@@ -136,6 +146,8 @@ class Receiver():
             raise error
             
     def listen(self, parse="string"):
+    # TODO: Test `read_until` method instead of `read`
+    # TODO: Test receiver loop with: in_waiting, out_waiting or without it.
         if parse == "string":
             input("Are You ready to listen for any string?\n")
             print(colored("RECEIVER is listening...\n", "green"))
@@ -144,12 +156,12 @@ class Receiver():
                     output = self.device.readlines()
                     print(colored("Message recieved\n", "green"))
                     for line in output:
-                        decoded_line = line.decode("utf-8")
+                        decoded_line = line.decode("ascii")
                         print(decoded_line)
                         if "RX" in decoded_line:
                             lines = decoded_line.split(" ")
                             hex = lines[2].replace("\"","")
-                            parsed_line = bytes.fromhex(hex).decode('utf-8').replace("'","\"")
+                            parsed_line = bytes.fromhex(hex).decode("ascii").replace("'","\"")
                             print(colored(f"Parsed message: \n{parsed_line}\n", "light_blue"))
 
         elif parse == "timestamp":
@@ -160,12 +172,12 @@ class Receiver():
                     output = self.device.readlines()
                     print(colored("Message recieved\n", "green"))
                     for line in output:
-                        decoded_line = line.decode("utf-8")
+                        decoded_line = line.decode("ascii")
                         if "RX" in decoded_line:
                             actual_time = time.time()
                             lines = decoded_line.split(" ")
                             hex = lines[2].replace("\"","")
-                            parsed_line = bytes.fromhex(hex).decode('utf-8')
+                            parsed_line = bytes.fromhex(hex).decode("ascii")
                             recieved_time = float(parsed_line)
                             print(colored(f"Recieved timestamp: {recieved_time}"))
                             print(colored(f"Actual timestamp: {actual_time}\n"))
@@ -179,11 +191,11 @@ class Receiver():
                     output = self.device.readlines()
                     print(colored("\nMessage recieved\n", "green"))
                     for line in output:
-                        decoded_line = line.decode("utf-8")
+                        decoded_line = line.decode("ascii")
                         if "RX" in decoded_line:
                             lines = decoded_line.split(" ")
                             hex = lines[2].replace("\"","")
-                            data = bytes.fromhex(hex).decode('utf-8').replace("'","\"")
+                            data = bytes.fromhex(hex).decode("ascii").replace("'","\"")
                             try:
                                 msg = pynmea2.parse(data)
                                 if msg.mode_fix_type == "1":
@@ -200,20 +212,17 @@ class Receiver():
             input("Are You ready to listen and parse GPS data with CANSAT other data?\n")
             print(colored("RECEIVER is listening...\n", "green"))
             while True:
-                # TODO: in_waiting, out_waiting or something else?
-                # check what is write_timeout
-                
-                # compare writelines | write - timeout, behavior 
-                # compare readlines, readline | read - timeout, behavior
+
                 while self.device.in_waiting:
                     output = self.device.readlines()
                     print(colored("\nMessage recieved\n", "green"))
+                    # TODO: clear this mess!!!
                     for line in output:
-                        decoded_line = line.decode("utf-8")
+                        decoded_line = line.decode("ascii")
                         if "RX" in decoded_line:
                             lines = decoded_line.split(" ")
                             hex = lines[2].replace("\"","")
-                            parsed_line = bytes.fromhex(hex).decode('utf-8').replace("'","\"")
+                            parsed_line = bytes.fromhex(hex).decode('ascii').replace("'","\"")
                             print(parsed_line)
                             if "$GPGGA" in parsed_line:
                                 reader = csv.reader([parsed_line])
@@ -221,6 +230,7 @@ class Receiver():
                                     for data in row:
                                         if "$G" in data:
                                             try:
+                                                # TODO: add more info from GPS
                                                 msg = pynmea2.parse(data)
                                                 if msg.mode_fix_type == "1":
                                                     print(colored("No Fix", "red"))
@@ -236,6 +246,7 @@ class Receiver():
             print(colored("Wrong parse method\n", "red"))
         
 class Transmitter():
+    # TODO: Finish transmitter similar to receiver
     def __init__(self, port_name, baudrate=9600, timeout=1.0):
         self.device = serial.Serial()
         self.device.port = port_name

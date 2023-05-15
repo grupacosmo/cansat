@@ -75,6 +75,7 @@ if __name__ == "__main__":
     if mode == None:
         mode = choose_mode()
         
+    # TODO: add rest of the methods
     if mode == 'receiver':
         print(port, baudrate, timeout, mode)
         # lora = Receiver(port, baudrate, timeout)
@@ -82,8 +83,4 @@ if __name__ == "__main__":
         print(port, baudrate, timeout, mode)
         # lora = Transmitter(port, baudrate, timeout)
     
-    
-    # lora.run_device()
-    # lora.listen(parse="gps_cansat") # Here you can choose from parse method: string, timestamp, gps_only or gps_cansat
 
-# TODO: use read_until method instead of read 
