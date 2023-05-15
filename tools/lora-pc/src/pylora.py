@@ -6,7 +6,7 @@ import csv
 from termcolor import colored
 
 
-class Reciever():
+class Receiver():
     def __init__(self, port_name, baudrate=9600, timeout=1.0):
         self.device = serial.Serial()
         self.device.port = port_name
@@ -57,17 +57,44 @@ class Reciever():
     
     def temp(self):
         
-        cmd = 'AT\r\n'
+        cmd1 = 'AT1\n\r'
+        cmd2 = 'AT\n\r'
         
-        input(f"Send {cmd}?")
 
-        self.device.write(cmd.encode("ascii")) 
-        msg = self.device.readline().decode("ascii")
-        print(msg)
-        if "AT: OK" in msg:
-            print(colored("Connection test successful\n", "green"))
-        elif "ERROR" in msg:
-            print(self.check_error(msg))
+        stamp1 = time.perf_counter()
+        self.device.write(cmd1.encode("ascii"))
+        # msg = self.device.read(64)
+        # print(msg.decode("ascii"))
+        
+        stamp2 = time.perf_counter()
+        self.device.write(cmd2.encode("ascii"))
+        time.sleep(1)
+        msg = self.device.readlines()
+        stamp3 = time.perf_counter()
+
+        for line in msg:
+            decoded_line = line.decode("ascii")
+            print(decoded_line)
+            if "AT: OK" in decoded_line:
+                print(colored("Success\n", "green"))
+            elif "ERROR" in decoded_line:
+                print(self.check_error(decoded_line))
+
+        msg = self.device.readlines()
+        stamp4 = time.perf_counter()
+        for line in msg:
+            decoded_line = line.decode("ascii")
+            print(decoded_line)
+            if "AT: OK" in decoded_line:
+                print(colored("Success\n", "green"))
+            elif "ERROR" in decoded_line:
+                print(self.check_error(decoded_line))
+         
+        print(stamp2 - stamp1)
+        print(stamp3 - stamp2)
+        print(stamp4 - stamp3)
+        
+        
         
     def run_device(self):
         try:
@@ -208,6 +235,21 @@ class Reciever():
         else:
             print(colored("Wrong parse method\n", "red"))
         
+class Transmitter():
+    def __init__(self, port_name, baudrate=9600, timeout=1.0):
+        self.device = serial.Serial()
+        self.device.port = port_name
+        self.device.baudrate = baudrate
+        self.device.timeout = timeout
+            
+        print(f"Port settings:\nName: {self.device.port}\nBaudrate: {self.device.baudrate}\nTimeout: {self.device.timeout}\n")
+
+        input("Open port for LoRa Transmitter device?\n")
+        try:
+            self.device.open()
+            print(colored(f"Port {self.device.port} opened.\n", "green"))
+        except Exception as error:
+            raise RuntimeError(colored(f"Cannot open port {self.device.port}\n", "red")) from error
 
 
 if __name__ == "__main__":

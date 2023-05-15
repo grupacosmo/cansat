@@ -1,7 +1,8 @@
 import serial.tools.list_ports
 from termcolor import colored
+import argparse
 
-from pylora import Reciever
+from pylora import Receiver, Transmitter
 
 def choose_port():
     ports = sorted(serial.tools.list_ports.comports())
@@ -14,23 +15,75 @@ def choose_port():
         try:
             port_idx = int(port_idx) - 1   
             if port_idx not in range(0, num_of_ports):
-                print("Invalid Port")
+                print(colored("Invalid Port", "red"))
                 continue
             else:
                 break
         except:
-            print("Invalid Port")
+            print(colored("Invalid Port", "red"))
             continue
     
     port_name = ports[port_idx].name
-    print(colored(f"\nPort {port_name} chosen for LoRa Receiver\n", "light_blue"))
+    print(colored(f"\nPort {port_name} chosen for LoRa\n", "light_blue"))
     return port_name
 
-if __name__ == "__main__":
-    port_name = choose_port()
+def choose_mode():
+    print("LoRa PC has two modes:\n1) Receiver\n2) Transmitter")
+    while True:
+        choice = input("Choose mode: ")
+        if choice == "1":
+            mode = "receiver"
+            print(colored("Receiver mode chosen for LoRa", "light_blue"))
+            break
+        elif choice == "2":
+            mode = "transmitter"
+            print(colored("Transmitter mode chosen for LoRa", "light_blue"))
+            break
+        else:
+            print(colored("Wrong input, choose 1 or 2", "red"))
+            continue
+
+    return mode
+
+
+def cli_parser():
+    parser = argparse.ArgumentParser(
+                    prog='LoRa PC',
+                    description='Connect with LoRa-E5 Device through USB serial port, and using device as transmitter or receiver',
+                    )
+    parser.add_argument('-p', '--port', type=str)
+    parser.add_argument('-b', '--baudrate', type=int, default=9600)
+    parser.add_argument('-t', '--timeout', type=float, default=1.0)
+    parser.add_argument('-m', '--mode', type=str, choices=['receiver', 'transmitter'])
     
-    lora_reciever = Reciever(port_name, timeout=0.5) # Choose port for RECEIVER and timeout
-    # lora_reciever.run_device()
-    # lora_reciever.listen(parse="gps_cansat") # Here you can choose from parse method: string, timestamp, gps_only or gps_cansat
+    args = parser.parse_args()
+    
+    port = args.port
+    baudrate = args.baudrate
+    timeout = args.timeout
+    mode = args.mode
+    
+    return port, baudrate, timeout, mode
+
+if __name__ == "__main__":
+    
+    port, baudrate, timeout, mode = cli_parser()
+    
+    if port == None:
+        port = choose_port()
+    
+    if mode == None:
+        mode = choose_mode()
+        
+    if mode == 'receiver':
+        print(port, baudrate, timeout, mode)
+        # lora = Receiver(port, baudrate, timeout)
+    elif mode == 'transmitter':
+        print(port, baudrate, timeout, mode)
+        # lora = Transmitter(port, baudrate, timeout)
+    
+    
+    # lora.run_device()
+    # lora.listen(parse="gps_cansat") # Here you can choose from parse method: string, timestamp, gps_only or gps_cansat
 
 # TODO: use read_until method instead of read 
