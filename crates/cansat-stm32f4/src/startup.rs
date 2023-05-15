@@ -152,7 +152,7 @@ fn init_lora(serial6: Serial6) -> Result<Lora, LoraError> {
 
     for cmd in COMMANDS {
         let resp_len = lora.send(cmd.as_bytes(), &mut resp_buffer)?;
-        cansat_lora::parse::response(&resp_buffer).map_err(|_| LoraError::Parse)?;
+        cansat_lora::parse_response(&resp_buffer)?;
         defmt::info!("LORA_INIT response: {=[u8]:a}", resp_buffer[..resp_len]);
     }
 

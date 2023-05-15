@@ -135,6 +135,7 @@ dependencies = [
 name = "cansat-lora"
 version = "0.1.0"
 dependencies = [
+ "derive_more",
  "embedded-hal 1.0.0-alpha.8",
  "nom",
 ]

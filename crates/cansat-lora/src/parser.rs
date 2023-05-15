@@ -1,3 +1,4 @@
+use crate::{ParseError as Error, Response, ResponseContent};
 use nom::{
     branch::alt,
     bytes::complete::{tag, take_till, take_while1},
@@ -5,29 +6,6 @@ use nom::{
     combinator::{cut, map},
     sequence::{delimited, pair, terminated},
 };
-
-#[derive(Debug, PartialEq, Eq)]
-pub struct Response<'a> {
-    pub header: &'a [u8],
-    pub content: ResponseContent<'a>,
-}
-
-#[derive(Debug, PartialEq, Eq)]
-pub enum ResponseContent<'a> {
-    Data(&'a [u8]),
-    Error(i8),
-}
-
-#[derive(Debug, PartialEq, Eq)]
-pub enum Error {
-    BadCommand,
-    BadErrorCode,
-    NoDelimiter,
-    NoPrefix,
-    NoTerminator,
-    UnclosedErrorParen,
-    Unknown,
-}
 
 pub type IResult<I, O> = nom::IResult<I, O, Error>;
 

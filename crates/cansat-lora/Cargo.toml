@@ -8,3 +8,8 @@ edition = "2021"
 [dependencies]
 embedded-hal = "1.0.0-alpha.8"
 nom = { version = "7.1.3", default-features = false }
+
+[dependencies.derive_more]
+version = "0.99.17"
+default-features = false
+features = ["from"]

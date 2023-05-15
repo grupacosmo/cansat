@@ -1,17 +1,15 @@
 #![no_std]
 
-pub mod parse;
+mod parser;
 
 use embedded_hal::{self, nb, serial};
 
-#[derive(Debug)]
-pub enum Error<SerialError>
-where
-    SerialError: serial::Error,
-{
+#[derive(Debug, PartialEq, Eq, Clone, Copy, derive_more::From)]
+pub enum Error<SerialError> {
     Delay,
     Serial(SerialError),
-    Parse,
+    #[from]
+    Parse(ParseError),
     Overflow,
 }
 
@@ -78,5 +76,37 @@ where
         self.write_all(cmd)?;
         let reps_len = self.read_all(response_buffer)?;
         Ok(reps_len)
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct Response<'a> {
+    pub header: &'a [u8],
+    pub content: ResponseContent<'a>,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum ResponseContent<'a> {
+    Data(&'a [u8]),
+    Error(i8),
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum ParseError {
+    Incomplete,
+    BadCommand,
+    BadErrorCode,
+    NoDelimiter,
+    NoPrefix,
+    NoTerminator,
+    UnclosedErrorParen,
+    Unknown,
+}
+
+pub fn parse_response(input: &[u8]) -> Result<Response, ParseError> {
+    match parser::response(input) {
+        Ok((_i, o)) => Ok(o),
+        Err(nom::Err::Error(e) | nom::Err::Failure(e)) => Err(e),
+        Err(nom::Err::Incomplete(_)) => Err(ParseError::Incomplete),
     }
 }

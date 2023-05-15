@@ -4,7 +4,6 @@ use cansat_core::{
     quantity::{Pressure, Temperature},
     Measurements,
 };
-use cansat_lora::parse;
 use heapless::Vec;
 use rtic::Mutex;
 use stm32f4xx_hal::prelude::*;
@@ -21,7 +20,7 @@ pub fn idle(mut ctx: app::idle::Context) -> ! {
         if let Some(lora) = lora {
             let delay = &mut ctx.local.delay;
             send_lora_package(lora);
-            delay.delay_ms(1000 as u32);
+            delay.delay(1.secs());
         }
 
         let csv_record: Vec<u8, 1024> = match serde_csv_core::to_vec(&mut writer, &measurements) {
@@ -98,7 +97,7 @@ fn send_lora_package(lora: &mut crate::Lora) {
 
     match lora.send(b"AT+TEST=TXLRSTR,\"TEST_MSG\"\r\n", &mut resp_buffer) {
         Ok(resp_len) => {
-            if let Err(e) = parse::response(&resp_buffer) {
+            if let Err(e) = cansat_lora::parse_response(&resp_buffer) {
                 defmt::error!("Lora error reponse: {}", defmt::Debug2Format(&e));
             } else {
                 defmt::error!("Lora package sent {}", resp_len);
