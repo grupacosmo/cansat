@@ -9,7 +9,7 @@ from termcolor import colored
 
 # TODO: Test serial port behavior:
 
-# [ ] check what is write_timeout - probably the same as UART timeout in LoRa device: AT+UART=TIMEOUT
+# [x] check what is write_timeout - probably the same as UART timeout in LoRa device: AT+UART=TIMEOUT
 # "AT parser inside the modem start counts from first "AT" character is received, 
 # when counter overflows, a "Input timeout" event will be triggered."
 
@@ -95,7 +95,7 @@ class LoRa:
             raise RuntimeError(colored(f"Cannot open port {self.device.port}\n", "red")) from error
     
            
-class Receiver(LoRa):
+class ReceiverThreading(LoRa):
     # TODO: add saving to file
     def __init__(self, port_name, baudrate=9600, timeout=1.0):
         super().__init__(port_name, baudrate, timeout)
@@ -113,49 +113,54 @@ class Receiver(LoRa):
     def __del__(self):
         self.device.close()
 
-    # # Temporary function for testing different device behavior
-    # def temp(self):
+            
+    def listen(self):
+        # TODO: Test `read_until` method instead of `read`
+        try:
+            input("Set device in RECIEVER mode?\n")
+            cmd_receive = 'AT+TEST=RXLRPKT\r\n'
+
+            self.device.write(cmd_receive.encode("ascii"))
+            msg = self.device.readline().decode("ascii")
+            print(msg)
+            if "TEST: RXLRPKT" in msg:
+                print(colored("Device in RECEIVER mode\n", "green"))
+            elif "ERROR" in msg:
+                print(self.check_error(msg))
+                exit()
+        except Exception as error:
+            raise error
+
+        print(colored("RECEIVER is listening...\n", "green"))   
+        while True:
+            if self.device.in_waiting:
+                try:
+                    output = self.device.readlines()
+                    if output:
+                        self.data_queue.put(output)
+                except Exception as error:
+                    print(error)
+                    continue
+
+    def parse_msg(self):
+        if not self.data_queue.empty():
+            output = self.data_queue.get()
+            for line in output:
+                decoded_line = line.decode("ascii")
+                print(decoded_line)
         
-    #     cmd1 = 'AT1\n\r'
-    #     cmd2 = 'AT\n\r'
-
-    #     stamp1 = time.perf_counter()
-    #     self.device.write(cmd1.encode("ascii"))
-    #     # msg = self.device.read(64)
-    #     # print(msg.decode("ascii"))
         
-    #     stamp2 = time.perf_counter()
-    #     self.device.write(cmd2.encode("ascii"))
-    #     time.sleep(1)
-    #     msg = self.device.readlines()
-    #     stamp3 = time.perf_counter()
+class Receiver(LoRa):
+    # TODO: add saving to file
+    def __init__(self, port_name, baudrate=9600, timeout=1.0):
+        super().__init__(port_name, baudrate, timeout)
 
-    #     for line in msg:
-    #         decoded_line = line.decode("ascii")
-    #         print(decoded_line)
-    #         if "AT: OK" in decoded_line:
-    #             print(colored("Success\n", "green"))
-    #         elif "ERROR" in decoded_line:
-    #             print(self.check_error(decoded_line))
-
-    #     msg = self.device.readlines()
-    #     stamp4 = time.perf_counter()
-    #     for line in msg:
-    #         decoded_line = line.decode("ascii")
-    #         print(decoded_line)
-    #         if "AT: OK" in decoded_line:
-    #             print(colored("Success\n", "green"))
-    #         elif "ERROR" in decoded_line:
-    #             print(self.check_error(decoded_line))
-         
-    #     print(stamp2 - stamp1)
-    #     print(stamp3 - stamp2)
-    #     print(stamp4 - stamp3)
+    def __del__(self):
+        self.device.close()
 
             
     def listen(self):
         # TODO: Test `read_until` method instead of `read`
-        # TODO: Test receiver loop with: in_waiting, out_waiting or without it.
         try:
             input("Set device in RECIEVER mode?\n")
             cmd_receive = 'AT+TEST=RXLRPKT\r\n'
@@ -176,19 +181,15 @@ class Receiver(LoRa):
             while self.device.in_waiting:
                 try:
                     output = self.device.readlines()
-                    print(output)
-                    if output:
-                        self.data_queue.put(output)
+                    self.parse_msg(output)    
                 except Exception as error:
                     print(error)
                     continue
 
-    def parse_msg(self):
-        if not self.data_queue.empty():
-            output = self.data_queue.get()
-            for line in output:
-                decoded_line = line.decode("ascii")
-                print(decoded_line)
+    def parse_msg(self, output):
+        for line in output:
+            decoded_line = line.decode("ascii")
+            print(decoded_line)
     
         # if parse == "string":
         #     input("Are You ready to listen for any string?\n")

@@ -1,9 +1,8 @@
 import serial.tools.list_ports
 import argparse
-import threading
 from termcolor import colored
 
-from pylora import Receiver, Transmitter
+from pylora import Receiver, ReceiverThreading, Transmitter
 
 def choose_port():
     ports = sorted(serial.tools.list_ports.comports())
@@ -79,14 +78,20 @@ if __name__ == "__main__":
     # TODO: add rest of the methods
     if mode == 'receiver':
         print(port, baudrate, timeout, mode)
-        lora = Receiver(port, baudrate, timeout)
+
+        # Threading check
+        # lora = ReceiverThreading(port, baudrate, timeout)
         
-        lora.start()
-        try:
-            while True:
-                lora.parse_msg()
-        except KeyboardInterrupt:
-            lora.stop()
+        # lora.start()
+        # try:
+        #     while True:
+        #         lora.parse_msg()
+        # except KeyboardInterrupt:
+        #     lora.stop()
+            
+        # Normal synchronous
+        lora = Receiver(port, baudrate, timeout)
+        lora.listen()
     
     elif mode == 'transmitter':
         print(port, baudrate, timeout, mode)
