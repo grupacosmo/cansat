@@ -2,6 +2,7 @@ import serial
 import pynmea2
 import threading
 from queue import Queue
+from pathlib import Path
 
 import time
 import csv
@@ -181,30 +182,48 @@ class Receiver(LoRa):
             while self.device.in_waiting:
                 try:
                     output = self.device.readlines()
-                    self.parse_msg(output)    
+                    # self.parse_msg(output)
+                    self.parse_msg_timestamp(output)
                 except Exception as error:
                     print(error)
                     continue
 
+    def parse_msg_timestamp(self, output):
+        for line in output:
+            decoded_line = line.decode("ascii")
+            # TODO: clean this
+            if "RSSI" in decoded_line:
+                print(decoded_line)
+            if "RX" in decoded_line:
+                actual_time = time.time()
+                lines = decoded_line.split(" ")
+                hex = lines[2].replace("\"","")
+                parsed_line = bytes.fromhex(hex).decode("ascii")
+                recieved_time = float(parsed_line)
+                print(colored(f"Recieved timestamp: {recieved_time}"))
+                print(colored(f"Actual timestamp: {actual_time}\n"))
+                print(colored(f"Time difference in seconds: \n{actual_time - recieved_time}\n", "light_yellow"))
+                
+                        
     def parse_msg(self, output):
         for line in output:
             decoded_line = line.decode("ascii")
             print(decoded_line)
+            # TODO: clean this
+            if "RX" in decoded_line:
+                lines = decoded_line.split(" ")
+                hex = lines[2].replace("\"","")
+                parsed_line = bytes.fromhex(hex).decode("ascii")
+                print(colored(f"Parsed message: \n{parsed_line}\n", "light_blue"))
+                
+                self.save_to_file(parsed_line)
     
-        # if parse == "string":
-        #     input("Are You ready to listen for any string?\n")
-        #     print(colored("RECEIVER is listening...\n", "green"))
-        #     while True:
-        #             output = self.device.readlines()
-        #             print(colored("Message recieved\n", "green"))
-        #             for line in output:
-        #                 decoded_line = line.decode("ascii")
-        #                 print(decoded_line)
-        #                 if "RX" in decoded_line:
-        #                     lines = decoded_line.split(" ")
-        #                     hex = lines[2].replace("\"","")
-        #                     parsed_line = bytes.fromhex(hex).decode("ascii").replace("'","\"")
-        #                     print(colored(f"Parsed message: \n{parsed_line}\n", "light_blue"))
+    def save_to_file(self, parsed_line):
+        with open('data_recieved/cansat.csv', 'a+') as f:
+            
+            writer = csv.writer(f)
+            writer.writerow([parsed_line])
+
 
         # elif parse == "timestamp":
         #     input("Are You ready to listen and compare timestamps?\n")
@@ -287,11 +306,6 @@ class Receiver(LoRa):
         # else:
         #     print(colored("Wrong parse method\n", "red"))
         
-        # def parse_msg(self):
-        #     pass
-        
-        # def save_to_file(self):
-        #     pass
         
         
 class Transmitter(LoRa):
@@ -307,23 +321,38 @@ class Transmitter(LoRa):
                     message_type = "string"
                     break
                 elif choice == "2":
-                    mode = "timestamp"
+                    message_type = "timestamp"
                     break
                 elif choice == "3":
-                    mode = "csv"
+                    message_type = "csv"
                     break
                 else:
                     print(colored("Wrong input, choose 1, 2 or 3", "red"))
                     continue
+
         if message_type == "string":
-            pass
-        
+            msg_str = input("Type message to send: ")
+            cmd_send = f'AT+TEST=TXLRSTR, "{msg_str}"\r\n'
+            try:
+                self.device.write(cmd_send.encode("ascii"))
+                output = self.device.readlines()
+                for line in output:
+                    decoded_line = line.decode("ascii")
+                    print(decoded_line)
+                    if "ERROR" in decoded_line:
+                        print(self.check_error(decoded_line))
+                if any("TEST: TX DONE" in line.decode("ascii") for line in output):
+                    print(colored("Message send succesfully\n", "green"))
+                else:
+                        print(colored("Message not sent\n", "red"))
+            except Exception as error:
+                print(error)
         
         elif message_type == "timestamp":
             while True:
                 try:
                     cmd_send = f'AT+TEST=TXLRSTR, "{time.time()}"\r\n'
-                    self.device.write(cmd_send.encode())
+                    self.device.write(cmd_send.encode("ascii"))
                     output = self.device.readlines()
                     for line in output:
                         decoded_line = line.decode("ascii")
@@ -338,8 +367,27 @@ class Transmitter(LoRa):
 
                 except Exception as error:
                     print(error)
+
         elif message_type == "csv":
-            pass
+        
+            path = Path(__file__).parent / "data/cansat.csv"
+            with path.open() as csvfile:
+                reader = csv.reader(csvfile, quotechar='|')
+                for row in reader:
+                    parsed_row = (','.join(row).replace("\"","'"))
+                    cmd_send=f'AT+TEST=TXLRSTR, "{parsed_row}"\r\n'
+                    self.port.write(cmd_send.encode())
+                    output = self.port.readlines()
+                    for line in output:
+                        decoded_line = line.decode("ascii")
+                        print(decoded_line)
+                        if "ERROR" in decoded_line:
+                            print(self.check_error(decoded_line))
+
+                    if any("TEST: TX DONE" in line.decode("ascii") for line in output):
+                        print(colored("Message send succesfully\n", "green"))
+                    else:
+                        print(colored("Message not sent\n", "red"))
 
 
 if __name__ == "__main__":
