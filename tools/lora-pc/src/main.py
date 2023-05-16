@@ -81,11 +81,12 @@ if __name__ == "__main__":
         print(port, baudrate, timeout, mode)
         lora = Receiver(port, baudrate, timeout)
         
-        listening_thread = threading.Thread(target=lora.listen)
-        listening_thread.start()
-        
-        parsing_thread = threading.Thread(target=lora.parse_msg)
-        parsing_thread.start()
+        lora.start()
+        try:
+            while True:
+                lora.parse_msg()
+        except KeyboardInterrupt:
+            lora.stop()
     
     elif mode == 'transmitter':
         print(port, baudrate, timeout, mode)

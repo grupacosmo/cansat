@@ -1,5 +1,7 @@
 import serial
 import pynmea2
+import threading
+from queue import Queue
 
 import time
 import csv
@@ -83,7 +85,7 @@ class LoRa:
             self.device.write(cmd_test.encode("ascii"))
             msg = self.device.readline().decode("ascii")
             print(msg)
-            if "AT: OK" in msg:
+            if "MODE: TEST" in msg:
                     print(colored("TEST mode set\n", "green"))
             elif "ERROR" in msg:
                 print(self.check_error(msg))
@@ -98,7 +100,18 @@ class Receiver(LoRa):
     def __init__(self, port_name, baudrate=9600, timeout=1.0):
         super().__init__(port_name, baudrate, timeout)
         
-        self.buffer = []
+        self.data_queue = Queue()
+        self.stop_event = threading.Event()
+    
+    def start(self):
+        self.stop_event.clear()
+        threading.Thread(target=self.listen).start()
+        
+    def stop(self):
+        self.stop_event.set()
+        
+    def __del__(self):
+        self.device.close()
 
     # # Temporary function for testing different device behavior
     # def temp(self):
@@ -160,21 +173,22 @@ class Receiver(LoRa):
 
         print(colored("RECEIVER is listening...\n", "green"))   
         while True:
-            try:
-                output = self.device.readlines()
-                if output:
-                    self.buffer.append(output)
-            except Exception as error:
-                print(error)
-                continue
+            while self.device.in_waiting:
+                try:
+                    output = self.device.readlines()
+                    print(output)
+                    if output:
+                        self.data_queue.put(output)
+                except Exception as error:
+                    print(error)
+                    continue
 
     def parse_msg(self):
-        while True:
-            if len(self.buffer) > 0:
-                output = self.buffer.pop(0)
-                for line in output:
-                    decoded_line = line.decode("ascii")
-                    print(decoded_line)
+        if not self.data_queue.empty():
+            output = self.data_queue.get()
+            for line in output:
+                decoded_line = line.decode("ascii")
+                print(decoded_line)
     
         # if parse == "string":
         #     input("Are You ready to listen for any string?\n")
