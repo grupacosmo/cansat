@@ -22,8 +22,8 @@ def choose_port():
         except:
             print(colored("Invalid Port", "red"))
             continue
-    
-    port_name = ports[port_idx].name
+
+    port_name = ports[port_idx].device
     print(colored(f"\nPort {port_name} chosen for LoRa\n", "light_blue"))
     return port_name
 
@@ -55,6 +55,8 @@ def cli_parser():
     parser.add_argument('-b', '--baudrate', type=int, default=9600)
     parser.add_argument('-t', '--timeout', type=float, default=1.0)
     parser.add_argument('-m', '--mode', type=str, choices=['receiver', 'transmitter'])
+    parser.add_argument('-msg', '--message', type=str, choices=['string', 'timestamp', 'csv'])
+
     
     args = parser.parse_args()
     
@@ -62,12 +64,13 @@ def cli_parser():
     baudrate = args.baudrate
     timeout = args.timeout
     mode = args.mode
+    message = args.message
     
-    return port, baudrate, timeout, mode
+    return port, baudrate, timeout, mode, message
 
 if __name__ == "__main__":
     
-    port, baudrate, timeout, mode = cli_parser()
+    port, baudrate, timeout, mode, message = cli_parser()
     
     if port == None:
         port = choose_port()
@@ -96,6 +99,9 @@ if __name__ == "__main__":
     elif mode == 'transmitter':
         print(port, baudrate, timeout, mode)
         lora = Transmitter(port, baudrate, timeout)
-        lora.send_message()
+        if message:
+            lora.send_message(message)
+        else:
+            lora.send_message()
     
 

@@ -298,26 +298,48 @@ class Transmitter(LoRa):
     def __init__(self, port_name, baudrate=9600, timeout=1.0):
         super().__init__(port_name, baudrate, timeout)
         
-    def send_message(self):
-        input(f"Ready to send the constant timestamps?\n")
-        while True:
-            try:
-                cmd_send = f'AT+TEST=TXLRSTR, "{time.time()}"\r\n'
-                self.device.write(cmd_send.encode())
-                output = self.device.readlines()
-                for line in output:
-                    decoded_line = line.decode("ascii")
-                    print(decoded_line)
-                    if "ERROR" in decoded_line:
-                        print(self.check_error(decoded_line))
-
-                if any("TEST: TX DONE" in line.decode("ascii") for line in output):
-                    print(colored("Message send succesfully\n", "green"))
+    def send_message(self, message_type=None):
+        if message_type == None:
+            print("Message type to send:\n1) Any string\n2) Timestamp\n3) CSV")
+            while True:
+                choice = input("Choose type: ")
+                if choice == "1":
+                    message_type = "string"
+                    break
+                elif choice == "2":
+                    mode = "timestamp"
+                    break
+                elif choice == "3":
+                    mode = "csv"
+                    break
                 else:
-                    print(colored("Message not sent\n", "red"))
+                    print(colored("Wrong input, choose 1, 2 or 3", "red"))
+                    continue
+        if message_type == "string":
+            pass
+        
+        
+        elif message_type == "timestamp":
+            while True:
+                try:
+                    cmd_send = f'AT+TEST=TXLRSTR, "{time.time()}"\r\n'
+                    self.device.write(cmd_send.encode())
+                    output = self.device.readlines()
+                    for line in output:
+                        decoded_line = line.decode("ascii")
+                        print(decoded_line)
+                        if "ERROR" in decoded_line:
+                            print(self.check_error(decoded_line))
 
-            except Exception as error:
-                print(error)
+                    if any("TEST: TX DONE" in line.decode("ascii") for line in output):
+                        print(colored("Message send succesfully\n", "green"))
+                    else:
+                        print(colored("Message not sent\n", "red"))
+
+                except Exception as error:
+                    print(error)
+        elif message_type == "csv":
+            pass
 
 
 if __name__ == "__main__":
