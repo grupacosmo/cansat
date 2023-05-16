@@ -15,22 +15,15 @@ from termcolor import colored
 
 # [ ] compare readlines | readline | read - timeout, behavior
 
-class Receiver():
-    # TODO: add saving to file
+class LoRa:
     def __init__(self, port_name, baudrate=9600, timeout=1.0):
         self.device = serial.Serial()
         self.device.port = port_name
         self.device.baudrate = baudrate
         self.device.timeout = timeout
-            
-        print(f"Port settings:\nName: {self.device.port}\nBaudrate: {self.device.baudrate}\nTimeout: {self.device.timeout}\n")
 
-        input("Open port for LoRa Receiver device?\n")
-        try:
-            self.device.open()
-            print(colored(f"Port {self.device.port} opened.\n", "green"))
-        except Exception as error:
-            raise RuntimeError(colored(f"Cannot open port {self.device.port}\n", "red")) from error
+        print(f"Port settings:\nName: {self.device.port}\nBaudrate: {self.device.baudrate}\nTimeout: {self.device.timeout}\n")
+        self.open_port_and_test()
 
     def check_error(self, msg):
         error_code = msg.split(" ")[-1].translate({ord(i): None for i in '\n\r'})
@@ -63,51 +56,14 @@ class Receiver():
             case "ERROR(-24)":
                 error_msg += "Either length of command is too long, receive end symbol timeout or invalid character received"
 
-        return error_msg
-    
-    def temp(self):
-        
-        cmd1 = 'AT1\n\r'
-        cmd2 = 'AT\n\r'
-        
+        return error_msg  
 
-        stamp1 = time.perf_counter()
-        self.device.write(cmd1.encode("ascii"))
-        # msg = self.device.read(64)
-        # print(msg.decode("ascii"))
-        
-        stamp2 = time.perf_counter()
-        self.device.write(cmd2.encode("ascii"))
-        time.sleep(1)
-        msg = self.device.readlines()
-        stamp3 = time.perf_counter()
-
-        for line in msg:
-            decoded_line = line.decode("ascii")
-            print(decoded_line)
-            if "AT: OK" in decoded_line:
-                print(colored("Success\n", "green"))
-            elif "ERROR" in decoded_line:
-                print(self.check_error(decoded_line))
-
-        msg = self.device.readlines()
-        stamp4 = time.perf_counter()
-        for line in msg:
-            decoded_line = line.decode("ascii")
-            print(decoded_line)
-            if "AT: OK" in decoded_line:
-                print(colored("Success\n", "green"))
-            elif "ERROR" in decoded_line:
-                print(self.check_error(decoded_line))
-         
-        print(stamp2 - stamp1)
-        print(stamp3 - stamp2)
-        print(stamp4 - stamp3)
-        
-        
-        
-    def run_device(self):
+    def open_port_and_test(self):
+        input("Open port for LoRa device?\n")
         try:
+            self.device.open()
+            print(colored(f"Port {self.device.port} opened.\n", "green"))
+        
             input("Test device connection?\n")
             cmd_ok = 'AT\r\n'
             while True:
@@ -115,23 +71,80 @@ class Receiver():
                 msg = self.device.readline().decode("ascii")
                 print(msg)
                 if "AT: OK" in msg:
-                    print(colored("Connection test successful\n", "green"))
+                    print(colored("Connection successful\n", "green"))
                     break
                 elif "ERROR" in msg:
                     print(self.check_error(msg))
                     input("Try again?")
                     continue
-
-            input("Set device in RECIEVER mode?\n")
+            
             cmd_test = 'AT+MODE=TEST\r\n'
 
             self.device.write(cmd_test.encode("ascii"))
             msg = self.device.readline().decode("ascii")
             print(msg)
-            if "MODE: TEST" not in msg:
-                print("LoRa Exception:", colored("TEST mode not set\n", "red"))
+            if "AT: OK" in msg:
+                    print(colored("TEST mode set\n", "green"))
+            elif "ERROR" in msg:
+                print(self.check_error(msg))
                 exit()
+    
+        except Exception as error:
+            raise RuntimeError(colored(f"Cannot open port {self.device.port}\n", "red")) from error
+    
+           
+class Receiver(LoRa):
+    # TODO: add saving to file
+    def __init__(self, port_name, baudrate=9600, timeout=1.0):
+        super().__init__(port_name, baudrate, timeout)
+        
+        self.buffer = []
 
+    # # Temporary function for testing different device behavior
+    # def temp(self):
+        
+    #     cmd1 = 'AT1\n\r'
+    #     cmd2 = 'AT\n\r'
+
+    #     stamp1 = time.perf_counter()
+    #     self.device.write(cmd1.encode("ascii"))
+    #     # msg = self.device.read(64)
+    #     # print(msg.decode("ascii"))
+        
+    #     stamp2 = time.perf_counter()
+    #     self.device.write(cmd2.encode("ascii"))
+    #     time.sleep(1)
+    #     msg = self.device.readlines()
+    #     stamp3 = time.perf_counter()
+
+    #     for line in msg:
+    #         decoded_line = line.decode("ascii")
+    #         print(decoded_line)
+    #         if "AT: OK" in decoded_line:
+    #             print(colored("Success\n", "green"))
+    #         elif "ERROR" in decoded_line:
+    #             print(self.check_error(decoded_line))
+
+    #     msg = self.device.readlines()
+    #     stamp4 = time.perf_counter()
+    #     for line in msg:
+    #         decoded_line = line.decode("ascii")
+    #         print(decoded_line)
+    #         if "AT: OK" in decoded_line:
+    #             print(colored("Success\n", "green"))
+    #         elif "ERROR" in decoded_line:
+    #             print(self.check_error(decoded_line))
+         
+    #     print(stamp2 - stamp1)
+    #     print(stamp3 - stamp2)
+    #     print(stamp4 - stamp3)
+
+            
+    def listen(self):
+        # TODO: Test `read_until` method instead of `read`
+        # TODO: Test receiver loop with: in_waiting, out_waiting or without it.
+        try:
+            input("Set device in RECIEVER mode?\n")
             cmd_receive = 'AT+TEST=RXLRPKT\r\n'
 
             self.device.write(cmd_receive.encode("ascii"))
@@ -139,128 +152,157 @@ class Receiver():
             print(msg)
             if "TEST: RXLRPKT" in msg:
                 print(colored("Device in RECEIVER mode\n", "green"))
-            else:
-                print(colored("RECEIVER mode not set\n", "red"))
+            elif "ERROR" in msg:
+                print(self.check_error(msg))
                 exit()
         except Exception as error:
             raise error
-            
-    def listen(self, parse="string"):
-    # TODO: Test `read_until` method instead of `read`
-    # TODO: Test receiver loop with: in_waiting, out_waiting or without it.
-        if parse == "string":
-            input("Are You ready to listen for any string?\n")
-            print(colored("RECEIVER is listening...\n", "green"))
-            while True:
-                while self.device.in_waiting:
-                    output = self.device.readlines()
-                    print(colored("Message recieved\n", "green"))
-                    for line in output:
-                        decoded_line = line.decode("ascii")
-                        print(decoded_line)
-                        if "RX" in decoded_line:
-                            lines = decoded_line.split(" ")
-                            hex = lines[2].replace("\"","")
-                            parsed_line = bytes.fromhex(hex).decode("ascii").replace("'","\"")
-                            print(colored(f"Parsed message: \n{parsed_line}\n", "light_blue"))
 
-        elif parse == "timestamp":
-            input("Are You ready to listen and compare timestamps?\n")
-            print(colored("RECEIVER is listening...\n", "green"))
-            while True:
-                while self.device.in_waiting:
-                    output = self.device.readlines()
-                    print(colored("Message recieved\n", "green"))
-                    for line in output:
-                        decoded_line = line.decode("ascii")
-                        if "RX" in decoded_line:
-                            actual_time = time.time()
-                            lines = decoded_line.split(" ")
-                            hex = lines[2].replace("\"","")
-                            parsed_line = bytes.fromhex(hex).decode("ascii")
-                            recieved_time = float(parsed_line)
-                            print(colored(f"Recieved timestamp: {recieved_time}"))
-                            print(colored(f"Actual timestamp: {actual_time}\n"))
-                            print(colored(f"Time difference in seconds: \n{actual_time - recieved_time}\n", "light_yellow"))
+        print(colored("RECEIVER is listening...\n", "green"))   
+        while True:
+            try:
+                output = self.device.readlines()
+                if output:
+                    self.buffer.append(output)
+            except Exception as error:
+                print(error)
+                continue
+
+    def parse_msg(self):
+        while True:
+            if len(self.buffer) > 0:
+                output = self.buffer.pop(0)
+                for line in output:
+                    decoded_line = line.decode("ascii")
+                    print(decoded_line)
+    
+        # if parse == "string":
+        #     input("Are You ready to listen for any string?\n")
+        #     print(colored("RECEIVER is listening...\n", "green"))
+        #     while True:
+        #             output = self.device.readlines()
+        #             print(colored("Message recieved\n", "green"))
+        #             for line in output:
+        #                 decoded_line = line.decode("ascii")
+        #                 print(decoded_line)
+        #                 if "RX" in decoded_line:
+        #                     lines = decoded_line.split(" ")
+        #                     hex = lines[2].replace("\"","")
+        #                     parsed_line = bytes.fromhex(hex).decode("ascii").replace("'","\"")
+        #                     print(colored(f"Parsed message: \n{parsed_line}\n", "light_blue"))
+
+        # elif parse == "timestamp":
+        #     input("Are You ready to listen and compare timestamps?\n")
+        #     print(colored("RECEIVER is listening...\n", "green"))
+        #     while True:
+        #         while self.device.in_waiting:
+        #             output = self.device.readlines()
+        #             print(colored("Message recieved\n", "green"))
+        #             for line in output:
+        #                 decoded_line = line.decode("ascii")
+        #                 if "RX" in decoded_line:
+        #                     actual_time = time.time()
+        #                     lines = decoded_line.split(" ")
+        #                     hex = lines[2].replace("\"","")
+        #                     parsed_line = bytes.fromhex(hex).decode("ascii")
+        #                     recieved_time = float(parsed_line)
+        #                     print(colored(f"Recieved timestamp: {recieved_time}"))
+        #                     print(colored(f"Actual timestamp: {actual_time}\n"))
+        #                     print(colored(f"Time difference in seconds: \n{actual_time - recieved_time}\n", "light_yellow"))
                             
-        elif parse == "gps_only":
-            input("Are You ready to listen and parse only GPS data?\n")
-            print(colored("RECEIVER is listening...\n", "green"))
-            while True:
-                while self.device.in_waiting:
-                    output = self.device.readlines()
-                    print(colored("\nMessage recieved\n", "green"))
-                    for line in output:
-                        decoded_line = line.decode("ascii")
-                        if "RX" in decoded_line:
-                            lines = decoded_line.split(" ")
-                            hex = lines[2].replace("\"","")
-                            data = bytes.fromhex(hex).decode("ascii").replace("'","\"")
-                            try:
-                                msg = pynmea2.parse(data)
-                                if msg.mode_fix_type == "1":
-                                    print(colored("No Fix", "red"))
-                                elif msg.mode_fix_type == "2":
-                                    print(colored("2D Fix", "light_blue"))
-                                elif msg.mode_fix_type == "3":
-                                    print(colored("3D Fix", "green"))
-                            except pynmea2.ParseError as e:
-                                print('Parse error: {}'.format(e))
-                                continue
+        # elif parse == "gps_only":
+        #     input("Are You ready to listen and parse only GPS data?\n")
+        #     print(colored("RECEIVER is listening...\n", "green"))
+        #     while True:
+        #         while self.device.in_waiting:
+        #             output = self.device.readlines()
+        #             print(colored("\nMessage recieved\n", "green"))
+        #             for line in output:
+        #                 decoded_line = line.decode("ascii")
+        #                 if "RX" in decoded_line:
+        #                     lines = decoded_line.split(" ")
+        #                     hex = lines[2].replace("\"","")
+        #                     data = bytes.fromhex(hex).decode("ascii").replace("'","\"")
+        #                     try:
+        #                         msg = pynmea2.parse(data)
+        #                         if msg.mode_fix_type == "1":
+        #                             print(colored("No Fix", "red"))
+        #                         elif msg.mode_fix_type == "2":
+        #                             print(colored("2D Fix", "light_blue"))
+        #                         elif msg.mode_fix_type == "3":
+        #                             print(colored("3D Fix", "green"))
+        #                     except pynmea2.ParseError as e:
+        #                         print('Parse error: {}'.format(e))
+        #                         continue
                                             
-        elif parse == "gps_cansat":
-            input("Are You ready to listen and parse GPS data with CANSAT other data?\n")
-            print(colored("RECEIVER is listening...\n", "green"))
-            while True:
+        # elif parse == "gps_cansat":
+        #     input("Are You ready to listen and parse GPS data with CANSAT other data?\n")
+        #     print(colored("RECEIVER is listening...\n", "green"))
+        #     while True:
 
-                while self.device.in_waiting:
-                    output = self.device.readlines()
-                    print(colored("\nMessage recieved\n", "green"))
-                    # TODO: clear this mess!!!
-                    for line in output:
-                        decoded_line = line.decode("ascii")
-                        if "RX" in decoded_line:
-                            lines = decoded_line.split(" ")
-                            hex = lines[2].replace("\"","")
-                            parsed_line = bytes.fromhex(hex).decode('ascii').replace("'","\"")
-                            print(parsed_line)
-                            if "$GPGGA" in parsed_line:
-                                reader = csv.reader([parsed_line])
-                                for row in reader:
-                                    for data in row:
-                                        if "$G" in data:
-                                            try:
-                                                # TODO: add more info from GPS
-                                                msg = pynmea2.parse(data)
-                                                if msg.mode_fix_type == "1":
-                                                    print(colored("No Fix", "red"))
-                                                elif msg.mode_fix_type == "2":
-                                                    print(colored("2D Fix", "light_blue"))
-                                                elif msg.mode_fix_type == "3":
-                                                    print(colored("3D Fix", "green"))
-                                            except pynmea2.ParseError as e:
-                                                print('Parse error: {}'.format(e))
-                                                continue
+        #         while self.device.in_waiting:
+        #             output = self.device.readlines()
+        #             print(colored("\nMessage recieved\n", "green"))
+        #             # TODO: clear this mess!!!
+        #             for line in output:
+        #                 decoded_line = line.decode("ascii")
+        #                 if "RX" in decoded_line:
+        #                     lines = decoded_line.split(" ")
+        #                     hex = lines[2].replace("\"","")
+        #                     parsed_line = bytes.fromhex(hex).decode('ascii').replace("'","\"")
+        #                     print(parsed_line)
+        #                     if "$GPGGA" in parsed_line:
+        #                         reader = csv.reader([parsed_line])
+        #                         for row in reader:
+        #                             for data in row:
+        #                                 if "$G" in data:
+        #                                     try:
+        #                                         # TODO: add more info from GPS
+        #                                         msg = pynmea2.parse(data)
+        #                                         if msg.mode_fix_type == "1":
+        #                                             print(colored("No Fix", "red"))
+        #                                         elif msg.mode_fix_type == "2":
+        #                                             print(colored("2D Fix", "light_blue"))
+        #                                         elif msg.mode_fix_type == "3":
+        #                                             print(colored("3D Fix", "green"))
+        #                                     except pynmea2.ParseError as e:
+        #                                         print('Parse error: {}'.format(e))
+        #                                         continue
                             
-        else:
-            print(colored("Wrong parse method\n", "red"))
+        # else:
+        #     print(colored("Wrong parse method\n", "red"))
         
-class Transmitter():
-    # TODO: Finish transmitter similar to receiver
+        # def parse_msg(self):
+        #     pass
+        
+        # def save_to_file(self):
+        #     pass
+        
+        
+class Transmitter(LoRa):
     def __init__(self, port_name, baudrate=9600, timeout=1.0):
-        self.device = serial.Serial()
-        self.device.port = port_name
-        self.device.baudrate = baudrate
-        self.device.timeout = timeout
-            
-        print(f"Port settings:\nName: {self.device.port}\nBaudrate: {self.device.baudrate}\nTimeout: {self.device.timeout}\n")
+        super().__init__(port_name, baudrate, timeout)
+        
+    def send_message(self):
+        input(f"Ready to send the constant timestamps?\n")
+        while True:
+            try:
+                cmd_send = f'AT+TEST=TXLRSTR, "{time.time()}"\r\n'
+                self.device.write(cmd_send.encode())
+                output = self.device.readlines()
+                for line in output:
+                    decoded_line = line.decode("ascii")
+                    print(decoded_line)
+                    if "ERROR" in decoded_line:
+                        print(self.check_error(decoded_line))
 
-        input("Open port for LoRa Transmitter device?\n")
-        try:
-            self.device.open()
-            print(colored(f"Port {self.device.port} opened.\n", "green"))
-        except Exception as error:
-            raise RuntimeError(colored(f"Cannot open port {self.device.port}\n", "red")) from error
+                if any("TEST: TX DONE" in line.decode("ascii") for line in output):
+                    print(colored("Message send succesfully\n", "green"))
+                else:
+                    print(colored("Message not sent\n", "red"))
+
+            except Exception as error:
+                print(error)
 
 
 if __name__ == "__main__":

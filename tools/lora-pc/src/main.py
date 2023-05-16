@@ -1,6 +1,7 @@
 import serial.tools.list_ports
-from termcolor import colored
 import argparse
+import threading
+from termcolor import colored
 
 from pylora import Receiver, Transmitter
 
@@ -78,9 +79,17 @@ if __name__ == "__main__":
     # TODO: add rest of the methods
     if mode == 'receiver':
         print(port, baudrate, timeout, mode)
-        # lora = Receiver(port, baudrate, timeout)
+        lora = Receiver(port, baudrate, timeout)
+        
+        listening_thread = threading.Thread(target=lora.listen)
+        listening_thread.start()
+        
+        parsing_thread = threading.Thread(target=lora.parse_msg)
+        parsing_thread.start()
+    
     elif mode == 'transmitter':
         print(port, baudrate, timeout, mode)
-        # lora = Transmitter(port, baudrate, timeout)
+        lora = Transmitter(port, baudrate, timeout)
+        lora.send_message()
     
 
