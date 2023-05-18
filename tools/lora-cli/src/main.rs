@@ -7,6 +7,7 @@ use clap::Parser;
 use eyre::WrapErr;
 use once_cell::sync::Lazy;
 use serialport::{SerialPort, SerialPortType, UsbPortInfo};
+use regex::Regex;
 
 #[derive(Debug, clap::Parser)]
 #[command(author, version, about, long_about = None)]
@@ -129,7 +130,7 @@ impl Lora {
 }
 
 fn parse_lora_error(input: &str) -> Option<i32> {
-    static RE: Lazy<regex::Regex> = Lazy::new(|| regex::Regex::new(r"ERROR\((-?\d+)\)").unwrap());
+    static RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"ERROR\((-?\d+)\)").unwrap());
     RE.captures(input)
         .and_then(|captures| captures.get(1))
         .and_then(|code| code.as_str().parse().ok())
