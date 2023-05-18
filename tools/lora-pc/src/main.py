@@ -45,18 +45,12 @@ def choose_mode():
 def cli_parse():
     parser = argparse.ArgumentParser(
         prog="LoRa PC",
-        description="Connect with LoRa-E5 Device through USB serial port, and using device as transmitter or receiver",
-    )
+          description="Connect with LoRa-E5 Device through USB serial port, and using device as transmitter or receiver")
     parser.add_argument("-p", "--port", type=str)
     parser.add_argument("-b", "--baudrate", type=int, default=9600)
     parser.add_argument("-t", "--timeout", type=float, default=1.0)
     parser.add_argument("-m", "--mode", type=str, choices=["receiver", "transmitter"])
-    parser.add_argument(
-        "-msg",
-        "--message",
-        type=str,
-        choices=["string", "timestamp", "enumerated", "csv", "lora1", "lora2"],
-    )
+    parser.add_argument("--message", type=str, choices=["string", "timestamp", "enumerated", "csv", "lora1", "lora2"])
 
     args = parser.parse_args()
 
