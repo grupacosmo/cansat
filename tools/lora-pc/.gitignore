@@ -1,3 +1,4 @@
 src/data/*
 .venv
 __pycache__
+snippets
