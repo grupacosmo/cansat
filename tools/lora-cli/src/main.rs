@@ -19,13 +19,16 @@ struct Cli {
 enum Cmd {
     /// Lists available ports
     Ports,
+    /// Start a receive loop
     Receive(ReceiveArgs),
 }
 
 #[derive(Debug, clap::Parser)]
 struct ReceiveArgs {
+    /// Serial port to open
     #[arg(short, long)]
     port: String,
+    /// Baudrate
     #[arg(short, long)]
     baudrate: u32,
 }
