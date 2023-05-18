@@ -135,7 +135,7 @@ pub fn init_drivers(mut board: Board, statik: &'static mut Statik) -> Result<Can
         .ok();
 
     let lora = init_lora(board.serial6)
-        .tap_err(|e| defmt::error!("Failed to initialize Lora: {}", defmt::Debug2Format(&e)))
+        .tap_err(|e| defmt::error!("Failed to initialize Lora: {}", e))
         .ok();
 
     if sd_logger.is_none() && lora.is_none() {
