@@ -6,8 +6,8 @@ use std::{
 use clap::Parser;
 use eyre::WrapErr;
 use once_cell::sync::Lazy;
-use serialport::{SerialPort, SerialPortType, UsbPortInfo};
 use regex::Regex;
+use serialport::{SerialPort, SerialPortType, UsbPortInfo};
 
 #[derive(Debug, clap::Parser)]
 #[command(author, version, about, long_about = None)]
@@ -152,7 +152,7 @@ fn lora_error_description(ec: i32) -> &'static str {
 }
 
 fn validate_success_response(response: &str) -> eyre::Result<()> {
-    if let Some(ec) = parse_lora_error(&response) {
+    if let Some(ec) = parse_lora_error(response) {
         let description = lora_error_description(ec);
         let err = eyre::eyre!("Received an error response with code {ec} - {description}");
         Err(err)
