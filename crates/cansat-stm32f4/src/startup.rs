@@ -1,4 +1,5 @@
 use crate::SdLogger;
+use cansat_lora::{ParseError, ResponseContent};
 use core::convert::Infallible;
 use stm32f4xx_hal::{
     gpio,
@@ -88,6 +89,43 @@ impl defmt::Format for Error {
     }
 }
 
+#[derive(Debug)]
+enum LoraInitError {
+    DriverError(LoraError),
+    CorruptedResponse(&'static str, ParseError),
+    InvalidResponse(i8, &'static str),
+}
+
+impl defmt::Format for LoraInitError {
+    fn format(&self, fmt: defmt::Formatter) {
+        match self {
+            Self::DriverError(e) => {
+                defmt::write!(
+                    fmt,
+                    "Failed to initialize lora driver {}",
+                    defmt::Debug2Format(&e)
+                )
+            }
+            Self::CorruptedResponse(err_command, parse_err) => {
+                defmt::write!(
+                    fmt,
+                    "Received corrupted response {} on command {}",
+                    defmt::Debug2Format(&parse_err),
+                    err_command
+                )
+            }
+            Self::InvalidResponse(err_code, err_command) => {
+                defmt::write!(
+                    fmt,
+                    "Invalid response. ErrorCode: {} on command {}",
+                    err_code,
+                    err_command
+                )
+            }
+        }
+    }
+}
+
 pub fn init_drivers(mut board: Board, statik: &'static mut Statik) -> Result<CanSat, Error> {
     let i2c1 = board.i2c1;
     let shared_i2c1 = shared_bus::new_atomic_check!(I2c1 = i2c1).unwrap();
@@ -143,7 +181,7 @@ fn init_sd_logger(spi: Spi2, cs: Cs2, statik: &'static mut Statik) -> Result<SdL
     Ok(logger)
 }
 
-fn init_lora(serial6: Serial6) -> Result<Lora, LoraError> {
+fn init_lora(serial6: Serial6) -> Result<Lora, LoraInitError> {
     defmt::info!("Initializing LORA");
 
     let mut lora = Lora::new(serial6);
@@ -151,8 +189,16 @@ fn init_lora(serial6: Serial6) -> Result<Lora, LoraError> {
     const COMMANDS: [&str; 3] = ["AT\r\n", "AT+MODE=TEST\r\n", "AT+UART=TIMEOUT,4000\r\n"];
 
     for cmd in COMMANDS {
-        let resp_len = lora.transmit(cmd.as_bytes(), &mut resp_buffer)?;
-        cansat_lora::parse_response(&resp_buffer)?;
+        let resp_len = lora
+            .transmit(cmd.as_bytes(), &mut resp_buffer)
+            .map_err(LoraInitError::DriverError)?;
+        
+        let response = cansat_lora::parse_response(&resp_buffer)
+            .map_err(|e| LoraInitError::CorruptedResponse(cmd, e))?;
+
+        if let ResponseContent::Error(e) = response.content {
+            return Err(LoraInitError::InvalidResponse(e, cmd));
+        }
         defmt::info!("LORA_INIT response: {=[u8]:a}", resp_buffer[..resp_len]);
     }
 
