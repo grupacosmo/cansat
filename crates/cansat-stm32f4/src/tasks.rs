@@ -105,7 +105,8 @@ fn send_lora_package(lora: &mut crate::Lora) -> Result<(), LoraError> {
         .map_err(LoraError::DriverError)?;
 
     for _ in 1..=2 {
-        lora.receive(&mut resp_buffer).map_err(LoraError::DriverError)?;
+        lora.receive(&mut resp_buffer)
+            .map_err(LoraError::DriverError)?;
 
         let response = cansat_lora::parse_response(&resp_buffer)
             .map_err(|e| LoraError::CorruptedResponse(PACKAGE_MSG, e))?;
