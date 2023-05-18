@@ -4,7 +4,7 @@ use std::{
 };
 
 use clap::Parser;
-use eyre::WrapErr;
+use eyre::{eyre, Result, WrapErr};
 use once_cell::sync::Lazy;
 use regex::Regex;
 use serialport::{SerialPort, SerialPortType, UsbPortInfo};
@@ -34,7 +34,7 @@ struct ReceiveArgs {
     baudrate: u32,
 }
 
-fn main() -> eyre::Result<()> {
+fn main() -> Result<()> {
     color_eyre::install()?;
     let args = Cli::parse();
     match args.cmd {
@@ -44,7 +44,7 @@ fn main() -> eyre::Result<()> {
     Ok(())
 }
 
-fn list_ports() -> eyre::Result<()> {
+fn list_ports() -> Result<()> {
     let ports =
         serialport::available_ports().wrap_err("Couldn't get the list of available ports")?;
     for port in ports {
@@ -61,7 +61,7 @@ fn list_ports() -> eyre::Result<()> {
     Ok(())
 }
 
-fn receive(args: ReceiveArgs) -> eyre::Result<()> {
+fn receive(args: ReceiveArgs) -> Result<()> {
     eprintln!("Configuring...");
 
     let port = serialport::new(args.port, args.baudrate)
@@ -95,7 +95,7 @@ impl Lora {
         Self { port }
     }
 
-    fn receive(&mut self) -> eyre::Result<String> {
+    fn receive(&mut self) -> Result<String> {
         let mut port = BufReader::new(&mut self.port);
         let mut response = String::new();
         port.read_line(&mut response)
@@ -104,16 +104,16 @@ impl Lora {
         Ok(response)
     }
 
-    fn send(&mut self, input: &[u8]) -> eyre::Result<usize> {
+    fn send(&mut self, input: &[u8]) -> Result<usize> {
         self.port.write(input).wrap_err("Failed to write message")
     }
 
-    fn transmit(&mut self, input: &[u8]) -> eyre::Result<String> {
+    fn transmit(&mut self, input: &[u8]) -> Result<String> {
         self.send(input)?;
         self.receive()
     }
 
-    fn listen(mut self) -> eyre::Result<impl Iterator<Item = eyre::Result<String>>> {
+    fn listen(mut self) -> Result<impl Iterator<Item = Result<String>>> {
         self.port
             .set_timeout(Duration::from_secs(0))
             .wrap_err("Failed to disable timeout")?;
@@ -151,10 +151,10 @@ fn lora_error_description(ec: i32) -> &'static str {
     }
 }
 
-fn validate_success_response(response: &str) -> eyre::Result<()> {
+fn validate_success_response(response: &str) -> Result<()> {
     if let Some(ec) = parse_lora_error(response) {
         let description = lora_error_description(ec);
-        let err = eyre::eyre!("Received an error response with code {ec} - {description}");
+        let err = eyre!("Received an error response with code {ec} - {description}");
         Err(err)
     } else {
         Ok(())
