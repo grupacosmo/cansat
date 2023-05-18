@@ -7,7 +7,8 @@ fn receive_response() {
     let mut lora = Lora::new(serial);
     let mut response = [0; 32];
 
-    let nwritten = lora.transmit(b"cmd\r\n", &mut response).unwrap();
+    lora.transmit(b"cmd\r\n").unwrap();
+    let nwritten = lora.receive(&mut response).unwrap();
 
     let serial = lora.into_serial();
     assert!(&response[..nwritten] == b"cmd: ok\r\n");
@@ -20,7 +21,8 @@ fn drain_on_overflow_1() {
     let mut lora = Lora::new(serial);
     let mut response = [0; 0];
 
-    let err = lora.transmit(b"cmd\r\n", &mut response).unwrap_err();
+    lora.transmit(b"cmd\r\n").unwrap();
+    let err = lora.receive(&mut response).unwrap_err();
 
     let serial = lora.into_serial();
     assert_eq!(err, cansat_lora::Error::Overflow);
@@ -33,7 +35,8 @@ fn drain_on_overflow_2() {
     let mut lora = Lora::new(serial);
     let mut response = [0; 1];
 
-    let err = lora.transmit(b"cmd\r\n", &mut response).unwrap_err();
+    lora.transmit(b"cmd\r\n").unwrap();
+    let err = lora.receive(&mut response).unwrap_err();
 
     let serial = lora.into_serial();
     assert_eq!(err, cansat_lora::Error::Overflow);
@@ -46,7 +49,8 @@ fn drain_on_overflow_3() {
     let mut lora = Lora::new(serial);
     let mut response = [0; 3];
 
-    let err = lora.transmit(b"cmd\r\n", &mut response).unwrap_err();
+    lora.transmit(b"cmd\r\n").unwrap();
+    let err = lora.receive(&mut response).unwrap_err();
 
     let serial = lora.into_serial();
     assert_eq!(err, cansat_lora::Error::Overflow);

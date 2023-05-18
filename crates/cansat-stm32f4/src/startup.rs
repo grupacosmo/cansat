@@ -25,7 +25,7 @@ pub type Lis3dh = lis3dh::Lis3dh<lis3dh::Lis3dhI2C<I2c1Proxy>>;
 pub type Lis3dhError = lis3dh::Error<i2c::Error, Infallible>;
 pub type Bme280 = bme280::i2c::BME280<I2c1Proxy>;
 pub type Bme280Error = bme280::Error<i2c::Error>;
-pub type LoraError = cansat_lora::Error<serial::Error>;
+pub type LoraDriverError = cansat_lora::Error<serial::Error>;
 
 type BlockSpi2 = embedded_sdmmc::BlockSpi<'static, Spi2, Cs2>;
 type Spi2Device = embedded_sdmmc::SdMmcSpi<Spi2, Cs2>;
@@ -90,13 +90,13 @@ impl defmt::Format for Error {
 }
 
 #[derive(Debug)]
-enum LoraInitError {
-    DriverError(LoraError),
+pub enum LoraError {
+    DriverError(LoraDriverError),
     CorruptedResponse(&'static str, ParseError),
     InvalidResponse(i8, &'static str),
 }
 
-impl defmt::Format for LoraInitError {
+impl defmt::Format for LoraError {
     fn format(&self, fmt: defmt::Formatter) {
         match self {
             Self::DriverError(e) => {
@@ -181,7 +181,7 @@ fn init_sd_logger(spi: Spi2, cs: Cs2, statik: &'static mut Statik) -> Result<SdL
     Ok(logger)
 }
 
-fn init_lora(serial6: Serial6) -> Result<Lora, LoraInitError> {
+fn init_lora(serial6: Serial6) -> Result<Lora, LoraError> {
     defmt::info!("Initializing LORA");
 
     let mut lora = Lora::new(serial6);
@@ -189,15 +189,17 @@ fn init_lora(serial6: Serial6) -> Result<Lora, LoraInitError> {
     const COMMANDS: [&str; 3] = ["AT\r\n", "AT+MODE=TEST\r\n", "AT+UART=TIMEOUT,4000\r\n"];
 
     for cmd in COMMANDS {
+        lora.transmit(cmd.as_bytes())
+            .map_err(LoraError::DriverError)?;
         let resp_len = lora
-            .transmit(cmd.as_bytes(), &mut resp_buffer)
-            .map_err(LoraInitError::DriverError)?;
-        
+            .receive(&mut resp_buffer)
+            .map_err(LoraError::DriverError)?;
+
         let response = cansat_lora::parse_response(&resp_buffer)
-            .map_err(|e| LoraInitError::CorruptedResponse(cmd, e))?;
+            .map_err(|e| LoraError::CorruptedResponse(cmd, e))?;
 
         if let ResponseContent::Error(e) = response.content {
-            return Err(LoraInitError::InvalidResponse(e, cmd));
+            return Err(LoraError::InvalidResponse(e, cmd));
         }
         defmt::info!("LORA_INIT response: {=[u8]:a}", resp_buffer[..resp_len]);
     }

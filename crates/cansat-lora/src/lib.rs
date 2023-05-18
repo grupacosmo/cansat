@@ -29,16 +29,6 @@ where
         self.serial
     }
 
-    pub fn transmit(
-        &mut self,
-        cmd: &[u8],
-        response: &mut [u8],
-    ) -> Result<usize, Error<Serial::Error>> {
-        self.write_all(cmd)?;
-        let nread = self.read_all(response)?;
-        Ok(nread)
-    }
-
     /// Drains serial until it hits `\r\n`
     fn drain(&mut self, mut last_byte: Option<u8>) -> Result<(), Error<Serial::Error>> {
         loop {
@@ -50,7 +40,7 @@ where
         }
     }
 
-    fn write_all(&mut self, cmd: &[u8]) -> Result<(), Error<Serial::Error>> {
+    pub fn transmit(&mut self, cmd: &[u8]) -> Result<(), Error<Serial::Error>> {
         for &b in cmd {
             nb::block!(self.serial.write(b)).map_err(Error::Serial)?;
         }
@@ -58,7 +48,7 @@ where
         Ok(())
     }
 
-    fn read_all(&mut self, buffer: &mut [u8]) -> Result<usize, Error<Serial::Error>> {
+    pub fn receive(&mut self, buffer: &mut [u8]) -> Result<usize, Error<Serial::Error>> {
         let mut i = 0;
         loop {
             let is_overflow = i == buffer.len();

@@ -1,9 +1,10 @@
-use crate::app;
+use crate::{app, startup::LoraError};
 use accelerometer::RawAccelerometer;
 use cansat_core::{
     quantity::{Pressure, Temperature},
     Measurements,
 };
+use cansat_lora::ResponseContent;
 use heapless::Vec;
 use rtic::Mutex;
 use stm32f4xx_hal::prelude::*;
@@ -19,7 +20,11 @@ pub fn idle(mut ctx: app::idle::Context) -> ! {
 
         if let Some(lora) = lora {
             let delay = &mut ctx.local.delay;
-            send_lora_package(lora);
+
+            if let Err(e) = send_lora_package(lora) {
+                defmt::error!("Lora Error: {}", e);
+            }
+
             delay.delay(1.secs());
         }
 
@@ -92,21 +97,27 @@ fn read_measurements(ctx: &mut app::idle::Context) -> Measurements {
     data
 }
 
-fn send_lora_package(lora: &mut crate::Lora) {
+fn send_lora_package(lora: &mut crate::Lora) -> Result<(), LoraError> {
     let mut resp_buffer: [u8; 255] = [0; 255];
+    const PACKAGE_MSG: &str = "AT+TEST=TXLRSTR,\"TEST_MSG\"\r\n";
 
-    match lora.transmit(b"AT+TEST=TXLRSTR,\"TEST_MSG\"\r\n", &mut resp_buffer) {
-        Ok(resp_len) => {
-            if let Err(e) = cansat_lora::parse_response(&resp_buffer) {
-                defmt::error!("Lora error reponse: {}", defmt::Debug2Format(&e));
-            } else {
-                defmt::error!("Lora package sent {}", resp_len);
-            }
-        }
-        Err(e) => {
-            defmt::error!("Could not send lora package: {}", defmt::Debug2Format(&e));
+    lora.transmit(PACKAGE_MSG.as_bytes())
+        .map_err(LoraError::DriverError)?;
+
+    for _ in 1..=2 {
+        lora.receive(&mut resp_buffer).map_err(LoraError::DriverError)?;
+
+        let response = cansat_lora::parse_response(&resp_buffer)
+            .map_err(|e| LoraError::CorruptedResponse(PACKAGE_MSG, e))?;
+
+        if let ResponseContent::Error(e) = response.content {
+            return Err(LoraError::InvalidResponse(e, PACKAGE_MSG));
         }
     }
+
+    defmt::info!("Lora msg sent");
+
+    Ok(())
 }
 
 /// USART3 interrupt handler that reads data into the gps working buffer
