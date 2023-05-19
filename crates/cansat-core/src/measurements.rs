@@ -60,7 +60,10 @@ fn option_vector_i16x3<S>(v: &Option<vector::I16x3>, serializer: S) -> Result<S:
 where
     S: serde::Serializer,
 {
-    v.map(|v| (v.x, v.y, v.z)).serialize(serializer)
+    match v {
+        Some(v) => (v.x, v.y, v.z).serialize(serializer),
+        None => ((), (), ()).serialize(serializer),
+    }
 }
 
 fn option_orientation<S>(
