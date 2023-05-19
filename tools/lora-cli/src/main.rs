@@ -21,11 +21,11 @@ enum Cmd {
     /// Lists available ports
     Ports,
     /// Start a receive loop
-    Receive(ReceiveArgs),
+    Receive(PortArgs),
 }
 
 #[derive(Debug, clap::Parser)]
-struct ReceiveArgs {
+struct PortArgs {
     /// Serial port to open
     #[arg(short, long)]
     port: String,
@@ -61,18 +61,17 @@ fn list_ports() -> Result<()> {
     Ok(())
 }
 
-fn receive(args: ReceiveArgs) -> Result<()> {
+fn receive(args: PortArgs) -> Result<()> {
     eprintln!("Configuring...");
 
-    let port = serialport::new(args.port, args.baudrate)
-        .timeout(Duration::from_secs(10))
-        .open()
-        .wrap_err("Failed to open serial port")?;
-
+    let port = open_port(&args)?;
     let mut lora = Lora::new(port);
 
     lora.transmit(b"AT+MODE=TEST\r\n")
         .wrap_err("Failed to set test mode")?;
+
+    lora.transmit(b"AT+TEST=RXLRPKT\r\n")
+        .wrap_err("Failed to set continous RX mode")?;
 
     eprintln!("Listening...");
 
@@ -86,26 +85,39 @@ fn receive(args: ReceiveArgs) -> Result<()> {
     Ok(())
 }
 
+fn open_port(args: &PortArgs) -> Result<Box<dyn SerialPort>> {
+    serialport::new(&args.port, args.baudrate)
+        .timeout(Duration::from_secs(1))
+        .open()
+        .wrap_err("Failed to open serial port")
+}
+
 struct Lora {
-    port: Box<dyn SerialPort>,
+    port: BufReader<Box<dyn SerialPort>>,
 }
 
 impl Lora {
     fn new(port: Box<dyn SerialPort>) -> Self {
-        Self { port }
+        // We use capacity 1 to drastically improve the performance on Windows
+        Self {
+            port: BufReader::with_capacity(1, port),
+        }
     }
 
     fn receive(&mut self) -> Result<String> {
-        let mut port = BufReader::new(&mut self.port);
         let mut response = String::new();
-        port.read_line(&mut response)
+        self.port
+            .read_line(&mut response)
             .wrap_err("Failed to read message")?;
         validate_success_response(&response)?;
         Ok(response)
     }
 
     fn send(&mut self, input: &[u8]) -> Result<usize> {
-        self.port.write(input).wrap_err("Failed to write message")
+        self.port
+            .get_mut()
+            .write(input)
+            .wrap_err("Failed to write message")
     }
 
     fn transmit(&mut self, input: &[u8]) -> Result<String> {
@@ -115,11 +127,11 @@ impl Lora {
 
     fn listen(mut self) -> Result<impl Iterator<Item = Result<String>>> {
         self.port
+            .get_mut()
             .set_timeout(Duration::from_secs(0))
             .wrap_err("Failed to disable timeout")?;
-        let port = BufReader::new(self.port);
 
-        let iter = port.lines().map(|result| {
+        let iter = self.port.lines().map(|result| {
             let response = result.wrap_err("Failed to read message")?;
             validate_success_response(&response)?;
             Ok(response)
@@ -138,7 +150,7 @@ fn parse_lora_error(input: &str) -> Option<i32> {
 
 fn lora_error_description(ec: i32) -> &'static str {
     match ec {
-        -1 => "Parameters is invalid",
+        -1 => "Parameter is invalid",
         -10 => "Command unknown",
         -11 => "Command is in wrong format",
         -12 => "Command is unavailable in current mode",
