@@ -131,6 +131,9 @@
 <a href="#131" id="131">131</a>
 <a href="#132" id="132">132</a>
 <a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::quantity::{Distance, Pressure, Temperature};
 <span class="kw">use </span>accelerometer::{vector, Orientation};
 <span class="kw">use </span>heapless_bytes::Bytes;
@@ -193,7 +196,10 @@
 <span class="kw">where
     </span>S: serde::Serializer,
 {
-    v.map(|v| (v.x, v.y, v.z)).serialize(serializer)
+    <span class="kw">match </span>v {
+        <span class="prelude-val">Some</span>(v) =&gt; (v.x, v.y, v.z).serialize(serializer),
+        <span class="prelude-val">None </span>=&gt; ((), (), ()).serialize(serializer),
+    }
 }
 
 <span class="kw">fn </span>option_orientation&lt;S&gt;(
