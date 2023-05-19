@@ -30,8 +30,13 @@ struct ReceiveArgs {
     #[arg(short, long)]
     port: String,
     /// Baudrate
+
+    // TODO: add default value for baudrate (9600) and enum for possible values (from LoRa spec):
+    // [9600, 14400, 19200, 38400,
+    // 57600, 76800, 115200, 230400]
     #[arg(short, long)]
     baudrate: u32,
+    // TODO: what about timeout control? We should add option for this, or test the best value and hardcode it, or set for default
 }
 
 fn main() -> Result<()> {
@@ -40,6 +45,8 @@ fn main() -> Result<()> {
     match args.cmd {
         Cmd::Ports => list_ports(),
         Cmd::Receive(args) => receive(args),
+        // TODO: add healthcheck option "AT" -> "AT: OK"
+        // TODO: consider to add configure option, to be able to send any AT COMMAND, if there will be need to reconfigure lora, for example frequency
     }?;
     Ok(())
 }
@@ -71,12 +78,18 @@ fn receive(args: ReceiveArgs) -> Result<()> {
 
     let mut lora = Lora::new(port);
 
+    //TODO: this is not setting LoRa as receiver
+    // add "AT+TEST=RXLRPKT"
     lora.transmit(b"AT+MODE=TEST\r\n")
         .wrap_err("Failed to set test mode")?;
 
     eprintln!("Listening...");
 
     for result in lora.listen()? {
+        // TODO: add parsing options for cansat .csv files, and reading
+        // TODO: add reading RSSI (Signal Strength in dBm) and SNR (Signal-to-Noise in dB)
+        // TODO: add saving to file
+        // TODO: add non blocking behavior, with Threads or multiple Processes, one for listening, one for parsing and displaying live, one for saving to file
         match result {
             Ok(msg) => println!("{msg}"),
             Err(e) => eprintln!("{e}"),
@@ -108,6 +121,8 @@ impl Lora {
         self.port.write(input).wrap_err("Failed to write message")
     }
 
+    // TODO: print response
+    // TODO: check why this is so slow, maybe timeout?
     fn transmit(&mut self, input: &[u8]) -> Result<String> {
         self.send(input)?;
         self.receive()
@@ -152,6 +167,7 @@ fn lora_error_description(ec: i32) -> &'static str {
 }
 
 fn validate_success_response(response: &str) -> Result<()> {
+    // TODO: success message is always marked as RX OK, could be added here?
     if let Some(ec) = parse_lora_error(response) {
         let description = lora_error_description(ec);
         let err = eyre!("Received an error response with code {ec} - {description}");
