@@ -1,4 +1,5 @@
 use std::{
+    fs::File,
     io::{BufRead, BufReader},
     time::Duration,
 };
@@ -20,23 +21,23 @@ struct Cli {
 enum Cmd {
     /// Lists available ports
     Ports,
+    /// Check connection with device
+    Conntest(PortArgs),
     /// Start a receive loop
-    Receive(ReceiveArgs),
+    Receive(PortArgs),
+    /// Send custom commands from command.txt
+    Command(PortArgs)
 }
 
 #[derive(Debug, clap::Parser)]
-struct ReceiveArgs {
+struct PortArgs {
     /// Serial port to open
     #[arg(short, long)]
     port: String,
-    /// Baudrate
-
-    // TODO: add default value for baudrate (9600) and enum for possible values (from LoRa spec):
-    // [9600, 14400, 19200, 38400,
-    // 57600, 76800, 115200, 230400]
-    #[arg(short, long)]
+    /// Port baudrate.   
+    /// Available values: 9600, 14400, 19200, 38400, 57600, 76800, 115200, 230400
+    #[arg(short, long, default_value = "9600")]
     baudrate: u32,
-    // TODO: what about timeout control? We should add option for this, or test the best value and hardcode it, or set for default
 }
 
 fn main() -> Result<()> {
@@ -44,9 +45,9 @@ fn main() -> Result<()> {
     let args = Cli::parse();
     match args.cmd {
         Cmd::Ports => list_ports(),
+        Cmd::Conntest(args) => connection_test(args),
         Cmd::Receive(args) => receive(args),
-        // TODO: add healthcheck option "AT" -> "AT: OK"
-        // TODO: consider to add configure option, to be able to send any AT COMMAND, if there will be need to reconfigure lora, for example frequency
+        Cmd::Command(args) => send_command(args),
     }?;
     Ok(())
 }
@@ -68,61 +69,101 @@ fn list_ports() -> Result<()> {
     Ok(())
 }
 
-fn receive(args: ReceiveArgs) -> Result<()> {
-    eprintln!("Configuring...");
+fn connection_test(args: PortArgs) -> Result<()> {
+    eprintln!("Connection test");
 
-    let port = serialport::new(args.port, args.baudrate)
-        .timeout(Duration::from_secs(10))
-        .open()
-        .wrap_err("Failed to open serial port")?;
-
+    let port = open_port(&args)?;
     let mut lora = Lora::new(port);
 
-    //TODO: this is not setting LoRa as receiver
-    // add "AT+TEST=RXLRPKT"
+    lora.transmit(b"AT\r\n")
+        .wrap_err("Connection test failed")?;
+
+    Ok(())
+}
+
+fn receive(args: PortArgs) -> Result<()> {
+    eprintln!("Configuring as receiver...");
+
+    let port = open_port(&args)?;
+    let mut lora = Lora::new(port);
+
     lora.transmit(b"AT+MODE=TEST\r\n")
         .wrap_err("Failed to set test mode")?;
+
+    lora.transmit(b"AT+TEST=RXLRPKT\r\n")
+        .wrap_err("Failed to set continuous RX mode")?;
 
     eprintln!("Listening...");
 
     for result in lora.listen()? {
-        // TODO: add parsing options for cansat .csv files, and reading
-        // TODO: add reading RSSI (Signal Strength in dBm) and SNR (Signal-to-Noise in dB)
-        // TODO: add saving to file
-        // TODO: add non blocking behavior, with Threads or multiple Processes, one for listening, one for parsing and displaying live, one for saving to file
         match result {
             Ok(msg) => println!("{msg}"),
             Err(e) => eprintln!("{e}"),
         }
     }
-
     Ok(())
 }
 
+fn send_command(args: PortArgs) -> Result<()> {
+    eprintln!("Sending custom command...");
+
+    let file = File::open("tools/lora-cli/command.txt")?;
+    let reader = BufReader::new(file);
+
+    let port = open_port(&args)?;
+    let mut lora = Lora::new(port);
+
+    for line in reader.lines() {
+        match line {
+            Ok(line) => {
+                eprintln!("{line}");
+                lora.transmit(format!("{line}\r\n").as_bytes())
+                .wrap_err(format!("Failed to send {line} command"))?;
+        }
+        Err(e) => {
+            eprintln!("{e}");
+            }
+        }
+    }
+    Ok(())
+}
+
+fn open_port(args: &PortArgs) -> Result<Box<dyn SerialPort>> {
+    serialport::new(&args.port, args.baudrate)
+        .timeout(Duration::from_secs(1))
+        .open()
+        .wrap_err("Failed to open serial port")
+}
+
 struct Lora {
-    port: Box<dyn SerialPort>,
+    port: BufReader<Box<dyn SerialPort>>,
 }
 
 impl Lora {
     fn new(port: Box<dyn SerialPort>) -> Self {
-        Self { port }
+        // We use capacity 1 to drastically improve the performance on Windows
+        Self {
+            port: BufReader::with_capacity(1, port),
+        }
     }
 
     fn receive(&mut self) -> Result<String> {
-        let mut port = BufReader::new(&mut self.port);
         let mut response = String::new();
-        port.read_line(&mut response)
+        self.port
+            .read_line(&mut response)
             .wrap_err("Failed to read message")?;
+        eprintln!("{}", &response);
         validate_success_response(&response)?;
         Ok(response)
     }
 
     fn send(&mut self, input: &[u8]) -> Result<usize> {
-        self.port.write(input).wrap_err("Failed to write message")
+        self.port
+            .get_mut()
+            .write(input)
+            .wrap_err("Failed to write message")
     }
 
-    // TODO: print response
-    // TODO: check why this is so slow, maybe timeout?
     fn transmit(&mut self, input: &[u8]) -> Result<String> {
         self.send(input)?;
         self.receive()
@@ -130,16 +171,15 @@ impl Lora {
 
     fn listen(mut self) -> Result<impl Iterator<Item = Result<String>>> {
         self.port
+            .get_mut()
             .set_timeout(Duration::from_secs(0))
             .wrap_err("Failed to disable timeout")?;
-        let port = BufReader::new(self.port);
 
-        let iter = port.lines().map(|result| {
+        let iter = self.port.lines().map(|result| {
             let response = result.wrap_err("Failed to read message")?;
             validate_success_response(&response)?;
             Ok(response)
         });
-
         Ok(iter)
     }
 }
@@ -153,7 +193,7 @@ fn parse_lora_error(input: &str) -> Option<i32> {
 
 fn lora_error_description(ec: i32) -> &'static str {
     match ec {
-        -1 => "Parameters is invalid",
+        -1 => "Parameter is invalid",
         -10 => "Command unknown",
         -11 => "Command is in wrong format",
         -12 => "Command is unavailable in current mode",
@@ -167,7 +207,6 @@ fn lora_error_description(ec: i32) -> &'static str {
 }
 
 fn validate_success_response(response: &str) -> Result<()> {
-    // TODO: success message is always marked as RX OK, could be added here?
     if let Some(ec) = parse_lora_error(response) {
         let description = lora_error_description(ec);
         let err = eyre!("Received an error response with code {ec} - {description}");
