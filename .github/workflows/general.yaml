@@ -31,6 +31,7 @@ jobs:
           toolchain: stable
           target: thumbv7em-none-eabihf
           override: true
+      - run: sudo apt-get install libudev-dev
       - uses: actions-rs/cargo@v1
         with:
           command: xtask
@@ -73,6 +74,7 @@ jobs:
           target: thumbv7em-none-eabihf
           override: true
           components: clippy
+      - run: sudo apt-get install libudev-dev
       - uses: actions-rs/cargo@v1
         with:
           command: clippy
