@@ -3,17 +3,17 @@
 #![no_main]
 #![no_std]
 
+mod error;
 mod sd_logger;
 mod startup;
 mod tasks;
-mod error;
 
+use heapless::Vec;
 pub use sd_logger::SdLogger;
 pub use startup::{
-    Bme280, Bme280Error, Delay, Gps, I2c1Devices, Led, Lis3dh, Lis3dhError, Lora, LoraError, Monotonic,
-    SdmmcController, SdmmcError,
+    Bme280, Bme280Error, Delay, Gps, I2c1Devices, Led, Lis3dh, Lis3dhError, Lora, LoraError,
+    Monotonic, SdmmcController, SdmmcError,
 };
-use heapless::Vec;
 
 #[cfg(all(debug_assertions))]
 use panic_probe as _;
@@ -58,7 +58,10 @@ mod app {
         blink::spawn().unwrap();
         send_meas::spawn().unwrap();
 
-        let shared = Shared { gps: cansat.gps, csv_record: Vec::new() };
+        let shared = Shared {
+            gps: cansat.gps,
+            csv_record: Vec::new(),
+        };
         let local = Local {
             delay: cansat.delay,
             led: cansat.led,

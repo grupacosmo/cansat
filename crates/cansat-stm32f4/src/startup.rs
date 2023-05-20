@@ -1,4 +1,4 @@
-use crate::{SdLogger, error::Error};
+use crate::{error::Error, SdLogger};
 use cansat_lora::ResponseContent;
 use core::convert::Infallible;
 use stm32f4xx_hal::{

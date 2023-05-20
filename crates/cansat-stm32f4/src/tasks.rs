@@ -1,4 +1,4 @@
-use crate::{app, startup::LoraError, error::Error};
+use crate::{app, error::Error, startup::LoraError};
 use accelerometer::RawAccelerometer;
 use cansat_core::{
     quantity::{Pressure, Temperature},
@@ -9,7 +9,10 @@ use rtic::Mutex;
 use stm32f4xx_hal::prelude::*;
 
 pub fn idle(mut ctx: app::idle::Context) -> ! {
-    let mut writer = csv_core::WriterBuilder::new().delimiter(b',').quote(b'\'').build();
+    let mut writer = csv_core::WriterBuilder::new()
+        .delimiter(b',')
+        .quote(b'\'')
+        .build();
 
     loop {
         let measurements = read_measurements(&mut ctx);
