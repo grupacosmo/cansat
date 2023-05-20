@@ -1,34 +1,21 @@
-use crate::{app, startup::LoraError};
+use crate::{app, startup::LoraError, error::Error};
 use accelerometer::RawAccelerometer;
 use cansat_core::{
     quantity::{Pressure, Temperature},
     Measurements,
 };
 use cansat_lora::ResponseContent;
-use heapless::Vec;
 use rtic::Mutex;
 use stm32f4xx_hal::prelude::*;
 
 pub fn idle(mut ctx: app::idle::Context) -> ! {
-    let mut writer = csv_core::Writer::new();
+    let mut writer = csv_core::WriterBuilder::new().delimiter(b',').quote(b'\'').build();
 
     loop {
         let measurements = read_measurements(&mut ctx);
         defmt::info!("{}", measurements);
 
-        let lora = &mut ctx.local.lora;
-
-        if let Some(lora) = lora {
-            let delay = &mut ctx.local.delay;
-
-            if let Err(e) = send_lora_package(lora) {
-                defmt::error!("Lora Error: {}", e);
-            }
-
-            delay.delay(1.secs());
-        }
-
-        let csv_record: Vec<u8, 1024> = match serde_csv_core::to_vec(&mut writer, &measurements) {
+        let csv_record = match serde_csv_core::to_vec(&mut writer, &measurements) {
             Ok(r) => r,
             Err(e) => {
                 defmt::error!(
@@ -38,12 +25,14 @@ pub fn idle(mut ctx: app::idle::Context) -> ! {
                 continue;
             }
         };
+        ctx.shared.csv_record.lock(|csv| {
+            *csv = csv_record;
+            let sd_logger = &mut ctx.local.sd_logger;
 
-        let sd_logger = &mut ctx.local.sd_logger;
-
-        if let Some(sd_logger) = sd_logger {
-            sd_logger.write(&csv_record).unwrap();
-        }
+            if let Some(sd_logger) = sd_logger {
+                sd_logger.write(&csv).unwrap();
+            }
+        });
     }
 }
 
@@ -97,26 +86,40 @@ fn read_measurements(ctx: &mut app::idle::Context) -> Measurements {
     data
 }
 
-fn send_lora_package(lora: &mut crate::Lora) -> Result<(), LoraError> {
-    let mut resp_buffer: [u8; 255] = [0; 255];
-    const PACKAGE_MSG: &str = "AT+TEST=TXLRSTR,\"TEST_MSG\"\r\n";
+pub fn send_meas(ctx: app::send_meas::Context) {
+    let lora = ctx.local.lora;
+    let mut csv_record = ctx.shared.csv_record;
+    csv_record.lock(|csv| {
+        if let Some(lora) = lora {
+            if !csv.is_empty() {
+                send_lora_package(lora, &csv[..csv.len() - 1]).unwrap();
+            }
+        }
+    });
 
-    lora.transmit(PACKAGE_MSG.as_bytes())
-        .map_err(LoraError::DriverError)?;
+    app::send_meas::spawn_after(1.secs()).unwrap();
+}
+
+fn send_lora_package(lora: &mut crate::Lora, csv: &[u8]) -> Result<(), Error> {
+    let mut command: heapless::Vec<u8, 256> = heapless::Vec::new();
+    command.extend_from_slice(b"AT+TEST=TXLRSTR, \"").unwrap();
+    command.extend_from_slice(csv).unwrap();
+    command.extend_from_slice(b"\"\r\n").unwrap();
+
+    let mut response: [u8; 255] = [0; 255];
+
+    defmt::info!("{=[u8]:a}", command);
+    lora.send(&command)?;
 
     for _ in 1..=2 {
-        lora.receive(&mut resp_buffer)
-            .map_err(LoraError::DriverError)?;
+        let nread = lora.receive(&mut response)?;
 
-        let response = cansat_lora::parse_response(&resp_buffer)
-            .map_err(|e| LoraError::CorruptedResponse(PACKAGE_MSG, e))?;
+        let response = cansat_lora::parse_response(&response[..nread]).map_err(LoraError::Parse)?;
 
-        if let ResponseContent::Error(e) = response.content {
-            return Err(LoraError::InvalidResponse(e, PACKAGE_MSG));
+        if let ResponseContent::Error(ec) = response.content {
+            return Err(Error::Response(ec));
         }
     }
-
-    defmt::info!("Lora msg sent");
 
     Ok(())
 }

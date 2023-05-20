@@ -2,15 +2,28 @@
 
 mod parser;
 
+use core::fmt::Debug;
 use embedded_hal::{self, nb, serial};
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, derive_more::From)]
 pub enum Error<SerialError> {
-    Delay,
     Serial(SerialError),
     #[from]
     Parse(ParseError),
     Overflow,
+}
+
+impl<SerialError: Debug> defmt::Format for Error<SerialError> {
+    fn format(&self, fmt: defmt::Formatter) {
+        match self {
+            Self::Serial(e) => {
+                let e = defmt::Debug2Format(&e);
+                defmt::write!(fmt, "Communication with serial failed: {}", e)
+            }
+            Self::Parse(e) => defmt::write!(fmt, "Failed to parse response: {}", &e),
+            Self::Overflow => defmt::write!(fmt, "Overflow"),
+        }
+    }
 }
 
 pub struct Lora<Serial> {
@@ -40,7 +53,7 @@ where
         }
     }
 
-    pub fn transmit(&mut self, cmd: &[u8]) -> Result<(), Error<Serial::Error>> {
+    pub fn send(&mut self, cmd: &[u8]) -> Result<(), Error<Serial::Error>> {
         for &b in cmd {
             nb::block!(self.serial.write(b)).map_err(Error::Serial)?;
         }
@@ -93,6 +106,21 @@ pub enum ParseError {
     NoTerminator,
     UnclosedErrorParen,
     Unknown,
+}
+
+impl defmt::Format for ParseError {
+    fn format(&self, fmt: defmt::Formatter) {
+        match self {
+            Self::Incomplete => defmt::write!(fmt, "Incomplete response"),
+            Self::BadCommand => defmt::write!(fmt, "Invalid command header"),
+            Self::BadErrorCode => defmt::write!(fmt, "Invalid error code"),
+            Self::NoDelimiter => defmt::write!(fmt, "Missing the `:` delimiter"),
+            Self::NoPrefix => defmt::write!(fmt, "Missing `+` before the header"),
+            Self::NoTerminator => defmt::write!(fmt, "Missing message terminator"),
+            Self::UnclosedErrorParen => defmt::write!(fmt, "Unclosed error parentheses"),
+            Self::Unknown => defmt::write!(fmt, "Unknown"),
+        }
+    }
 }
 
 pub fn parse_response(input: &[u8]) -> Result<Response, ParseError> {

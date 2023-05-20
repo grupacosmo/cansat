@@ -1,5 +1,5 @@
-use crate::SdLogger;
-use cansat_lora::{ParseError, ResponseContent};
+use crate::{SdLogger, error::Error};
+use cansat_lora::ResponseContent;
 use core::convert::Infallible;
 use stm32f4xx_hal::{
     gpio,
@@ -25,7 +25,7 @@ pub type Lis3dh = lis3dh::Lis3dh<lis3dh::Lis3dhI2C<I2c1Proxy>>;
 pub type Lis3dhError = lis3dh::Error<i2c::Error, Infallible>;
 pub type Bme280 = bme280::i2c::BME280<I2c1Proxy>;
 pub type Bme280Error = bme280::Error<i2c::Error>;
-pub type LoraDriverError = cansat_lora::Error<serial::Error>;
+pub type LoraError = cansat_lora::Error<serial::Error>;
 
 type BlockSpi2 = embedded_sdmmc::BlockSpi<'static, Spi2, Cs2>;
 type Spi2Device = embedded_sdmmc::SdMmcSpi<Spi2, Cs2>;
@@ -71,58 +71,6 @@ pub struct Statik {
 impl Statik {
     pub const fn new() -> Self {
         Self { spi2_device: None }
-    }
-}
-
-#[derive(Debug)]
-pub enum Error {
-    CriticalDevice,
-}
-
-impl defmt::Format for Error {
-    fn format(&self, fmt: defmt::Formatter) {
-        match self {
-            Self::CriticalDevice => {
-                defmt::write!(fmt, "Failed to initialize a critical peripheral device")
-            }
-        }
-    }
-}
-
-#[derive(Debug)]
-pub enum LoraError {
-    DriverError(LoraDriverError),
-    CorruptedResponse(&'static str, ParseError),
-    InvalidResponse(i8, &'static str),
-}
-
-impl defmt::Format for LoraError {
-    fn format(&self, fmt: defmt::Formatter) {
-        match self {
-            Self::DriverError(e) => {
-                defmt::write!(
-                    fmt,
-                    "Failed to initialize lora driver {}",
-                    defmt::Debug2Format(&e)
-                )
-            }
-            Self::CorruptedResponse(err_command, parse_err) => {
-                defmt::write!(
-                    fmt,
-                    "Received corrupted response {} on command {}",
-                    defmt::Debug2Format(&parse_err),
-                    err_command
-                )
-            }
-            Self::InvalidResponse(err_code, err_command) => {
-                defmt::write!(
-                    fmt,
-                    "Invalid response. ErrorCode: {} on command {}",
-                    err_code,
-                    err_command
-                )
-            }
-        }
     }
 }
 
@@ -181,27 +129,23 @@ fn init_sd_logger(spi: Spi2, cs: Cs2, statik: &'static mut Statik) -> Result<SdL
     Ok(logger)
 }
 
-fn init_lora(serial6: Serial6) -> Result<Lora, LoraError> {
+fn init_lora(serial6: Serial6) -> Result<Lora, Error> {
     defmt::info!("Initializing LORA");
 
     let mut lora = Lora::new(serial6);
-    let mut resp_buffer: [u8; 64] = [0; 64];
-    const COMMANDS: [&str; 3] = ["AT\r\n", "AT+MODE=TEST\r\n", "AT+UART=TIMEOUT,4000\r\n"];
+    let commands: &[&[u8]] = &[b"AT+MODE=TEST\r\n", b"AT+UART=TIMEOUT,4000\r\n"];
 
-    for cmd in COMMANDS {
-        lora.transmit(cmd.as_bytes())
-            .map_err(LoraError::DriverError)?;
-        let resp_len = lora
-            .receive(&mut resp_buffer)
-            .map_err(LoraError::DriverError)?;
+    for cmd in commands {
+        let mut response: [u8; 64] = [0; 64];
 
-        let response = cansat_lora::parse_response(&resp_buffer)
-            .map_err(|e| LoraError::CorruptedResponse(cmd, e))?;
+        lora.send(cmd)?;
+        let nread = lora.receive(&mut response)?;
 
-        if let ResponseContent::Error(e) = response.content {
-            return Err(LoraError::InvalidResponse(e, cmd));
+        let response = cansat_lora::parse_response(&response[..nread]).map_err(LoraError::Parse)?;
+
+        if let ResponseContent::Error(ec) = response.content {
+            return Err(Error::Response(ec));
         }
-        defmt::info!("LORA_INIT response: {=[u8]:a}", resp_buffer[..resp_len]);
     }
 
     Ok(lora)

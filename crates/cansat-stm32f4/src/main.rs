@@ -6,12 +6,14 @@
 mod sd_logger;
 mod startup;
 mod tasks;
+mod error;
 
 pub use sd_logger::SdLogger;
 pub use startup::{
-    Bme280, Bme280Error, Delay, Gps, I2c1Devices, Led, Lis3dh, Lis3dhError, Lora, Monotonic,
+    Bme280, Bme280Error, Delay, Gps, I2c1Devices, Led, Lis3dh, Lis3dhError, Lora, LoraError, Monotonic,
     SdmmcController, SdmmcError,
 };
+use heapless::Vec;
 
 #[cfg(all(debug_assertions))]
 use panic_probe as _;
@@ -30,6 +32,7 @@ mod app {
     #[shared]
     struct Shared {
         gps: Gps,
+        csv_record: Vec<u8, 512>,
     }
 
     #[local]
@@ -53,8 +56,9 @@ mod app {
         });
 
         blink::spawn().unwrap();
+        send_meas::spawn().unwrap();
 
-        let shared = Shared { gps: cansat.gps };
+        let shared = Shared { gps: cansat.gps, csv_record: Vec::new() };
         let local = Local {
             delay: cansat.delay,
             led: cansat.led,
@@ -68,12 +72,15 @@ mod app {
         (shared, local, monotonics)
     }
 
-    #[idle(local = [delay, sd_logger, tracker, i2c1_devices, lora], shared = [gps])]
+    #[idle(local = [delay, sd_logger, tracker, i2c1_devices], shared = [gps, csv_record])]
     fn idle(ctx: idle::Context) -> ! {
         tasks::idle(ctx)
     }
 
     extern "Rust" {
+        #[task(local = [lora], shared = [csv_record], priority = 1)]
+        fn send_meas(ctx: send_meas::Context);
+
         #[task(binds = USART1, shared = [gps], priority = 2)]
         fn gps_irq(ctx: gps_irq::Context);
 
