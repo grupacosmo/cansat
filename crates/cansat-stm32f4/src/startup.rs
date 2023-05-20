@@ -1,4 +1,5 @@
-use crate::SdLogger;
+use crate::{error::Error, SdLogger};
+use cansat_lora::ResponseContent;
 use core::convert::Infallible;
 use stm32f4xx_hal::{
     gpio,
@@ -24,6 +25,7 @@ pub type Lis3dh = lis3dh::Lis3dh<lis3dh::Lis3dhI2C<I2c1Proxy>>;
 pub type Lis3dhError = lis3dh::Error<i2c::Error, Infallible>;
 pub type Bme280 = bme280::i2c::BME280<I2c1Proxy>;
 pub type Bme280Error = bme280::Error<i2c::Error>;
+pub type LoraError = cansat_lora::Error<serial::Error>;
 
 type BlockSpi2 = embedded_sdmmc::BlockSpi<'static, Spi2, Cs2>;
 type Spi2Device = embedded_sdmmc::SdMmcSpi<Spi2, Cs2>;
@@ -37,7 +39,7 @@ pub struct CanSat {
     pub delay: Delay,
     pub led: Led,
     pub gps: Gps,
-    pub lora: Lora,
+    pub lora: Option<Lora>,
     pub sd_logger: Option<SdLogger>,
     pub tracker: accelerometer::Tracker,
     pub i2c1_devices: I2c1Devices,
@@ -72,21 +74,6 @@ impl Statik {
     }
 }
 
-#[derive(Debug)]
-pub enum Error {
-    CriticalDevice,
-}
-
-impl defmt::Format for Error {
-    fn format(&self, fmt: defmt::Formatter) {
-        match self {
-            Self::CriticalDevice => {
-                defmt::write!(fmt, "Failed to initialize a critical peripheral device")
-            }
-        }
-    }
-}
-
 pub fn init_drivers(mut board: Board, statik: &'static mut Statik) -> Result<CanSat, Error> {
     let i2c1 = board.i2c1;
     let shared_i2c1 = shared_bus::new_atomic_check!(I2c1 = i2c1).unwrap();
@@ -95,19 +82,17 @@ pub fn init_drivers(mut board: Board, statik: &'static mut Statik) -> Result<Can
         .tap_err(|e| defmt::error!("Failed to initialize SD logger: {}", e))
         .ok();
 
-    // TODO: init lora here
+    let lora = init_lora(board.serial6)
+        .tap_err(|e| defmt::error!("Failed to initialize Lora: {}", e))
+        .ok();
 
-    // TODO: append `&& lora.is_none()` to the condition
-    if sd_logger.is_none() {
+    if sd_logger.is_none() && lora.is_none() {
         return Err(Error::CriticalDevice);
     }
 
     let bme280 = init_bme280(shared_i2c1.acquire_i2c(), &mut board.delay)
         .tap_err(|e| defmt::error!("Failed to initialize BME280: {}", e))
         .ok();
-
-    defmt::info!("Initializing LORA");
-    let lora = Lora::new(board.serial6);
 
     let lis3dh = init_lis3dh(shared_i2c1.acquire_i2c())
         .tap_err(|e| defmt::error!("Failed to initialize LIS3DH: {}", defmt::Debug2Format(&e)))
@@ -142,6 +127,28 @@ fn init_sd_logger(spi: Spi2, cs: Cs2, statik: &'static mut Statik) -> Result<SdL
     // controller does some long initialization on first write
     logger.write(b"\n")?;
     Ok(logger)
+}
+
+fn init_lora(serial6: Serial6) -> Result<Lora, Error> {
+    defmt::info!("Initializing LORA");
+
+    let mut lora = Lora::new(serial6);
+    let commands: &[&[u8]] = &[b"AT+MODE=TEST\r\n", b"AT+UART=TIMEOUT,4000\r\n"];
+
+    for cmd in commands {
+        let mut response: [u8; 64] = [0; 64];
+
+        lora.send(cmd)?;
+        let nread = lora.receive(&mut response)?;
+
+        let response = cansat_lora::parse_response(&response[..nread]).map_err(LoraError::Parse)?;
+
+        if let ResponseContent::Error(ec) = response.content {
+            return Err(Error::Response(ec));
+        }
+    }
+
+    Ok(lora)
 }
 
 fn init_bme280(i2c: I2c1Proxy, delay: &mut Delay) -> Result<Bme280, Bme280Error> {
