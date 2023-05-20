@@ -33,7 +33,7 @@ pub fn idle(mut ctx: app::idle::Context) -> ! {
             let sd_logger = &mut ctx.local.sd_logger;
 
             if let Some(sd_logger) = sd_logger {
-                sd_logger.write(&csv).unwrap();
+                sd_logger.write(csv).unwrap();
             }
         });
     }
