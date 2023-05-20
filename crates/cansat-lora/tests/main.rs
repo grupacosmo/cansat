@@ -7,7 +7,7 @@ fn receive_response() {
     let mut lora = Lora::new(serial);
     let mut response = [0; 32];
 
-    lora.transmit(b"cmd\r\n").unwrap();
+    lora.send(b"cmd\r\n").unwrap();
     let nwritten = lora.receive(&mut response).unwrap();
 
     let serial = lora.into_serial();
@@ -21,7 +21,7 @@ fn drain_on_overflow_1() {
     let mut lora = Lora::new(serial);
     let mut response = [0; 0];
 
-    lora.transmit(b"cmd\r\n").unwrap();
+    lora.send(b"cmd\r\n").unwrap();
     let err = lora.receive(&mut response).unwrap_err();
 
     let serial = lora.into_serial();
@@ -35,7 +35,7 @@ fn drain_on_overflow_2() {
     let mut lora = Lora::new(serial);
     let mut response = [0; 1];
 
-    lora.transmit(b"cmd\r\n").unwrap();
+    lora.send(b"cmd\r\n").unwrap();
     let err = lora.receive(&mut response).unwrap_err();
 
     let serial = lora.into_serial();
@@ -49,7 +49,7 @@ fn drain_on_overflow_3() {
     let mut lora = Lora::new(serial);
     let mut response = [0; 3];
 
-    lora.transmit(b"cmd\r\n").unwrap();
+    lora.send(b"cmd\r\n").unwrap();
     let err = lora.receive(&mut response).unwrap_err();
 
     let serial = lora.into_serial();
