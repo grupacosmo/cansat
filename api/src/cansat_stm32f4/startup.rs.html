@@ -277,7 +277,15 @@
 <a href="#277" id="277">277</a>
 <a href="#278" id="278">278</a>
 <a href="#279" id="279">279</a>
-</pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::SdLogger;
+<a href="#280" id="280">280</a>
+<a href="#281" id="281">281</a>
+<a href="#282" id="282">282</a>
+<a href="#283" id="283">283</a>
+<a href="#284" id="284">284</a>
+<a href="#285" id="285">285</a>
+<a href="#286" id="286">286</a>
+</pre><pre class="rust"><code><span class="kw">use crate</span>::{error::Error, SdLogger};
+<span class="kw">use </span>cansat_lora::ResponseContent;
 <span class="kw">use </span>core::convert::Infallible;
 <span class="kw">use </span>stm32f4xx_hal::{
     gpio,
@@ -303,6 +311,7 @@
 <span class="kw">pub type </span>Lis3dhError = lis3dh::Error&lt;i2c::Error, Infallible&gt;;
 <span class="kw">pub type </span>Bme280 = bme280::i2c::BME280&lt;I2c1Proxy&gt;;
 <span class="kw">pub type </span>Bme280Error = bme280::Error&lt;i2c::Error&gt;;
+<span class="kw">pub type </span>LoraError = cansat_lora::Error&lt;serial::Error&gt;;
 
 <span class="kw">type </span>BlockSpi2 = embedded_sdmmc::BlockSpi&lt;<span class="lifetime">&#39;static</span>, Spi2, Cs2&gt;;
 <span class="kw">type </span>Spi2Device = embedded_sdmmc::SdMmcSpi&lt;Spi2, Cs2&gt;;
@@ -316,7 +325,7 @@
     <span class="kw">pub </span>delay: Delay,
     <span class="kw">pub </span>led: Led,
     <span class="kw">pub </span>gps: Gps,
-    <span class="kw">pub </span>lora: Lora,
+    <span class="kw">pub </span>lora: <span class="prelude-ty">Option</span>&lt;Lora&gt;,
     <span class="kw">pub </span>sd_logger: <span class="prelude-ty">Option</span>&lt;SdLogger&gt;,
     <span class="kw">pub </span>tracker: accelerometer::Tracker,
     <span class="kw">pub </span>i2c1_devices: I2c1Devices,
@@ -351,21 +360,6 @@
     }
 }
 
-<span class="attr">#[derive(Debug)]
-</span><span class="kw">pub enum </span>Error {
-    CriticalDevice,
-}
-
-<span class="kw">impl </span>defmt::Format <span class="kw">for </span>Error {
-    <span class="kw">fn </span>format(<span class="kw-2">&amp;</span><span class="self">self</span>, fmt: defmt::Formatter) {
-        <span class="kw">match </span><span class="self">self </span>{
-            <span class="self">Self</span>::CriticalDevice =&gt; {
-                <span class="macro">defmt::write!</span>(fmt, <span class="string">&quot;Failed to initialize a critical peripheral device&quot;</span>)
-            }
-        }
-    }
-}
-
 <span class="kw">pub fn </span>init_drivers(<span class="kw-2">mut </span>board: Board, statik: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span><span class="kw-2">mut </span>Statik) -&gt; <span class="prelude-ty">Result</span>&lt;CanSat, Error&gt; {
     <span class="kw">let </span>i2c1 = board.i2c1;
     <span class="kw">let </span>shared_i2c1 = <span class="macro">shared_bus::new_atomic_check!</span>(I2c1 = i2c1).unwrap();
@@ -374,19 +368,17 @@
         .tap_err(|e| <span class="macro">defmt::error!</span>(<span class="string">&quot;Failed to initialize SD logger: {}&quot;</span>, e))
         .ok();
 
-    <span class="comment">// TODO: init lora here
+    <span class="kw">let </span>lora = init_lora(board.serial6)
+        .tap_err(|e| <span class="macro">defmt::error!</span>(<span class="string">&quot;Failed to initialize Lora: {}&quot;</span>, e))
+        .ok();
 
-    // TODO: append `&amp;&amp; lora.is_none()` to the condition
-    </span><span class="kw">if </span>sd_logger.is_none() {
+    <span class="kw">if </span>sd_logger.is_none() &amp;&amp; lora.is_none() {
         <span class="kw">return </span><span class="prelude-val">Err</span>(Error::CriticalDevice);
     }
 
     <span class="kw">let </span>bme280 = init_bme280(shared_i2c1.acquire_i2c(), <span class="kw-2">&amp;mut </span>board.delay)
         .tap_err(|e| <span class="macro">defmt::error!</span>(<span class="string">&quot;Failed to initialize BME280: {}&quot;</span>, e))
         .ok();
-
-    <span class="macro">defmt::info!</span>(<span class="string">&quot;Initializing LORA&quot;</span>);
-    <span class="kw">let </span>lora = Lora::new(board.serial6);
 
     <span class="kw">let </span>lis3dh = init_lis3dh(shared_i2c1.acquire_i2c())
         .tap_err(|e| <span class="macro">defmt::error!</span>(<span class="string">&quot;Failed to initialize LIS3DH: {}&quot;</span>, defmt::Debug2Format(<span class="kw-2">&amp;</span>e)))
@@ -421,6 +413,28 @@
     <span class="comment">// controller does some long initialization on first write
     </span>logger.write(<span class="string">b&quot;\n&quot;</span>)<span class="question-mark">?</span>;
     <span class="prelude-val">Ok</span>(logger)
+}
+
+<span class="kw">fn </span>init_lora(serial6: Serial6) -&gt; <span class="prelude-ty">Result</span>&lt;Lora, Error&gt; {
+    <span class="macro">defmt::info!</span>(<span class="string">&quot;Initializing LORA&quot;</span>);
+
+    <span class="kw">let </span><span class="kw-2">mut </span>lora = Lora::new(serial6);
+    <span class="kw">let </span>commands: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span>[u8]] = <span class="kw-2">&amp;</span>[<span class="string">b&quot;AT+MODE=TEST\r\n&quot;</span>, <span class="string">b&quot;AT+UART=TIMEOUT,4000\r\n&quot;</span>];
+
+    <span class="kw">for </span>cmd <span class="kw">in </span>commands {
+        <span class="kw">let </span><span class="kw-2">mut </span>response: [u8; <span class="number">64</span>] = [<span class="number">0</span>; <span class="number">64</span>];
+
+        lora.send(cmd)<span class="question-mark">?</span>;
+        <span class="kw">let </span>nread = lora.receive(<span class="kw-2">&amp;mut </span>response)<span class="question-mark">?</span>;
+
+        <span class="kw">let </span>response = cansat_lora::parse_response(<span class="kw-2">&amp;</span>response[..nread]).map_err(LoraError::Parse)<span class="question-mark">?</span>;
+
+        <span class="kw">if let </span>ResponseContent::Error(ec) = response.content {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(Error::Response(ec));
+        }
+    }
+
+    <span class="prelude-val">Ok</span>(lora)
 }
 
 <span class="kw">fn </span>init_bme280(i2c: I2c1Proxy, delay: <span class="kw-2">&amp;mut </span>Delay) -&gt; <span class="prelude-ty">Result</span>&lt;Bme280, Bme280Error&gt; {

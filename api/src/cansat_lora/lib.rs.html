@@ -80,21 +80,82 @@
 <a href="#80" id="80">80</a>
 <a href="#81" id="81">81</a>
 <a href="#82" id="82">82</a>
+<a href="#83" id="83">83</a>
+<a href="#84" id="84">84</a>
+<a href="#85" id="85">85</a>
+<a href="#86" id="86">86</a>
+<a href="#87" id="87">87</a>
+<a href="#88" id="88">88</a>
+<a href="#89" id="89">89</a>
+<a href="#90" id="90">90</a>
+<a href="#91" id="91">91</a>
+<a href="#92" id="92">92</a>
+<a href="#93" id="93">93</a>
+<a href="#94" id="94">94</a>
+<a href="#95" id="95">95</a>
+<a href="#96" id="96">96</a>
+<a href="#97" id="97">97</a>
+<a href="#98" id="98">98</a>
+<a href="#99" id="99">99</a>
+<a href="#100" id="100">100</a>
+<a href="#101" id="101">101</a>
+<a href="#102" id="102">102</a>
+<a href="#103" id="103">103</a>
+<a href="#104" id="104">104</a>
+<a href="#105" id="105">105</a>
+<a href="#106" id="106">106</a>
+<a href="#107" id="107">107</a>
+<a href="#108" id="108">108</a>
+<a href="#109" id="109">109</a>
+<a href="#110" id="110">110</a>
+<a href="#111" id="111">111</a>
+<a href="#112" id="112">112</a>
+<a href="#113" id="113">113</a>
+<a href="#114" id="114">114</a>
+<a href="#115" id="115">115</a>
+<a href="#116" id="116">116</a>
+<a href="#117" id="117">117</a>
+<a href="#118" id="118">118</a>
+<a href="#119" id="119">119</a>
+<a href="#120" id="120">120</a>
+<a href="#121" id="121">121</a>
+<a href="#122" id="122">122</a>
+<a href="#123" id="123">123</a>
+<a href="#124" id="124">124</a>
+<a href="#125" id="125">125</a>
+<a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
 </pre><pre class="rust"><code><span class="attr">#![no_std]
 
-</span><span class="kw">pub mod </span>parse;
+</span><span class="kw">mod </span>parser;
 
+<span class="kw">use </span>core::fmt::Debug;
 <span class="kw">use </span>embedded_hal::{<span class="self">self</span>, nb, serial};
 
-<span class="attr">#[derive(Debug)]
-</span><span class="kw">pub enum </span>Error&lt;SerialError&gt;
-<span class="kw">where
-    </span>SerialError: serial::Error,
-{
-    Delay,
+<span class="attr">#[derive(Debug, PartialEq, Eq, Clone, Copy, derive_more::From)]
+</span><span class="kw">pub enum </span>Error&lt;SerialError&gt; {
     Serial(SerialError),
-    Parse,
+    <span class="attr">#[from]
+    </span>Parse(ParseError),
     Overflow,
+}
+
+<span class="kw">impl</span>&lt;SerialError: Debug&gt; defmt::Format <span class="kw">for </span>Error&lt;SerialError&gt; {
+    <span class="kw">fn </span>format(<span class="kw-2">&amp;</span><span class="self">self</span>, fmt: defmt::Formatter) {
+        <span class="kw">match </span><span class="self">self </span>{
+            <span class="self">Self</span>::Serial(e) =&gt; {
+                <span class="kw">let </span>e = defmt::Debug2Format(<span class="kw-2">&amp;</span>e);
+                <span class="macro">defmt::write!</span>(fmt, <span class="string">&quot;Communication with serial failed: {}&quot;</span>, e)
+            }
+            <span class="self">Self</span>::Parse(e) =&gt; <span class="macro">defmt::write!</span>(fmt, <span class="string">&quot;Failed to parse response: {}&quot;</span>, <span class="kw-2">&amp;</span>e),
+            <span class="self">Self</span>::Overflow =&gt; <span class="macro">defmt::write!</span>(fmt, <span class="string">&quot;Overflow&quot;</span>),
+        }
+    }
 }
 
 <span class="kw">pub struct </span>Lora&lt;Serial&gt; {
@@ -109,18 +170,22 @@
         <span class="self">Self </span>{ serial }
     }
 
-    <span class="kw">fn </span>drain(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&lt;Serial::Error&gt;&gt; {
-        <span class="kw">loop </span>{
-            <span class="kw">match </span><span class="self">self</span>.serial.read() {
-                <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; (),
-                <span class="prelude-val">Err</span>(nb::Error::WouldBlock) =&gt; <span class="kw">break</span>,
-                <span class="prelude-val">Err</span>(nb::Error::Other(e)) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(Error::Serial(e)),
-            }
-        }
-        <span class="prelude-val">Ok</span>(())
+    <span class="kw">pub fn </span>into_serial(<span class="self">self</span>) -&gt; Serial {
+        <span class="self">self</span>.serial
     }
 
-    <span class="kw">fn </span>write_all(<span class="kw-2">&amp;mut </span><span class="self">self</span>, cmd: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&lt;Serial::Error&gt;&gt; {
+    <span class="doccomment">/// Drains serial until it hits `\r\n`
+    </span><span class="kw">fn </span>drain(<span class="kw-2">&amp;mut </span><span class="self">self</span>, <span class="kw-2">mut </span>last_byte: <span class="prelude-ty">Option</span>&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&lt;Serial::Error&gt;&gt; {
+        <span class="kw">loop </span>{
+            <span class="kw">let </span>b = <span class="macro">nb::block!</span>(<span class="self">self</span>.serial.read()).map_err(Error::Serial)<span class="question-mark">?</span>;
+            <span class="kw">if </span>last_byte == <span class="prelude-val">Some</span>(<span class="string">b&#39;\r&#39;</span>) &amp;&amp; b == <span class="string">b&#39;\n&#39; </span>{
+                <span class="kw">break </span><span class="prelude-val">Ok</span>(());
+            }
+            last_byte = <span class="prelude-val">Some</span>(b);
+        }
+    }
+
+    <span class="kw">pub fn </span>send(<span class="kw-2">&amp;mut </span><span class="self">self</span>, cmd: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&lt;Serial::Error&gt;&gt; {
         <span class="kw">for </span><span class="kw-2">&amp;</span>b <span class="kw">in </span>cmd {
             <span class="macro">nb::block!</span>(<span class="self">self</span>.serial.write(b)).map_err(Error::Serial)<span class="question-mark">?</span>;
         }
@@ -128,38 +193,73 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">fn </span>read_all(<span class="kw-2">&amp;mut </span><span class="self">self</span>, buffer: <span class="kw-2">&amp;mut </span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;usize, Error&lt;Serial::Error&gt;&gt; {
+    <span class="kw">pub fn </span>receive(<span class="kw-2">&amp;mut </span><span class="self">self</span>, buffer: <span class="kw-2">&amp;mut </span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;usize, Error&lt;Serial::Error&gt;&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>i = <span class="number">0</span>;
-
         <span class="kw">loop </span>{
+            <span class="kw">let </span>is_overflow = i == buffer.len();
+            <span class="kw">if </span>is_overflow {
+                <span class="comment">// ignore error if communication failed
+                </span><span class="kw">let _ </span>= <span class="self">self</span>.drain(buffer.last().cloned());
+                <span class="kw">break </span><span class="prelude-val">Err</span>(Error::Overflow);
+            }
+
             <span class="kw">let </span>b = <span class="macro">nb::block!</span>(<span class="self">self</span>.serial.read()).map_err(Error::Serial)<span class="question-mark">?</span>;
 
-            <span class="kw">match </span>buffer.get_mut(i) {
-                <span class="prelude-val">Some</span>(i) =&gt; <span class="kw-2">*</span>i = b,
-                <span class="prelude-val">None </span>=&gt; {
-                    <span class="self">self</span>.drain()<span class="question-mark">?</span>;
-                    <span class="kw">return </span><span class="prelude-val">Err</span>(Error::Overflow);
-                }
-            }
+            buffer[i] = b;
             i += <span class="number">1</span>;
 
             <span class="kw">let </span>response_end = buffer[..i].ends_with(<span class="string">b&quot;\r\n&quot;</span>);
             <span class="kw">if </span>response_end {
-                <span class="kw">break</span>;
+                <span class="kw">break </span><span class="prelude-val">Ok</span>(i);
             }
         }
-
-        <span class="prelude-val">Ok</span>(i)
     }
+}
 
-    <span class="kw">pub fn </span>send(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        cmd: <span class="kw-2">&amp;</span>[u8],
-        response_buffer: <span class="kw-2">&amp;mut </span>[u8],
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;usize, Error&lt;Serial::Error&gt;&gt; {
-        <span class="self">self</span>.write_all(cmd)<span class="question-mark">?</span>;
-        <span class="kw">let </span>reps_len = <span class="self">self</span>.read_all(response_buffer)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(reps_len)
+<span class="attr">#[derive(Debug, PartialEq, Eq)]
+</span><span class="kw">pub struct </span>Response&lt;<span class="lifetime">&#39;a</span>&gt; {
+    <span class="kw">pub </span>header: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
+    <span class="kw">pub </span>content: ResponseContent&lt;<span class="lifetime">&#39;a</span>&gt;,
+}
+
+<span class="attr">#[derive(Debug, PartialEq, Eq)]
+</span><span class="kw">pub enum </span>ResponseContent&lt;<span class="lifetime">&#39;a</span>&gt; {
+    Data(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]),
+    Error(i8),
+}
+
+<span class="attr">#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+</span><span class="kw">pub enum </span>ParseError {
+    Incomplete,
+    BadCommand,
+    BadErrorCode,
+    NoDelimiter,
+    NoPrefix,
+    NoTerminator,
+    UnclosedErrorParen,
+    Unknown,
+}
+
+<span class="kw">impl </span>defmt::Format <span class="kw">for </span>ParseError {
+    <span class="kw">fn </span>format(<span class="kw-2">&amp;</span><span class="self">self</span>, fmt: defmt::Formatter) {
+        <span class="kw">match </span><span class="self">self </span>{
+            <span class="self">Self</span>::Incomplete =&gt; <span class="macro">defmt::write!</span>(fmt, <span class="string">&quot;Incomplete response&quot;</span>),
+            <span class="self">Self</span>::BadCommand =&gt; <span class="macro">defmt::write!</span>(fmt, <span class="string">&quot;Invalid command header&quot;</span>),
+            <span class="self">Self</span>::BadErrorCode =&gt; <span class="macro">defmt::write!</span>(fmt, <span class="string">&quot;Invalid error code&quot;</span>),
+            <span class="self">Self</span>::NoDelimiter =&gt; <span class="macro">defmt::write!</span>(fmt, <span class="string">&quot;Missing the `:` delimiter&quot;</span>),
+            <span class="self">Self</span>::NoPrefix =&gt; <span class="macro">defmt::write!</span>(fmt, <span class="string">&quot;Missing `+` before the header&quot;</span>),
+            <span class="self">Self</span>::NoTerminator =&gt; <span class="macro">defmt::write!</span>(fmt, <span class="string">&quot;Missing message terminator&quot;</span>),
+            <span class="self">Self</span>::UnclosedErrorParen =&gt; <span class="macro">defmt::write!</span>(fmt, <span class="string">&quot;Unclosed error parentheses&quot;</span>),
+            <span class="self">Self</span>::Unknown =&gt; <span class="macro">defmt::write!</span>(fmt, <span class="string">&quot;Unknown&quot;</span>),
+        }
+    }
+}
+
+<span class="kw">pub fn </span>parse_response(input: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;Response, ParseError&gt; {
+    <span class="kw">match </span>parser::response(input) {
+        <span class="prelude-val">Ok</span>((_i, o)) =&gt; <span class="prelude-val">Ok</span>(o),
+        <span class="prelude-val">Err</span>(nom::Err::Error(e) | nom::Err::Failure(e)) =&gt; <span class="prelude-val">Err</span>(e),
+        <span class="prelude-val">Err</span>(nom::Err::Incomplete(<span class="kw">_</span>)) =&gt; <span class="prelude-val">Err</span>(ParseError::Incomplete),
     }
 }
 </code></pre></div>

@@ -1,0 +1,3 @@
+(function() {var implementors = {
+"cansat_test_utils":[["impl&lt;I&gt; Write&lt;<a class=\"primitive\" href=\"https://doc.rust-lang.org/1.69.0/std/primitive.u8.html\">u8</a>&gt; for <a class=\"struct\" href=\"cansat_test_utils/mock/struct.Serial.html\" title=\"struct cansat_test_utils::mock::Serial\">Serial</a>&lt;I&gt;"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

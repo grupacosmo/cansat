@@ -100,25 +100,69 @@
 <a href="#100" id="100">100</a>
 <a href="#101" id="101">101</a>
 <a href="#102" id="102">102</a>
-</pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::app;
+<a href="#103" id="103">103</a>
+<a href="#104" id="104">104</a>
+<a href="#105" id="105">105</a>
+<a href="#106" id="106">106</a>
+<a href="#107" id="107">107</a>
+<a href="#108" id="108">108</a>
+<a href="#109" id="109">109</a>
+<a href="#110" id="110">110</a>
+<a href="#111" id="111">111</a>
+<a href="#112" id="112">112</a>
+<a href="#113" id="113">113</a>
+<a href="#114" id="114">114</a>
+<a href="#115" id="115">115</a>
+<a href="#116" id="116">116</a>
+<a href="#117" id="117">117</a>
+<a href="#118" id="118">118</a>
+<a href="#119" id="119">119</a>
+<a href="#120" id="120">120</a>
+<a href="#121" id="121">121</a>
+<a href="#122" id="122">122</a>
+<a href="#123" id="123">123</a>
+<a href="#124" id="124">124</a>
+<a href="#125" id="125">125</a>
+<a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
+</pre><pre class="rust"><code><span class="kw">use crate</span>::{app, error::Error, startup::LoraError};
 <span class="kw">use </span>accelerometer::RawAccelerometer;
 <span class="kw">use </span>cansat_core::{
     quantity::{Pressure, Temperature},
     Measurements,
 };
-<span class="kw">use </span>heapless::Vec;
+<span class="kw">use </span>cansat_lora::ResponseContent;
 <span class="kw">use </span>rtic::Mutex;
 <span class="kw">use </span>stm32f4xx_hal::prelude::<span class="kw-2">*</span>;
 
 <span class="kw">pub fn </span>idle(<span class="kw-2">mut </span>ctx: app::idle::Context) -&gt; ! {
-    <span class="kw">let </span><span class="kw-2">mut </span>writer = csv_core::Writer::new();
+    <span class="kw">let </span><span class="kw-2">mut </span>writer = csv_core::WriterBuilder::new()
+        .delimiter(<span class="string">b&#39;,&#39;</span>)
+        .quote(<span class="string">b&#39;\&#39;&#39;</span>)
+        .build();
 
     <span class="kw">loop </span>{
         <span class="kw">let </span>measurements = read_measurements(<span class="kw-2">&amp;mut </span>ctx);
-
         <span class="macro">defmt::info!</span>(<span class="string">&quot;{}&quot;</span>, measurements);
 
-        <span class="kw">let </span>csv_record: Vec&lt;u8, <span class="number">1024</span>&gt; = <span class="kw">match </span>serde_csv_core::to_vec(<span class="kw-2">&amp;mut </span>writer, <span class="kw-2">&amp;</span>measurements) {
+        <span class="kw">let </span>csv_record = <span class="kw">match </span>serde_csv_core::to_vec(<span class="kw-2">&amp;mut </span>writer, <span class="kw-2">&amp;</span>measurements) {
             <span class="prelude-val">Ok</span>(r) =&gt; r,
             <span class="prelude-val">Err</span>(e) =&gt; {
                 <span class="macro">defmt::error!</span>(
@@ -128,12 +172,14 @@
                 <span class="kw">continue</span>;
             }
         };
+        ctx.shared.csv_record.lock(|csv| {
+            <span class="kw-2">*</span>csv = csv_record;
+            <span class="kw">let </span>sd_logger = <span class="kw-2">&amp;mut </span>ctx.local.sd_logger;
 
-        <span class="kw">let </span>sd_logger = <span class="kw-2">&amp;mut </span>ctx.local.sd_logger;
-
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(sd_logger) = sd_logger {
-            sd_logger.write(<span class="kw-2">&amp;</span>csv_record).unwrap();
-        }
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(sd_logger) = sd_logger {
+                sd_logger.write(csv).unwrap();
+            }
+        });
     }
 }
 
@@ -185,6 +231,44 @@
     }
 
     data
+}
+
+<span class="kw">pub fn </span>send_meas(ctx: app::send_meas::Context) {
+    <span class="kw">let </span>lora = ctx.local.lora;
+    <span class="kw">let </span><span class="kw-2">mut </span>csv_record = ctx.shared.csv_record;
+    csv_record.lock(|csv| {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(lora) = lora {
+            <span class="kw">if </span>!csv.is_empty() {
+                send_lora_package(lora, <span class="kw-2">&amp;</span>csv[..csv.len() - <span class="number">1</span>]).unwrap();
+            }
+        }
+    });
+
+    app::send_meas::spawn_after(<span class="number">1</span>.secs()).unwrap();
+}
+
+<span class="kw">fn </span>send_lora_package(lora: <span class="kw-2">&amp;mut </span><span class="kw">crate</span>::Lora, csv: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
+    <span class="kw">let </span><span class="kw-2">mut </span>command: heapless::Vec&lt;u8, <span class="number">256</span>&gt; = heapless::Vec::new();
+    command.extend_from_slice(<span class="string">b&quot;AT+TEST=TXLRSTR, \&quot;&quot;</span>).unwrap();
+    command.extend_from_slice(csv).unwrap();
+    command.extend_from_slice(<span class="string">b&quot;\&quot;\r\n&quot;</span>).unwrap();
+
+    <span class="kw">let </span><span class="kw-2">mut </span>response: [u8; <span class="number">255</span>] = [<span class="number">0</span>; <span class="number">255</span>];
+
+    <span class="macro">defmt::info!</span>(<span class="string">&quot;{=[u8]:a}&quot;</span>, command);
+    lora.send(<span class="kw-2">&amp;</span>command)<span class="question-mark">?</span>;
+
+    <span class="kw">for _ in </span><span class="number">1</span>..=<span class="number">2 </span>{
+        <span class="kw">let </span>nread = lora.receive(<span class="kw-2">&amp;mut </span>response)<span class="question-mark">?</span>;
+
+        <span class="kw">let </span>response = cansat_lora::parse_response(<span class="kw-2">&amp;</span>response[..nread]).map_err(LoraError::Parse)<span class="question-mark">?</span>;
+
+        <span class="kw">if let </span>ResponseContent::Error(ec) = response.content {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(Error::Response(ec));
+        }
+    }
+
+    <span class="prelude-val">Ok</span>(())
 }
 
 <span class="doccomment">/// USART3 interrupt handler that reads data into the gps working buffer

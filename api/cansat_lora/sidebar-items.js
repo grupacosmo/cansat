@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["Error"],"mod":["parse"],"struct":["Lora"]};
+window.SIDEBAR_ITEMS = {"enum":["Error","ParseError","ResponseContent"],"fn":["parse_response"],"struct":["Lora","Response"]};

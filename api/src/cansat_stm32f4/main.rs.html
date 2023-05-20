@@ -79,19 +79,33 @@
 <a href="#79" id="79">79</a>
 <a href="#80" id="80">80</a>
 <a href="#81" id="81">81</a>
+<a href="#82" id="82">82</a>
+<a href="#83" id="83">83</a>
+<a href="#84" id="84">84</a>
+<a href="#85" id="85">85</a>
+<a href="#86" id="86">86</a>
+<a href="#87" id="87">87</a>
+<a href="#88" id="88">88</a>
+<a href="#89" id="89">89</a>
+<a href="#90" id="90">90</a>
+<a href="#91" id="91">91</a>
+<a href="#92" id="92">92</a>
+<a href="#93" id="93">93</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Binary crate targeting stm32f4 family microcontrollers.
 </span><span class="attr">#![deny(unsafe_code)]
 #![no_main]
 #![no_std]
 
-</span><span class="kw">mod </span>sd_logger;
+</span><span class="kw">mod </span>error;
+<span class="kw">mod </span>sd_logger;
 <span class="kw">mod </span>startup;
 <span class="kw">mod </span>tasks;
 
+<span class="kw">use </span>heapless::Vec;
 <span class="kw">pub use </span>sd_logger::SdLogger;
 <span class="kw">pub use </span>startup::{
-    Bme280, Bme280Error, Delay, Gps, I2c1Devices, Led, Lis3dh, Lis3dhError, Lora, Monotonic,
-    SdmmcController, SdmmcError,
+    Bme280, Bme280Error, Delay, Gps, I2c1Devices, Led, Lis3dh, Lis3dhError, Lora, LoraError,
+    Monotonic, SdmmcController, SdmmcError,
 };
 
 <span class="attr">#[cfg(all(debug_assertions))]
@@ -111,6 +125,7 @@
     <span class="attr">#[shared]
     </span><span class="kw">struct </span>Shared {
         gps: Gps,
+        csv_record: Vec&lt;u8, <span class="number">512</span>&gt;,
     }
 
     <span class="attr">#[local]
@@ -120,6 +135,7 @@
         sd_logger: <span class="prelude-ty">Option</span>&lt;SdLogger&gt;,
         tracker: accelerometer::Tracker,
         i2c1_devices: I2c1Devices,
+        lora: <span class="prelude-ty">Option</span>&lt;Lora&gt;,
     }
 
     <span class="attr">#[monotonic(binds = TIM2, default = <span class="bool-val">true</span>)]
@@ -133,26 +149,34 @@
         });
 
         blink::spawn().unwrap();
+        send_meas::spawn().unwrap();
 
-        <span class="kw">let </span>shared = Shared { gps: cansat.gps };
+        <span class="kw">let </span>shared = Shared {
+            gps: cansat.gps,
+            csv_record: Vec::new(),
+        };
         <span class="kw">let </span>local = Local {
             delay: cansat.delay,
             led: cansat.led,
             sd_logger: cansat.sd_logger,
             tracker: cansat.tracker,
             i2c1_devices: cansat.i2c1_devices,
+            lora: cansat.lora,
         };
         <span class="kw">let </span>monotonics = init::Monotonics(cansat.monotonic);
 
         (shared, local, monotonics)
     }
 
-    <span class="attr">#[idle(local = [delay, sd_logger, tracker, i2c1_devices]</span>, shared = [gps])]
+    <span class="attr">#[idle(local = [delay, sd_logger, tracker, i2c1_devices]</span>, shared = [gps, csv_record])]
     <span class="kw">fn </span>idle(ctx: idle::Context) -&gt; ! {
         tasks::idle(ctx)
     }
 
     <span class="kw">extern </span><span class="string">&quot;Rust&quot; </span>{
+        <span class="attr">#[task(local = [lora]</span>, shared = [csv_record], priority = <span class="number">1</span>)]
+        <span class="kw">fn </span>send_meas(ctx: send_meas::Context);
+
         <span class="attr">#[task(binds = USART1, shared = [gps]</span>, priority = <span class="number">2</span>)]
         <span class="kw">fn </span>gps_irq(ctx: gps_irq::Context);
 
