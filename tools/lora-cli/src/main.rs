@@ -172,7 +172,7 @@ impl Lora {
     fn listen(mut self) -> Result<impl Iterator<Item = Result<String>>> {
         self.port
             .get_mut()
-            .set_timeout(Duration::from_secs(0))
+            .set_timeout(Duration::from_secs(60 * 60))
             .wrap_err("Failed to disable timeout")?;
 
         let iter = self.port.lines().map(|result| {
