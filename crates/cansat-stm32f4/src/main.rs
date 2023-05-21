@@ -30,6 +30,7 @@ mod app {
     #[shared]
     struct Shared {
         gps: Gps,
+        is_fixed: bool,
     }
 
     #[local]
@@ -55,7 +56,10 @@ mod app {
         blink::spawn().unwrap();
         buzz::spawn().unwrap();
 
-        let shared = Shared { gps: cansat.gps };
+        let shared = Shared {
+            gps: cansat.gps,
+            is_fixed: false,
+        };
         let local = Local {
             delay: cansat.delay,
             led: cansat.led,
@@ -69,7 +73,7 @@ mod app {
         (shared, local, monotonics)
     }
 
-    #[idle(local = [delay, sd_logger, tracker, i2c1_devices], shared = [gps])]
+    #[idle(local = [delay, sd_logger, tracker, i2c1_devices], shared = [gps, is_fixed])]
     fn idle(ctx: idle::Context) -> ! {
         tasks::idle(ctx)
     }
@@ -81,7 +85,7 @@ mod app {
         #[task(local = [led], priority = 1)]
         fn blink(ctx: blink::Context);
 
-        #[task(local = [buzzer], priority = 1)]
+        #[task(local = [buzzer], shared = [is_fixed], priority = 1)]
         fn buzz(ctx: buzz::Context);
     }
 }

@@ -1,6 +1,7 @@
 use crate::app;
 use accelerometer::RawAccelerometer;
 use cansat_core::{
+    nmea::{FixType, NmeaGga},
     quantity::{Pressure, Temperature},
     Measurements,
 };
@@ -66,7 +67,21 @@ fn read_measurements(ctx: &mut app::idle::Context) -> Measurements {
     if let Some(mut nmea) = gps.lock(|gps| gps.last_nmea()) {
         let clrf_len = 2;
         nmea.truncate(nmea.len().saturating_sub(clrf_len));
-        data.nmea = Some(nmea.into());
+        let nmea_gga: NmeaGga = nmea.into();
+
+        match nmea_gga.get_fix_type() {
+            Ok(fix_type) if fix_type != FixType::Invalid => {
+                ctx.shared.is_fixed.lock(|f: &mut bool| *f = true);
+            }
+            Ok(_) => {
+                defmt::error!("Obtained fix is invalid",);
+            }
+            Err(e) => {
+                defmt::error!("Could not obtain fix: {}", defmt::Debug2Format(&e));
+            }
+        }
+
+        data.nmea = Some(nmea_gga);
     }
 
     if let Some(lis3dh) = &mut i2c1_devices.lis3dh {
@@ -102,9 +117,21 @@ pub fn blink(ctx: app::blink::Context) {
 }
 
 /// Toggle buzzer every second
-pub fn buzz(ctx: app::buzz::Context) {
+pub fn buzz(mut ctx: app::buzz::Context) {
     let buzzer = ctx.local.buzzer;
     buzzer.toggle();
-    defmt::debug!("Buzz");
-    app::buzz::spawn_after(3.secs()).unwrap();
+
+    let mut is_fixed = false;
+
+    ctx.shared.is_fixed.lock(|f| {
+        is_fixed = *f;
+    });
+
+    if is_fixed {
+        defmt::debug!("Buzz with fix");
+        app::buzz::spawn_after(1.secs()).unwrap();
+    } else {
+        defmt::debug!("Buzz without fix");
+        app::buzz::spawn_after(3.secs()).unwrap();
+    }
 }
