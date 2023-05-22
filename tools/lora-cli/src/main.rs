@@ -91,7 +91,7 @@ fn connection_test(args: PortArgs) -> Result<()> {
 fn send_command(args: PortArgs) -> Result<()> {
     eprintln!("Sending custom command...");
 
-    let file = File::open("tools/lora-cli/command.txt")?;
+    let file = File::open("tools/lora-cli/commands.txt")?;
     let reader = BufReader::new(file);
 
     let port = open_port(&args)?;
@@ -185,6 +185,47 @@ impl Lora {
     }
 }
 
+fn parse_received_message(input: &str) -> Result<String> {
+    
+    // let signal_strength_re = r"RSSI:(-?\d+)";
+    // let signal_to_noise_re = r"SNR:(-?\d+)";
+    // let hex_message_re = r"RX\s*(.+)";
+    
+    let mut signal_strength_dBm = String::new();
+    let mut signal_to_noise_dB = String::new();
+    let mut hex_message = String::new();
+
+    static RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"RSSI:(-?\d+)|SNR:(-?\d+)|RX\s*(.+)").unwrap());
+
+    if let Some(captures) = RE.captures(input) {
+        if let Some(rssi) = captures.get(1) {
+            signal_strength_dBm = rssi.as_str().to_string();
+        }
+        if let Some(snr) = captures.get(2) {
+            signal_to_noise_dB = snr.as_str().to_string();
+        }
+        if let Some(rx) = captures.get(3) {
+            hex_message = rx.as_str().to_string();
+        }
+    }
+
+    let msg = format!("Signal strength: {signal_strength_dBm} dBm, Noise level: {signal_to_noise_dB} dB");
+    println!("{msg}");
+
+    Ok(msg)
+
+
+    // let bytes_message = hex::decode(hex_message).expect("Failed to decode hex string");
+
+    // let string_message = String::from_utf8_lossy(&bytes_message);
+    // println!("Converted string: {string_message}");
+    // Ok(string_message.to_string())
+}
+
+fn parse_cansat_data() {
+
+}
+
 fn parse_lora_error(input: &str) -> Option<i32> {
     static RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"ERROR\((-?\d+)\)").unwrap());
     RE.captures(input)
@@ -225,5 +266,14 @@ mod test {
     fn test_parse_lora_error() {
         let ec = parse_lora_error("+AT: ERROR(-1)\r\n").unwrap();
         assert_eq!(ec, -1);
+    }
+
+    #[test]
+    fn test_parse_received_message() {
+        let msg1 = parse_received_message("+TEST: LEN:250, RSSI:-106, SNR:10\r\n").unwrap();
+        assert_eq!(msg1, "Signal strength: -106 dBm, Noise level: 10 dB");
+
+        let msg2 = parse_received_message("+TEST: RX 404EA99000800A00089F6E770959\r\n").unwrap();
+        assert_eq!(msg2, "Message: 404EA99000800A00089F6E770959");
     }
 }
