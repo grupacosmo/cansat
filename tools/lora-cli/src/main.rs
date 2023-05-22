@@ -26,7 +26,7 @@ enum Cmd {
     /// Send custom commands from command.txt
     Command(PortArgs),
     /// Start a receive loop
-    Receive(PortArgs)
+    Receive(PortArgs),
 }
 
 #[derive(Debug, clap::Parser)]
@@ -47,7 +47,7 @@ fn main() -> Result<()> {
         Cmd::Ports => list_ports(),
         Cmd::Conntest(args) => connection_test(args),
         Cmd::Command(args) => send_command(args),
-        Cmd::Receive(args) => receive(args)
+        Cmd::Receive(args) => receive(args),
     }?;
     Ok(())
 }
@@ -76,7 +76,6 @@ fn open_port(args: &PortArgs) -> Result<Box<dyn SerialPort>> {
         .wrap_err("Failed to open serial port")
 }
 
-
 fn connection_test(args: PortArgs) -> Result<()> {
     eprintln!("Connection test");
 
@@ -103,10 +102,10 @@ fn send_command(args: PortArgs) -> Result<()> {
             Ok(line) => {
                 eprintln!("{line}");
                 lora.transmit(format!("{line}\r\n").as_bytes())
-                .wrap_err(format!("Failed to send {line} command"))?;
-        }
-        Err(e) => {
-            eprintln!("{e}");
+                    .wrap_err(format!("Failed to send {line} command"))?;
+            }
+            Err(e) => {
+                eprintln!("{e}");
             }
         }
     }
