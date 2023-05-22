@@ -1,4 +1,5 @@
 use std::{
+    fs::File,
     io::{BufRead, BufReader},
     time::Duration,
 };
@@ -20,8 +21,12 @@ struct Cli {
 enum Cmd {
     /// Lists available ports
     Ports,
+    /// Check connection with device
+    Conntest(PortArgs),
+    /// Send custom commands from command.txt
+    Command(PortArgs),
     /// Start a receive loop
-    Receive(PortArgs),
+    Receive(PortArgs)
 }
 
 #[derive(Debug, clap::Parser)]
@@ -29,8 +34,9 @@ struct PortArgs {
     /// Serial port to open
     #[arg(short, long)]
     port: String,
-    /// Baudrate
-    #[arg(short, long)]
+    /// Port baudrate.   
+    /// Available values: 9600, 14400, 19200, 38400, 57600, 76800, 115200, 230400
+    #[arg(short, long, default_value = "9600")]
     baudrate: u32,
 }
 
@@ -39,7 +45,9 @@ fn main() -> Result<()> {
     let args = Cli::parse();
     match args.cmd {
         Cmd::Ports => list_ports(),
-        Cmd::Receive(args) => receive(args),
+        Cmd::Conntest(args) => connection_test(args),
+        Cmd::Command(args) => send_command(args),
+        Cmd::Receive(args) => receive(args)
     }?;
     Ok(())
 }
@@ -61,8 +69,52 @@ fn list_ports() -> Result<()> {
     Ok(())
 }
 
+fn open_port(args: &PortArgs) -> Result<Box<dyn SerialPort>> {
+    serialport::new(&args.port, args.baudrate)
+        .timeout(Duration::from_secs(1))
+        .open()
+        .wrap_err("Failed to open serial port")
+}
+
+
+fn connection_test(args: PortArgs) -> Result<()> {
+    eprintln!("Connection test");
+
+    let port = open_port(&args)?;
+    let mut lora = Lora::new(port);
+
+    lora.transmit(b"AT\r\n")
+        .wrap_err("Connection test failed")?;
+
+    Ok(())
+}
+
+fn send_command(args: PortArgs) -> Result<()> {
+    eprintln!("Sending custom command...");
+
+    let file = File::open("tools/lora-cli/command.txt")?;
+    let reader = BufReader::new(file);
+
+    let port = open_port(&args)?;
+    let mut lora = Lora::new(port);
+
+    for line in reader.lines() {
+        match line {
+            Ok(line) => {
+                eprintln!("{line}");
+                lora.transmit(format!("{line}\r\n").as_bytes())
+                .wrap_err(format!("Failed to send {line} command"))?;
+        }
+        Err(e) => {
+            eprintln!("{e}");
+            }
+        }
+    }
+    Ok(())
+}
+
 fn receive(args: PortArgs) -> Result<()> {
-    eprintln!("Configuring...");
+    eprintln!("Configuring as receiver...");
 
     let port = open_port(&args)?;
     let mut lora = Lora::new(port);
@@ -71,25 +123,18 @@ fn receive(args: PortArgs) -> Result<()> {
         .wrap_err("Failed to set test mode")?;
 
     lora.transmit(b"AT+TEST=RXLRPKT\r\n")
-        .wrap_err("Failed to set continous RX mode")?;
+        .wrap_err("Failed to set continuous RX mode")?;
 
     eprintln!("Listening...");
 
     for result in lora.listen()? {
+        // TODO: add parsing function
         match result {
             Ok(msg) => println!("{msg}"),
             Err(e) => eprintln!("{e}"),
         }
     }
-
     Ok(())
-}
-
-fn open_port(args: &PortArgs) -> Result<Box<dyn SerialPort>> {
-    serialport::new(&args.port, args.baudrate)
-        .timeout(Duration::from_secs(1))
-        .open()
-        .wrap_err("Failed to open serial port")
 }
 
 struct Lora {
@@ -109,6 +154,7 @@ impl Lora {
         self.port
             .read_line(&mut response)
             .wrap_err("Failed to read message")?;
+        eprintln!("{}", &response);
         validate_success_response(&response)?;
         Ok(response)
     }
@@ -128,7 +174,7 @@ impl Lora {
     fn listen(mut self) -> Result<impl Iterator<Item = Result<String>>> {
         self.port
             .get_mut()
-            .set_timeout(Duration::from_secs(0))
+            .set_timeout(Duration::from_secs(60 * 60))
             .wrap_err("Failed to disable timeout")?;
 
         let iter = self.port.lines().map(|result| {
@@ -136,7 +182,6 @@ impl Lora {
             validate_success_response(&response)?;
             Ok(response)
         });
-
         Ok(iter)
     }
 }
