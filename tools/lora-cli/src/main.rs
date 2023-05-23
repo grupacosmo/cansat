@@ -7,7 +7,7 @@ use std::{
 use clap::Parser;
 use eyre::{eyre, Result, WrapErr};
 use once_cell::sync::Lazy;
-use regex::Regex;
+use regex::{Regex};
 use serialport::{SerialPort, SerialPortType, UsbPortInfo};
 
 #[derive(Debug, clap::Parser)]
@@ -185,45 +185,69 @@ impl Lora {
     }
 }
 
-fn parse_received_message(input: &str) -> Result<String> {
-    
-    // let signal_strength_re = r"RSSI:(-?\d+)";
-    // let signal_to_noise_re = r"SNR:(-?\d+)";
-    // let hex_message_re = r"RX\s*(.+)";
-    
-    let mut signal_strength_dBm = String::new();
-    let mut signal_to_noise_dB = String::new();
-    let mut hex_message = String::new();
-
-    static RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"RSSI:(-?\d+)|SNR:(-?\d+)|RX\s*(.+)").unwrap());
-
-    if let Some(captures) = RE.captures(input) {
-        if let Some(rssi) = captures.get(1) {
-            signal_strength_dBm = rssi.as_str().to_string();
-        }
-        if let Some(snr) = captures.get(2) {
-            signal_to_noise_dB = snr.as_str().to_string();
-        }
-        if let Some(rx) = captures.get(3) {
-            hex_message = rx.as_str().to_string();
-        }
-    }
-
-    let msg = format!("Signal strength: {signal_strength_dBm} dBm, Noise level: {signal_to_noise_dB} dB");
-    println!("{msg}");
-
-    Ok(msg)
-
-
-    // let bytes_message = hex::decode(hex_message).expect("Failed to decode hex string");
-
-    // let string_message = String::from_utf8_lossy(&bytes_message);
-    // println!("Converted string: {string_message}");
-    // Ok(string_message.to_string())
+enum Parsed {
+    SignalQuality { rssi: i32, snr: i32 },
+    Data(String),
 }
 
-fn parse_cansat_data() {
+fn parse_received_message(input: &str) -> Result<String> {
+    // let signal_strength_re = r"RSSI:(-?\d+)";
+    // let signal_to_noise_re = r"SNR:(-?\d+)";
+    // let hex_message_re = r"RX\s*(\w+)";
 
+    static RE: Lazy<Regex> =
+        Lazy::new(|| Regex::new(r"RSSI:(-?\d+),\s*SNR:(-?\d+)|RX\s*(\w+)").unwrap());
+
+    let captures = RE
+        .captures(input)
+        .ok_or_else(|| eyre!("Failed to capture anything"))?;
+
+    let signal_strength_dBm: Option<i32> = captures
+        .get(1) // Option<Match>
+        .map(|rssi| rssi.as_str().parse()) // Option<Result<i32, _>
+        .transpose() // Result<Option<i32>, _>
+        .wrap_err("Failed to parse rssi")?;
+
+    let signal_to_noise_dB: Option<i32> = captures
+        .get(2) // Option<Match>
+        .map(|snr| snr.as_str().parse()) // Option<Result<i32, _>
+        .transpose() // Result<Option<i32>, _>
+        .wrap_err("Failed to parse snr")?;
+
+    let bytes = captures
+        .get(3)
+        .map(|rx| hex::decode(rx.as_str()))
+        .transpose()
+        .wrap_err("Failed to decode rx hex")?;
+
+    let message = bytes
+        .map(|bytes| String::from_utf8(bytes))
+        .transpose()
+        .wrap_err("Failed to parse rx")?;
+
+    let mut msg = String::new();
+
+    if signal_strength_dBm != None && signal_to_noise_dB != None {
+        msg = format!(
+            "Signal strength: {signal_strength_dBm:?} dBm, Noise level: {signal_to_noise_dB:?} dB"
+        )
+    } else if message != None {
+        // TODO: if ID matches config, use println! to save this to file
+        // Do it here or in format_cansat_data()
+        println!("{message:?}");
+
+        // msg = format!("Message: {string_message}");
+
+        // TODO: if failed to format cansat data, return string message instead
+        msg = format_cansat_data(message.unwrap())
+    }
+    // This is for displaying nice formatted message with live data
+    eprintln!("{msg}");
+    Ok(msg)
+}
+
+fn format_cansat_data(data: String) -> String {
+    data
 }
 
 fn parse_lora_error(input: &str) -> Option<i32> {
@@ -270,10 +294,10 @@ mod test {
 
     #[test]
     fn test_parse_received_message() {
-        let msg1 = parse_received_message("+TEST: LEN:250, RSSI:-106, SNR:10\r\n").unwrap();
-        assert_eq!(msg1, "Signal strength: -106 dBm, Noise level: 10 dB");
+        let msg1 = parse_received_message("+TEST: LEN:250, RSSI:-106, SNR:10\r\n");
+        assert_eq!(msg1.unwrap(), "Signal strength: -106 dBm, Noise level: 10 dB");
 
-        let msg2 = parse_received_message("+TEST: RX 404EA99000800A00089F6E770959\r\n").unwrap();
-        assert_eq!(msg2, "Message: 404EA99000800A00089F6E770959");
+        let msg2 = parse_received_message("+TEST: RX 48656C6C6F\r\n");
+        assert_eq!(msg2.unwrap(), "Message: Hello");
     }
 }
