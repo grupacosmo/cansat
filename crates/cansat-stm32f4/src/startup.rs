@@ -97,7 +97,7 @@ pub fn init_drivers(mut board: Board, statik: &'static mut Statik) -> Result<Can
     let lis3dh = init_lis3dh(shared_i2c1.acquire_i2c())
         .tap_err(|e| defmt::error!("Failed to initialize LIS3DH: {}", defmt::Debug2Format(&e)))
         .ok();
-    let tracker = accelerometer::Tracker::new(3700.0);
+    let tracker = accelerometer::Tracker::new(3932.0);
 
     let gps = init_gps(board.serial1).map_err(|e| {
         defmt::error!("Failed to initialize GPS: {}", defmt::Debug2Format(&e));
