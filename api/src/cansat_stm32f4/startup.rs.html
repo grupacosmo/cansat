@@ -383,7 +383,7 @@
     <span class="kw">let </span>lis3dh = init_lis3dh(shared_i2c1.acquire_i2c())
         .tap_err(|e| <span class="macro">defmt::error!</span>(<span class="string">&quot;Failed to initialize LIS3DH: {}&quot;</span>, defmt::Debug2Format(<span class="kw-2">&amp;</span>e)))
         .ok();
-    <span class="kw">let </span>tracker = accelerometer::Tracker::new(<span class="number">3700.0</span>);
+    <span class="kw">let </span>tracker = accelerometer::Tracker::new(<span class="number">3932.0</span>);
 
     <span class="kw">let </span>gps = init_gps(board.serial1).map_err(|e| {
         <span class="macro">defmt::error!</span>(<span class="string">&quot;Failed to initialize GPS: {}&quot;</span>, defmt::Debug2Format(<span class="kw-2">&amp;</span>e));
