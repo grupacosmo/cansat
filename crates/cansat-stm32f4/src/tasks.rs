@@ -67,21 +67,17 @@ fn read_measurements(ctx: &mut app::idle::Context) -> Measurements {
     if let Some(mut nmea) = gps.lock(|gps| gps.last_nmea()) {
         let clrf_len = 2;
         nmea.truncate(nmea.len().saturating_sub(clrf_len));
-        let nmea_gga: NmeaGga = nmea.into();
+        let nmea_gga = NmeaGga::try_new(&nmea);
 
-        match nmea_gga.get_fix_type() {
-            Ok(fix_type) if fix_type != FixType::Invalid => {
-                ctx.shared.is_fixed.lock(|f: &mut bool| *f = true);
-            }
-            Ok(_) => {
-                defmt::error!("Obtained fix is invalid",);
+        match nmea_gga {
+            Ok(gga) => {
+                ctx.shared.is_fixed.lock(|f: &mut bool| *f = gga.get_fix());
+                data.nmea = Some(gga);
             }
             Err(e) => {
-                defmt::error!("Could not obtain fix: {}", defmt::Debug2Format(&e));
+                defmt::error!("Could not read gga command: {}", e);
             }
         }
-
-        data.nmea = Some(nmea_gga);
     }
 
     if let Some(lis3dh) = &mut i2c1_devices.lis3dh {
