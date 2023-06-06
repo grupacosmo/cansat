@@ -1,51 +1,48 @@
-use heapless::Vec;
-use heapless_bytes::Bytes;
+use defmt::Format;
 pub use nmea::sentences::{FixType, GgaData};
 use nmea::ParseResult;
 use serde::Serialize;
 
-#[derive(Serialize)]
-pub struct NmeaGga(Bytes<256>);
+#[derive(Format)]
+pub enum Error<'a> {
+    ParsingFailed(#[defmt(Debug2Format)] nmea::Error<'a>),
+    InvalidCommand,
+}
+
+#[derive(Serialize, Debug)]
+pub struct NmeaGga(GgaData);
 
 impl NmeaGga {
-    pub fn into_gga(&self) -> Result<GgaData, Error> {
-        let parsed = nmea::parse_bytes(self.0.as_slice()).map_err(|_| Error::ParseError)?;
-
-        let ParseResult::GGA(gga) = parsed else {
-            return Err(Error::NotGGA);
+    pub fn try_new(bytes: &[u8]) -> Result<NmeaGga, Error> {
+        let ParseResult::GGA(gga) = nmea::parse_bytes(bytes).map_err(|e| Error::ParsingFailed(e))? else {
+            return Err(Error::InvalidCommand)
         };
 
-        Ok(gga)
+        Ok(Self(gga))
     }
 
-    pub fn get_fix_type(&self) -> Result<FixType, Error> {
-        self.into_gga()?.fix_type.ok_or(Error::FixError)
-    }
-}
-
-#[derive(Debug)]
-pub enum Error {
-    ParseError,
-    NotGGA,
-    FixError,
-}
-
-impl From<Vec<u8, 256>> for NmeaGga {
-    fn from(value: Vec<u8, 256>) -> Self {
-        Self(value.into())
+    pub fn get_fix(&self) -> bool {
+        self.0
+            .fix_type
+            .map(|ft| FixType::Invalid != ft)
+            .unwrap_or(false)
     }
 }
 
-struct Ascii<'a>(pub &'a [u8]);
-
-impl<'a> defmt::Format for Ascii<'a> {
+impl Format for NmeaGga {
     fn format(&self, fmt: defmt::Formatter) {
-        defmt::write!(fmt, "{=[u8]:a}", self.0);
-    }
-}
-
-impl defmt::Format for NmeaGga {
-    fn format(&self, fmt: defmt::Formatter) {
-        defmt::write!(fmt, "{}", Ascii(self.0.as_ref()));
+        defmt::write!(
+            fmt,
+            "fix_time: {:?}, fix_type: {:?}, latitude: {:?}, 
+             fix_satelites: {:?}, hdop: {:?}, altitude: {:?}, 
+             geoid_separation: {:?}",
+            self.0.fix_time.as_ref().map(defmt::Debug2Format),
+            self.0.fix_type.as_ref().map(defmt::Debug2Format),
+            self.0.latitude,
+            self.0.fix_satellites,
+            self.0.hdop,
+            self.0.altitude,
+            self.0.geoid_separation
+        );
     }
 }
