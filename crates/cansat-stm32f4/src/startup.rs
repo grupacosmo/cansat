@@ -1,6 +1,8 @@
+use crate::app;
 use crate::{error::Error, SdLogger};
 use cansat_lora::ResponseContent;
 use core::convert::Infallible;
+use heapless::Vec;
 use stm32f4xx_hal::{
     gpio,
     i2c::{self, I2c1},
@@ -33,7 +35,35 @@ const MAX_OPEN_DIRS: usize = 4;
 const MAX_OPEN_FILES: usize = 4;
 type I2c1Proxy = shared_bus::I2cProxy<'static, shared_bus::AtomicCheckMutex<I2c1>>;
 
-pub struct CanSat {
+pub fn init(ctx: app::init::Context) -> (app::Shared, app::Local) {
+    let token = rtic_monotonics::create_systick_token!();
+    rtic_monotonics::systick::Systick::start(ctx.core.SYST, 84_000_000, token);
+
+    let board = init_board(ctx.device);
+    let cansat = init_drivers(board, ctx.local.statik).unwrap_or_else(|e| {
+        defmt::panic!("Initalization error: {}", e);
+    });
+
+    app::blink::spawn().unwrap();
+    app::send_meas::spawn().unwrap();
+
+    let shared = app::Shared {
+        gps: cansat.gps,
+        csv_record: Vec::new(),
+    };
+    let local = app::Local {
+        delay: cansat.delay,
+        led: cansat.led,
+        sd_logger: cansat.sd_logger,
+        tracker: cansat.tracker,
+        i2c1_devices: cansat.i2c1_devices,
+        lora: cansat.lora,
+    };
+
+    (shared, local)
+}
+
+struct Drivers {
     pub delay: Delay,
     pub led: Led,
     pub gps: Gps,
@@ -48,7 +78,7 @@ pub struct I2c1Devices {
     pub lis3dh: Option<Lis3dh>,
 }
 
-pub struct Board {
+struct Board {
     pub delay: Delay,
     pub led: Led,
     pub i2c1: I2c1,
@@ -71,7 +101,7 @@ impl Statik {
     }
 }
 
-pub fn init_drivers(mut board: Board, statik: &'static mut Statik) -> Result<CanSat, Error> {
+fn init_drivers(mut board: Board, statik: &'static mut Statik) -> Result<Drivers, Error> {
     let i2c1 = board.i2c1;
     let shared_i2c1 = shared_bus::new_atomic_check!(I2c1 = i2c1).unwrap();
 
@@ -101,7 +131,7 @@ pub fn init_drivers(mut board: Board, statik: &'static mut Statik) -> Result<Can
         Error::CriticalDevice
     })?;
 
-    Ok(CanSat {
+    Ok(Drivers {
         delay: board.delay,
         led: board.led,
         gps,
@@ -190,7 +220,7 @@ fn init_lis3dh(i2c: I2c1Proxy) -> Result<Lis3dh, Lis3dhError> {
     Ok(lis3dh)
 }
 
-pub fn init_board(device: pac::Peripherals) -> Board {
+fn init_board(device: pac::Peripherals) -> Board {
     let rcc = device.RCC.constrain();
     let clocks = rcc.cfgr.sysclk(84.MHz()).freeze();
     let delay = device.TIM3.delay_us(&clocks);

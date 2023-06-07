@@ -90,7 +90,7 @@ fn read_measurements(ctx: &mut app::idle::Context) -> Measurements {
     data
 }
 
-pub async fn send_meas<'a>(ctx: app::send_meas::Context<'a>) {
+pub async fn send_meas(ctx: app::send_meas::Context<'_>) {
     let lora = ctx.local.lora;
     let mut csv_record = ctx.shared.csv_record;
     loop {
@@ -138,7 +138,7 @@ pub fn gps_irq(ctx: app::gps_irq::Context) {
 }
 
 /// Toggles led every second
-pub async fn blink<'a>(ctx: app::blink::Context<'a>) {
+pub async fn blink(ctx: app::blink::Context<'_>) {
     let led = ctx.local.led;
     loop {
         led.toggle();

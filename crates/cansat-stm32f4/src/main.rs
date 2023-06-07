@@ -16,7 +16,7 @@ pub use startup::{
     SdmmcController, SdmmcError,
 };
 
-#[cfg(all(debug_assertions))]
+#[cfg(debug_assertions)]
 use panic_probe as _;
 #[cfg(all(not(debug_assertions), feature = "panic-reset"))]
 use panic_reset as _;
@@ -31,48 +31,24 @@ mod app {
     use super::*;
 
     #[shared]
-    struct Shared {
-        gps: Gps,
-        csv_record: Vec<u8, 512>,
+    pub struct Shared {
+        pub gps: Gps,
+        pub csv_record: Vec<u8, 512>,
     }
 
     #[local]
-    struct Local {
-        delay: Delay,
-        led: Led,
-        sd_logger: Option<SdLogger>,
-        tracker: accelerometer::Tracker,
-        i2c1_devices: I2c1Devices,
-        lora: Option<Lora>,
+    pub struct Local {
+        pub delay: Delay,
+        pub led: Led,
+        pub sd_logger: Option<SdLogger>,
+        pub tracker: accelerometer::Tracker,
+        pub i2c1_devices: I2c1Devices,
+        pub lora: Option<Lora>,
     }
 
     #[init(local = [statik: startup::Statik = startup::Statik::new()])]
     fn init(ctx: init::Context) -> (Shared, Local) {
-        let token = rtic_monotonics::create_systick_token!();
-        rtic_monotonics::systick::Systick::start(ctx.core.SYST, 84_000_000, token);
-
-        let board = startup::init_board(ctx.device);
-        let cansat = startup::init_drivers(board, ctx.local.statik).unwrap_or_else(|e| {
-            defmt::panic!("Initalization error: {}", e);
-        });
-
-        blink::spawn().unwrap();
-        send_meas::spawn().unwrap();
-
-        let shared = Shared {
-            gps: cansat.gps,
-            csv_record: Vec::new(),
-        };
-        let local = Local {
-            delay: cansat.delay,
-            led: cansat.led,
-            sd_logger: cansat.sd_logger,
-            tracker: cansat.tracker,
-            i2c1_devices: cansat.i2c1_devices,
-            lora: cansat.lora,
-        };
-
-        (shared, local)
+        startup::init(ctx)
     }
 
     #[idle(local = [delay, sd_logger, tracker, i2c1_devices], shared = [gps, csv_record])]
