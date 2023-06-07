@@ -8,11 +8,10 @@ use stm32f4xx_hal::{
     prelude::*,
     serial::{self, Serial1, Serial6},
     spi::{self, Spi2},
-    timer::{monotonic::MonoTimerUs, DelayUs},
+    timer::DelayUs,
 };
 use tap::prelude::*;
 
-pub type Monotonic = MonoTimerUs<pac::TIM2>;
 pub type Delay = DelayUs<pac::TIM3>;
 pub type Led = gpio::PC13<gpio::Output>;
 pub type Gps = cansat_gps::Gps<Serial1, 256>;
@@ -35,7 +34,6 @@ const MAX_OPEN_FILES: usize = 4;
 type I2c1Proxy = shared_bus::I2cProxy<'static, shared_bus::AtomicCheckMutex<I2c1>>;
 
 pub struct CanSat {
-    pub monotonic: Monotonic,
     pub delay: Delay,
     pub led: Led,
     pub gps: Gps,
@@ -51,7 +49,6 @@ pub struct I2c1Devices {
 }
 
 pub struct Board {
-    pub monotonic: Monotonic,
     pub delay: Delay,
     pub led: Led,
     pub i2c1: I2c1,
@@ -105,7 +102,6 @@ pub fn init_drivers(mut board: Board, statik: &'static mut Statik) -> Result<Can
     })?;
 
     Ok(CanSat {
-        monotonic: board.monotonic,
         delay: board.delay,
         led: board.led,
         gps,
@@ -197,7 +193,6 @@ fn init_lis3dh(i2c: I2c1Proxy) -> Result<Lis3dh, Lis3dhError> {
 pub fn init_board(device: pac::Peripherals) -> Board {
     let rcc = device.RCC.constrain();
     let clocks = rcc.cfgr.sysclk(84.MHz()).freeze();
-    let monotonic = device.TIM2.monotonic_us(&clocks);
     let delay = device.TIM3.delay_us(&clocks);
 
     let gpioa = device.GPIOA.split();
@@ -259,7 +254,6 @@ pub fn init_board(device: pac::Peripherals) -> Board {
     };
 
     Board {
-        monotonic,
         delay,
         led,
         i2c1,

@@ -16,12 +16,6 @@ Bare-metal software for the sounding rocket payload.
     cargo install cargo-embed
     ```
 
-* `thumbv7em-none-eabihf` platform target:
-
-    ```bash
-    rustup target add thumbv7em-none-eabihf
-    ```
-
 ## xtask
 [cargo-xtask](https://github.com/matklad/cargo-xtask) is a way of extending `cargo` with user-defined workflows.
 

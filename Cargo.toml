@@ -8,3 +8,4 @@ members = [
     "tools/lora-cli",
     "xtask"
 ]
+resolver = "2"
