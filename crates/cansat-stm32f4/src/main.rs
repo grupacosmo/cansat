@@ -3,6 +3,7 @@
 #![no_main]
 #![no_std]
 #![feature(type_alias_impl_trait)]
+#![feature(result_option_inspect)]
 
 mod error;
 mod sd_logger;

@@ -12,7 +12,6 @@ use stm32f4xx_hal::{
     spi::{self, Spi2},
     timer::DelayUs,
 };
-use tap::prelude::*;
 
 pub type Delay = DelayUs<pac::TIM3>;
 pub type Led = gpio::PC13<gpio::Output>;
@@ -106,11 +105,11 @@ fn init_drivers(mut board: Board, statik: &'static mut Statik) -> Result<Drivers
     let shared_i2c1 = shared_bus::new_atomic_check!(I2c1 = i2c1).unwrap();
 
     let sd_logger = init_sd_logger(board.spi2, board.cs2, statik)
-        .tap_err(|e| defmt::error!("Failed to initialize SD logger: {}", e))
+        .inspect_err(|e| defmt::error!("Failed to initialize SD logger: {}", e))
         .ok();
 
     let lora = init_lora(board.serial6)
-        .tap_err(|e| defmt::error!("Failed to initialize Lora: {}", e))
+        .inspect_err(|e| defmt::error!("Failed to initialize Lora: {}", e))
         .ok();
 
     if sd_logger.is_none() && lora.is_none() {
@@ -118,11 +117,11 @@ fn init_drivers(mut board: Board, statik: &'static mut Statik) -> Result<Drivers
     }
 
     let bme280 = init_bme280(shared_i2c1.acquire_i2c(), &mut board.delay)
-        .tap_err(|e| defmt::error!("Failed to initialize BME280: {}", e))
+        .inspect_err(|e| defmt::error!("Failed to initialize BME280: {}", e))
         .ok();
 
     let lis3dh = init_lis3dh(shared_i2c1.acquire_i2c())
-        .tap_err(|e| defmt::error!("Failed to initialize LIS3DH: {}", defmt::Debug2Format(&e)))
+        .inspect_err(|e| defmt::error!("Failed to initialize LIS3DH: {}", defmt::Debug2Format(&e)))
         .ok();
     let tracker = accelerometer::Tracker::new(3700.0);
 
