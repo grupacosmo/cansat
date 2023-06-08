@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["LocalResources","SharedResources"]};
+window.SIDEBAR_ITEMS = {"struct":["Context","LocalResources","SharedResources"]};

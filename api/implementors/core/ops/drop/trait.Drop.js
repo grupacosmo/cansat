@@ -1,3 +1,3 @@
 (function() {var implementors = {
-"cansat_stm32f4":[["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.69.0/core/ops/drop/trait.Drop.html\" title=\"trait core::ops::drop::Drop\">Drop</a> for <a class=\"struct\" href=\"cansat_stm32f4/sd_logger/struct.SdLogger.html\" title=\"struct cansat_stm32f4::sd_logger::SdLogger\">SdLogger</a>"]]
+"cansat_stm32f4":[["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/nightly/core/ops/drop/trait.Drop.html\" title=\"trait core::ops::drop::Drop\">Drop</a> for <a class=\"struct\" href=\"cansat_stm32f4/sd_logger/struct.SdLogger.html\" title=\"struct cansat_stm32f4::sd_logger::SdLogger\">SdLogger</a>"]]
 };if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

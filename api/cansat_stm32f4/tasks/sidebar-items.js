@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["CHECK"],"fn":["blink","check","gps_irq","idle","read_measurements","send_lora_package","send_meas"],"static":["DEFMT_LOG_STATEMENT"]};
+window.SIDEBAR_ITEMS = {"fn":["blink","gps_irq","idle","read_measurements","send_lora_package","send_meas"]};

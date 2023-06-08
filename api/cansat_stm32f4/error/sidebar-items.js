@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["Error"],"static":["S"]};
+window.SIDEBAR_ITEMS = {"enum":["Error"]};

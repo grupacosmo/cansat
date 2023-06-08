@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/cansat-stm32f4/src/startup.rs`."><title>startup.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-c4dbdcde0fbd8430.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../static.files/light-db279b6232be9c13.css"><link rel="stylesheet" disabled href="../../static.files/dark-cf923f49f397b216.css"><link rel="stylesheet" disabled href="../../static.files/ayu-be46fdc453a55015.css"><script src="../../static.files/storage-3891ce972e3a2bf8.js"></script><script defer src="../../static.files/source-script-1b95b7cca98b26e5.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-98a684e84ae5b08b.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../cansat_stm32f4/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/cansat-stm32f4/src/startup.rs`."><title>startup.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-f3501f0f5ae15dfb.css" id="mainThemeStyle"><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="cansat_stm32f4" data-themes="" data-resource-suffix="" data-rustdoc-version="1.72.0-nightly (871b59520 2023-05-31)" data-search-js="search-4926e5fc22a5646a.js" data-settings-js="settings-de11bff964e9d4e5.js" data-settings-css="settings-8c76f75bfb6bd192.css" data-theme-light-css="light-0f8c037637f9eb3e.css" data-theme-dark-css="dark-1097f8e92a01e3cf.css" data-theme-ayu-css="ayu-614652228113ac93.css" ></div><script src="../../static.files/storage-62ce34ea385b278a.js"></script><script defer src="../../static.files/source-script-11255107d0a65077.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-f0540c1d82cde29b.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../static.files/light-0f8c037637f9eb3e.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../static.files/dark-1097f8e92a01e3cf.css"><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../cansat_stm32f4/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -284,9 +284,34 @@
 <a href="#284" id="284">284</a>
 <a href="#285" id="285">285</a>
 <a href="#286" id="286">286</a>
-</pre><pre class="rust"><code><span class="kw">use crate</span>::{error::Error, SdLogger};
+<a href="#287" id="287">287</a>
+<a href="#288" id="288">288</a>
+<a href="#289" id="289">289</a>
+<a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
+<a href="#292" id="292">292</a>
+<a href="#293" id="293">293</a>
+<a href="#294" id="294">294</a>
+<a href="#295" id="295">295</a>
+<a href="#296" id="296">296</a>
+<a href="#297" id="297">297</a>
+<a href="#298" id="298">298</a>
+<a href="#299" id="299">299</a>
+<a href="#300" id="300">300</a>
+<a href="#301" id="301">301</a>
+<a href="#302" id="302">302</a>
+<a href="#303" id="303">303</a>
+<a href="#304" id="304">304</a>
+<a href="#305" id="305">305</a>
+<a href="#306" id="306">306</a>
+<a href="#307" id="307">307</a>
+<a href="#308" id="308">308</a>
+<a href="#309" id="309">309</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::app;
+<span class="kw">use crate</span>::{error::Error, SdLogger};
 <span class="kw">use </span>cansat_lora::ResponseContent;
 <span class="kw">use </span>core::convert::Infallible;
+<span class="kw">use </span>heapless::Vec;
 <span class="kw">use </span>stm32f4xx_hal::{
     gpio,
     i2c::{<span class="self">self</span>, I2c1},
@@ -294,11 +319,9 @@
     prelude::<span class="kw-2">*</span>,
     serial::{<span class="self">self</span>, Serial1, Serial6},
     spi::{<span class="self">self</span>, Spi2},
-    timer::{monotonic::MonoTimerUs, DelayUs},
+    timer::DelayUs,
 };
-<span class="kw">use </span>tap::prelude::<span class="kw-2">*</span>;
 
-<span class="kw">pub type </span>Monotonic = MonoTimerUs&lt;pac::TIM2&gt;;
 <span class="kw">pub type </span>Delay = DelayUs&lt;pac::TIM3&gt;;
 <span class="kw">pub type </span>Led = gpio::PC13&lt;gpio::Output&gt;;
 <span class="kw">pub type </span>Gps = cansat_gps::Gps&lt;Serial1, <span class="number">256</span>&gt;;
@@ -320,8 +343,35 @@
 <span class="kw">const </span>MAX_OPEN_FILES: usize = <span class="number">4</span>;
 <span class="kw">type </span>I2c1Proxy = shared_bus::I2cProxy&lt;<span class="lifetime">&#39;static</span>, shared_bus::AtomicCheckMutex&lt;I2c1&gt;&gt;;
 
-<span class="kw">pub struct </span>CanSat {
-    <span class="kw">pub </span>monotonic: Monotonic,
+<span class="kw">pub fn </span>init(ctx: app::init::Context) -&gt; (app::Shared, app::Local) {
+    <span class="kw">let </span>token = <span class="macro">rtic_monotonics::create_systick_token!</span>();
+    rtic_monotonics::systick::Systick::start(ctx.core.SYST, <span class="number">84_000_000</span>, token);
+
+    <span class="kw">let </span>board = init_board(ctx.device);
+    <span class="kw">let </span>cansat = init_drivers(board, ctx.local.statik).unwrap_or_else(|e| {
+        <span class="macro">defmt::panic!</span>(<span class="string">&quot;Initalization error: {}&quot;</span>, e);
+    });
+
+    app::blink::spawn().unwrap();
+    app::send_meas::spawn().unwrap();
+
+    <span class="kw">let </span>shared = app::Shared {
+        gps: cansat.gps,
+        csv_record: Vec::new(),
+    };
+    <span class="kw">let </span>local = app::Local {
+        delay: cansat.delay,
+        led: cansat.led,
+        sd_logger: cansat.sd_logger,
+        tracker: cansat.tracker,
+        i2c1_devices: cansat.i2c1_devices,
+        lora: cansat.lora,
+    };
+
+    (shared, local)
+}
+
+<span class="kw">struct </span>Drivers {
     <span class="kw">pub </span>delay: Delay,
     <span class="kw">pub </span>led: Led,
     <span class="kw">pub </span>gps: Gps,
@@ -336,8 +386,7 @@
     <span class="kw">pub </span>lis3dh: <span class="prelude-ty">Option</span>&lt;Lis3dh&gt;,
 }
 
-<span class="kw">pub struct </span>Board {
-    <span class="kw">pub </span>monotonic: Monotonic,
+<span class="kw">struct </span>Board {
     <span class="kw">pub </span>delay: Delay,
     <span class="kw">pub </span>led: Led,
     <span class="kw">pub </span>i2c1: I2c1,
@@ -360,16 +409,16 @@
     }
 }
 
-<span class="kw">pub fn </span>init_drivers(<span class="kw-2">mut </span>board: Board, statik: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span><span class="kw-2">mut </span>Statik) -&gt; <span class="prelude-ty">Result</span>&lt;CanSat, Error&gt; {
+<span class="kw">fn </span>init_drivers(<span class="kw-2">mut </span>board: Board, statik: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span><span class="kw-2">mut </span>Statik) -&gt; <span class="prelude-ty">Result</span>&lt;Drivers, Error&gt; {
     <span class="kw">let </span>i2c1 = board.i2c1;
     <span class="kw">let </span>shared_i2c1 = <span class="macro">shared_bus::new_atomic_check!</span>(I2c1 = i2c1).unwrap();
 
     <span class="kw">let </span>sd_logger = init_sd_logger(board.spi2, board.cs2, statik)
-        .tap_err(|e| <span class="macro">defmt::error!</span>(<span class="string">&quot;Failed to initialize SD logger: {}&quot;</span>, e))
+        .inspect_err(|e| <span class="macro">defmt::error!</span>(<span class="string">&quot;Failed to initialize SD logger: {}&quot;</span>, e))
         .ok();
 
     <span class="kw">let </span>lora = init_lora(board.serial6)
-        .tap_err(|e| <span class="macro">defmt::error!</span>(<span class="string">&quot;Failed to initialize Lora: {}&quot;</span>, e))
+        .inspect_err(|e| <span class="macro">defmt::error!</span>(<span class="string">&quot;Failed to initialize Lora: {}&quot;</span>, e))
         .ok();
 
     <span class="kw">if </span>sd_logger.is_none() &amp;&amp; lora.is_none() {
@@ -377,11 +426,11 @@
     }
 
     <span class="kw">let </span>bme280 = init_bme280(shared_i2c1.acquire_i2c(), <span class="kw-2">&amp;mut </span>board.delay)
-        .tap_err(|e| <span class="macro">defmt::error!</span>(<span class="string">&quot;Failed to initialize BME280: {}&quot;</span>, e))
+        .inspect_err(|e| <span class="macro">defmt::error!</span>(<span class="string">&quot;Failed to initialize BME280: {}&quot;</span>, e))
         .ok();
 
     <span class="kw">let </span>lis3dh = init_lis3dh(shared_i2c1.acquire_i2c())
-        .tap_err(|e| <span class="macro">defmt::error!</span>(<span class="string">&quot;Failed to initialize LIS3DH: {}&quot;</span>, defmt::Debug2Format(<span class="kw-2">&amp;</span>e)))
+        .inspect_err(|e| <span class="macro">defmt::error!</span>(<span class="string">&quot;Failed to initialize LIS3DH: {}&quot;</span>, defmt::Debug2Format(<span class="kw-2">&amp;</span>e)))
         .ok();
     <span class="kw">let </span>tracker = accelerometer::Tracker::new(<span class="number">3932.0</span>);
 
@@ -390,8 +439,7 @@
         Error::CriticalDevice
     })<span class="question-mark">?</span>;
 
-    <span class="prelude-val">Ok</span>(CanSat {
-        monotonic: board.monotonic,
+    <span class="prelude-val">Ok</span>(Drivers {
         delay: board.delay,
         led: board.led,
         gps,
@@ -480,10 +528,9 @@
     <span class="prelude-val">Ok</span>(lis3dh)
 }
 
-<span class="kw">pub fn </span>init_board(device: pac::Peripherals) -&gt; Board {
+<span class="kw">fn </span>init_board(device: pac::Peripherals) -&gt; Board {
     <span class="kw">let </span>rcc = device.RCC.constrain();
     <span class="kw">let </span>clocks = rcc.cfgr.sysclk(<span class="number">84</span>.MHz()).freeze();
-    <span class="kw">let </span>monotonic = device.TIM2.monotonic_us(<span class="kw-2">&amp;</span>clocks);
     <span class="kw">let </span>delay = device.TIM3.delay_us(<span class="kw-2">&amp;</span>clocks);
 
     <span class="kw">let </span>gpioa = device.GPIOA.split();
@@ -545,7 +592,6 @@
     };
 
     Board {
-        monotonic,
         delay,
         led,
         i2c1,
@@ -570,5 +616,4 @@
         }
     }
 }
-</code></pre></div>
-</section></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="cansat_stm32f4" data-themes="" data-resource-suffix="" data-rustdoc-version="1.69.0 (84c898d65 2023-04-16)" data-search-js="search-8a59a8356673ec1f.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" ></div></body></html>
+</code></pre></div></section></main></body></html>

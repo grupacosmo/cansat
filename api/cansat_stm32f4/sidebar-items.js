@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["app","error","sd_logger","startup","tasks"],"struct":["I2c1Devices","SdLogger"],"type":["Bme280","Bme280Error","Delay","Gps","Led","Lis3dh","Lis3dhError","Lora","LoraError","Monotonic","SdmmcController","SdmmcError"]};
+window.SIDEBAR_ITEMS = {"mod":["app","error","sd_logger","startup","tasks"],"struct":["I2c1Devices","SdLogger"],"type":["Bme280","Bme280Error","Delay","Gps","Led","Lis3dh","Lis3dhError","Lora","LoraError","SdmmcController","SdmmcError"]};
