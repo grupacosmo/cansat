@@ -1,4 +1,4 @@
-use crate::app::{self};
+use crate::app;
 use crate::{error::Error, SdLogger};
 use cansat_lora::ResponseContent;
 use core::convert::Infallible;
