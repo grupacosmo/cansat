@@ -6,6 +6,7 @@ use cansat_core::{
 };
 use cansat_lora::ResponseContent;
 use rtic::Mutex;
+use rtic_monotonics::systick::Systick;
 use stm32f4xx_hal::prelude::*;
 
 pub fn idle(mut ctx: app::idle::Context) -> ! {
@@ -89,18 +90,19 @@ fn read_measurements(ctx: &mut app::idle::Context) -> Measurements {
     data
 }
 
-pub fn send_meas(ctx: app::send_meas::Context) {
+pub async fn send_meas(ctx: app::send_meas::Context<'_>) {
     let lora = ctx.local.lora;
     let mut csv_record = ctx.shared.csv_record;
-    csv_record.lock(|csv| {
-        if let Some(lora) = lora {
-            if !csv.is_empty() {
-                send_lora_package(lora, &csv[..csv.len() - 1]).unwrap();
+    loop {
+        csv_record.lock(|csv| {
+            if let Some(lora) = lora {
+                if !csv.is_empty() {
+                    send_lora_package(lora, &csv[..csv.len() - 1]).unwrap();
+                }
             }
-        }
-    });
-
-    app::send_meas::spawn_after(1.secs()).unwrap();
+        });
+        Systick::delay(1.secs()).await;
+    }
 }
 
 fn send_lora_package(lora: &mut crate::Lora, csv: &[u8]) -> Result<(), Error> {
@@ -136,9 +138,11 @@ pub fn gps_irq(ctx: app::gps_irq::Context) {
 }
 
 /// Toggles led every second
-pub fn blink(ctx: app::blink::Context) {
+pub async fn blink(ctx: app::blink::Context<'_>) {
     let led = ctx.local.led;
-    led.toggle();
-    defmt::debug!("Blink");
-    app::blink::spawn_after(1.secs()).unwrap();
+    loop {
+        led.toggle();
+        defmt::debug!("Blink");
+        Systick::delay(1.secs()).await;
+    }
 }

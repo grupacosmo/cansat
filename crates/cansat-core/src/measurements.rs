@@ -76,6 +76,7 @@ where
     v.map(orientation_to_str).serialize(serializer)
 }
 
+#[cfg(feature = "defmt")]
 impl defmt::Format for Measurements {
     fn format(&self, fmt: defmt::Formatter) {
         defmt::write!(
@@ -93,6 +94,7 @@ impl defmt::Format for Measurements {
 
 struct Celsius(pub Temperature);
 
+#[cfg(feature = "defmt")]
 impl defmt::Format for Celsius {
     fn format(&self, fmt: defmt::Formatter) {
         defmt::write!(fmt, "{} °C", self.0.as_celsius());
@@ -101,6 +103,7 @@ impl defmt::Format for Celsius {
 
 struct HectoPascals(pub Pressure);
 
+#[cfg(feature = "defmt")]
 impl defmt::Format for HectoPascals {
     fn format(&self, fmt: defmt::Formatter) {
         defmt::write!(fmt, "{} hPa", self.0.as_hectos());
@@ -109,6 +112,7 @@ impl defmt::Format for HectoPascals {
 
 struct Meters(pub Distance);
 
+#[cfg(feature = "defmt")]
 impl defmt::Format for Meters {
     fn format(&self, fmt: defmt::Formatter) {
         defmt::write!(fmt, "{} m", self.0.as_meters());
@@ -117,6 +121,7 @@ impl defmt::Format for Meters {
 
 struct Ascii<'a>(pub &'a [u8]);
 
+#[cfg(feature = "defmt")]
 impl<'a> defmt::Format for Ascii<'a> {
     fn format(&self, fmt: defmt::Formatter) {
         defmt::write!(fmt, "{=[u8]:a}", self.0);
@@ -125,6 +130,7 @@ impl<'a> defmt::Format for Ascii<'a> {
 
 struct OrError<'a, T>(pub &'a Option<T>);
 
+#[cfg(feature = "defmt")]
 impl<'a, T: defmt::Format> defmt::Format for OrError<'a, T> {
     fn format(&self, fmt: defmt::Formatter) {
         if let Some(v) = self.0 {

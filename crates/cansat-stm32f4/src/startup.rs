@@ -1,6 +1,8 @@
+use crate::app;
 use crate::{error::Error, SdLogger};
 use cansat_lora::ResponseContent;
 use core::convert::Infallible;
+use heapless::Vec;
 use stm32f4xx_hal::{
     gpio,
     i2c::{self, I2c1},
@@ -8,11 +10,9 @@ use stm32f4xx_hal::{
     prelude::*,
     serial::{self, Serial1, Serial6},
     spi::{self, Spi2},
-    timer::{monotonic::MonoTimerUs, DelayUs},
+    timer::DelayUs,
 };
-use tap::prelude::*;
 
-pub type Monotonic = MonoTimerUs<pac::TIM2>;
 pub type Delay = DelayUs<pac::TIM3>;
 pub type Led = gpio::PC13<gpio::Output>;
 pub type Gps = cansat_gps::Gps<Serial1, 256>;
@@ -34,8 +34,35 @@ const MAX_OPEN_DIRS: usize = 4;
 const MAX_OPEN_FILES: usize = 4;
 type I2c1Proxy = shared_bus::I2cProxy<'static, shared_bus::AtomicCheckMutex<I2c1>>;
 
-pub struct CanSat {
-    pub monotonic: Monotonic,
+pub fn init(ctx: app::init::Context) -> (app::Shared, app::Local) {
+    let token = rtic_monotonics::create_systick_token!();
+    rtic_monotonics::systick::Systick::start(ctx.core.SYST, 84_000_000, token);
+
+    let board = init_board(ctx.device);
+    let cansat = init_drivers(board, ctx.local.statik).unwrap_or_else(|e| {
+        defmt::panic!("Initalization error: {}", e);
+    });
+
+    app::blink::spawn().unwrap();
+    app::send_meas::spawn().unwrap();
+
+    let shared = app::Shared {
+        gps: cansat.gps,
+        csv_record: Vec::new(),
+    };
+    let local = app::Local {
+        delay: cansat.delay,
+        led: cansat.led,
+        sd_logger: cansat.sd_logger,
+        tracker: cansat.tracker,
+        i2c1_devices: cansat.i2c1_devices,
+        lora: cansat.lora,
+    };
+
+    (shared, local)
+}
+
+struct Drivers {
     pub delay: Delay,
     pub led: Led,
     pub gps: Gps,
@@ -50,8 +77,7 @@ pub struct I2c1Devices {
     pub lis3dh: Option<Lis3dh>,
 }
 
-pub struct Board {
-    pub monotonic: Monotonic,
+struct Board {
     pub delay: Delay,
     pub led: Led,
     pub i2c1: I2c1,
@@ -74,16 +100,16 @@ impl Statik {
     }
 }
 
-pub fn init_drivers(mut board: Board, statik: &'static mut Statik) -> Result<CanSat, Error> {
+fn init_drivers(mut board: Board, statik: &'static mut Statik) -> Result<Drivers, Error> {
     let i2c1 = board.i2c1;
     let shared_i2c1 = shared_bus::new_atomic_check!(I2c1 = i2c1).unwrap();
 
     let sd_logger = init_sd_logger(board.spi2, board.cs2, statik)
-        .tap_err(|e| defmt::error!("Failed to initialize SD logger: {}", e))
+        .inspect_err(|e| defmt::error!("Failed to initialize SD logger: {}", e))
         .ok();
 
     let lora = init_lora(board.serial6)
-        .tap_err(|e| defmt::error!("Failed to initialize Lora: {}", e))
+        .inspect_err(|e| defmt::error!("Failed to initialize Lora: {}", e))
         .ok();
 
     if sd_logger.is_none() && lora.is_none() {
@@ -91,11 +117,11 @@ pub fn init_drivers(mut board: Board, statik: &'static mut Statik) -> Result<Can
     }
 
     let bme280 = init_bme280(shared_i2c1.acquire_i2c(), &mut board.delay)
-        .tap_err(|e| defmt::error!("Failed to initialize BME280: {}", e))
+        .inspect_err(|e| defmt::error!("Failed to initialize BME280: {}", e))
         .ok();
 
     let lis3dh = init_lis3dh(shared_i2c1.acquire_i2c())
-        .tap_err(|e| defmt::error!("Failed to initialize LIS3DH: {}", defmt::Debug2Format(&e)))
+        .inspect_err(|e| defmt::error!("Failed to initialize LIS3DH: {}", defmt::Debug2Format(&e)))
         .ok();
     let tracker = accelerometer::Tracker::new(3932.0);
 
@@ -104,8 +130,7 @@ pub fn init_drivers(mut board: Board, statik: &'static mut Statik) -> Result<Can
         Error::CriticalDevice
     })?;
 
-    Ok(CanSat {
-        monotonic: board.monotonic,
+    Ok(Drivers {
         delay: board.delay,
         led: board.led,
         gps,
@@ -194,10 +219,9 @@ fn init_lis3dh(i2c: I2c1Proxy) -> Result<Lis3dh, Lis3dhError> {
     Ok(lis3dh)
 }
 
-pub fn init_board(device: pac::Peripherals) -> Board {
+fn init_board(device: pac::Peripherals) -> Board {
     let rcc = device.RCC.constrain();
     let clocks = rcc.cfgr.sysclk(84.MHz()).freeze();
-    let monotonic = device.TIM2.monotonic_us(&clocks);
     let delay = device.TIM3.delay_us(&clocks);
 
     let gpioa = device.GPIOA.split();
@@ -259,7 +283,6 @@ pub fn init_board(device: pac::Peripherals) -> Board {
     };
 
     Board {
-        monotonic,
         delay,
         led,
         i2c1,

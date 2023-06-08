@@ -13,6 +13,7 @@ pub enum Error<SerialError> {
     Overflow,
 }
 
+#[cfg(feature = "defmt")]
 impl<SerialError: Debug> defmt::Format for Error<SerialError> {
     fn format(&self, fmt: defmt::Formatter) {
         match self {
@@ -108,6 +109,7 @@ pub enum ParseError {
     Unknown,
 }
 
+#[cfg(feature = "defmt")]
 impl defmt::Format for ParseError {
     fn format(&self, fmt: defmt::Formatter) {
         match self {
