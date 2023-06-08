@@ -1122,8 +1122,7 @@ checksum = "436b050e76ed2903236f032a59761c1eb99e1b0aead2c257922771dab1fc8c78"
 [[package]]
 name = "rtic"
 version = "2.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5b34091be382fee127250626ffbceab8b56d4234732eb331155d267c53a54e75"
+source = "git+https://github.com/wiktorwieclaw/rtic#da7d36891a9a93a13fb81cd4c7bba8b9c17481ee"
 dependencies = [
  "atomic-polyfill 1.0.2",
  "bare-metal 1.0.0",
@@ -1151,8 +1150,7 @@ checksum = "d9369355b04d06a3780ec0f51ea2d225624db777acbc60abd8ca4832da5c1a42"
 [[package]]
 name = "rtic-macros"
 version = "2.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a38200e4b59d03545fc0f1055cde51fce8cb3be632285ad9874fcf287f4ebc75"
+source = "git+https://github.com/wiktorwieclaw/rtic#da7d36891a9a93a13fb81cd4c7bba8b9c17481ee"
 dependencies = [
  "indexmap",
  "proc-macro-error",

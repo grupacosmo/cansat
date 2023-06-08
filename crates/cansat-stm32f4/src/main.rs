@@ -3,6 +3,7 @@
 #![no_main]
 #![no_std]
 #![feature(type_alias_impl_trait)]
+
 #![feature(result_option_inspect)]
 
 mod error;
@@ -27,6 +28,14 @@ compile_error!("Run `--release` builds with `--no-default-features --features=pa
 use defmt_rtt as _;
 use tasks::*;
 
+fn init(ctx: app::init::Context) -> (app::Shared, app::Local) {
+    startup::init(ctx)
+}
+
+fn idle(ctx: app::idle::Context) -> ! {
+    tasks::idle(ctx)
+}
+
 #[rtic::app(device = stm32f4xx_hal::pac, peripherals = true, dispatchers = [EXTI0, EXTI1])]
 mod app {
     use super::*;
@@ -47,17 +56,13 @@ mod app {
         pub lora: Option<Lora>,
     }
 
-    #[init(local = [statik: startup::Statik = startup::Statik::new()])]
-    fn init(ctx: init::Context) -> (Shared, Local) {
-        startup::init(ctx)
-    }
-
-    #[idle(local = [delay, sd_logger, tracker, i2c1_devices], shared = [gps, csv_record])]
-    fn idle(ctx: idle::Context) -> ! {
-        tasks::idle(ctx)
-    }
-
     extern "Rust" {
+        #[init(local = [statik: startup::Statik = startup::Statik::new()])]
+        fn init(ctx: init::Context) -> (Shared, Local);
+    
+        #[idle(local = [delay, sd_logger, tracker, i2c1_devices], shared = [gps, csv_record])]
+        fn idle(ctx: idle::Context) -> !;
+
         #[task(local = [lora], shared = [csv_record], priority = 1)]
         async fn send_meas(ctx: send_meas::Context);
 
