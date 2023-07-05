@@ -146,6 +146,16 @@
 <a href="#146" id="146">146</a>
 <a href="#147" id="147">147</a>
 <a href="#148" id="148">148</a>
+<a href="#149" id="149">149</a>
+<a href="#150" id="150">150</a>
+<a href="#151" id="151">151</a>
+<a href="#152" id="152">152</a>
+<a href="#153" id="153">153</a>
+<a href="#154" id="154">154</a>
+<a href="#155" id="155">155</a>
+<a href="#156" id="156">156</a>
+<a href="#157" id="157">157</a>
+<a href="#158" id="158">158</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{app, error::Error, startup::LoraError};
 <span class="kw">use </span>accelerometer::RawAccelerometer;
 <span class="kw">use </span>cansat_core::{
@@ -292,6 +302,16 @@
         led.toggle();
         <span class="macro">defmt::debug!</span>(<span class="string">&quot;Blink&quot;</span>);
         Systick::delay(<span class="number">1</span>.secs()).<span class="kw">await</span>;
+    }
+}
+
+<span class="doccomment">/// Toggle buzzer every second
+</span><span class="kw">pub async fn </span>buzz(ctx: app::buzz::Context&lt;<span class="lifetime">&#39;_</span>&gt;) {
+    <span class="kw">let </span>buzzer = ctx.local.buzzer;
+    <span class="kw">loop </span>{
+        buzzer.toggle();
+        <span class="macro">defmt::debug!</span>(<span class="string">&quot;Buzz&quot;</span>);
+        Systick::delay(<span class="number">3</span>.secs()).<span class="kw">await</span>;
     }
 }
 </code></pre></div></section></main></body></html>

@@ -307,6 +307,14 @@
 <a href="#307" id="307">307</a>
 <a href="#308" id="308">308</a>
 <a href="#309" id="309">309</a>
+<a href="#310" id="310">310</a>
+<a href="#311" id="311">311</a>
+<a href="#312" id="312">312</a>
+<a href="#313" id="313">313</a>
+<a href="#314" id="314">314</a>
+<a href="#315" id="315">315</a>
+<a href="#316" id="316">316</a>
+<a href="#317" id="317">317</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::app;
 <span class="kw">use crate</span>::{error::Error, SdLogger};
 <span class="kw">use </span>cansat_lora::ResponseContent;
@@ -324,6 +332,7 @@
 
 <span class="kw">pub type </span>Delay = DelayUs&lt;pac::TIM3&gt;;
 <span class="kw">pub type </span>Led = gpio::PC13&lt;gpio::Output&gt;;
+<span class="kw">pub type </span>Buzzer = gpio::PA8&lt;gpio::Output&gt;;
 <span class="kw">pub type </span>Gps = cansat_gps::Gps&lt;Serial1, <span class="number">256</span>&gt;;
 <span class="kw">pub type </span>GpsError = cansat_gps::Error&lt;serial::Error&gt;;
 <span class="kw">pub type </span>Lora = cansat_lora::Lora&lt;Serial6&gt;;
@@ -353,6 +362,7 @@
     });
 
     app::blink::spawn().unwrap();
+    app::buzz::spawn().unwrap();
     app::send_meas::spawn().unwrap();
 
     <span class="kw">let </span>shared = app::Shared {
@@ -362,6 +372,7 @@
     <span class="kw">let </span>local = app::Local {
         delay: cansat.delay,
         led: cansat.led,
+        buzzer: cansat.buzzer,
         sd_logger: cansat.sd_logger,
         tracker: cansat.tracker,
         i2c1_devices: cansat.i2c1_devices,
@@ -374,6 +385,7 @@
 <span class="kw">struct </span>Drivers {
     <span class="kw">pub </span>delay: Delay,
     <span class="kw">pub </span>led: Led,
+    <span class="kw">pub </span>buzzer: Buzzer,
     <span class="kw">pub </span>gps: Gps,
     <span class="kw">pub </span>lora: <span class="prelude-ty">Option</span>&lt;Lora&gt;,
     <span class="kw">pub </span>sd_logger: <span class="prelude-ty">Option</span>&lt;SdLogger&gt;,
@@ -389,6 +401,7 @@
 <span class="kw">struct </span>Board {
     <span class="kw">pub </span>delay: Delay,
     <span class="kw">pub </span>led: Led,
+    <span class="kw">pub </span>buzzer: Buzzer,
     <span class="kw">pub </span>i2c1: I2c1,
     <span class="kw">pub </span>serial1: Serial1,
     <span class="kw">pub </span>serial6: Serial6,
@@ -442,6 +455,7 @@
     <span class="prelude-val">Ok</span>(Drivers {
         delay: board.delay,
         led: board.led,
+        buzzer: board.buzzer,
         gps,
         lora,
         sd_logger,
@@ -538,6 +552,7 @@
     <span class="kw">let </span>gpioc = device.GPIOC.split();
 
     <span class="kw">let </span>led = gpioc.pc13.into_push_pull_output();
+    <span class="kw">let </span>buzzer = gpioa.pa8.into_push_pull_output();
 
     <span class="kw">let </span>i2c1 = {
         <span class="kw">let </span>scl1 = gpiob
@@ -594,6 +609,7 @@
     Board {
         delay,
         led,
+        buzzer,
         i2c1,
         serial1,
         serial6,

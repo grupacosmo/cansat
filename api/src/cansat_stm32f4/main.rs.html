@@ -68,6 +68,9 @@
 <a href="#68" id="68">68</a>
 <a href="#69" id="69">69</a>
 <a href="#70" id="70">70</a>
+<a href="#71" id="71">71</a>
+<a href="#72" id="72">72</a>
+<a href="#73" id="73">73</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Binary crate targeting stm32f4 family microcontrollers.
 </span><span class="attr">#![deny(unsafe_code)]
 #![no_main]
@@ -83,8 +86,8 @@
 <span class="kw">use </span>heapless::Vec;
 <span class="kw">pub use </span>sd_logger::SdLogger;
 <span class="kw">pub use </span>startup::{
-    Bme280, Bme280Error, Delay, Gps, I2c1Devices, Led, Lis3dh, Lis3dhError, Lora, LoraError,
-    SdmmcController, SdmmcError,
+    Bme280, Bme280Error, Buzzer, Delay, Gps, I2c1Devices, Led, Lis3dh, Lis3dhError, Lora,
+    LoraError, SdmmcController, SdmmcError,
 };
 
 <span class="attr">#[cfg(debug_assertions)]
@@ -111,6 +114,7 @@
     </span><span class="kw">pub struct </span>Local {
         <span class="kw">pub </span>delay: Delay,
         <span class="kw">pub </span>led: Led,
+        <span class="kw">pub </span>buzzer: Buzzer,
         <span class="kw">pub </span>sd_logger: <span class="prelude-ty">Option</span>&lt;SdLogger&gt;,
         <span class="kw">pub </span>tracker: accelerometer::Tracker,
         <span class="kw">pub </span>i2c1_devices: I2c1Devices,
@@ -136,6 +140,8 @@
 
         <span class="attr">#[task(local = [led]</span>, priority = <span class="number">1</span>)]
         <span class="kw">async fn </span>blink(ctx: blink::Context);
+        <span class="attr">#[task(local = [buzzer]</span>, priority = <span class="number">1</span>)]
+        <span class="kw">async fn </span>buzz(ctx: buzz::Context);
     }
 }
 </code></pre></div></section></main></body></html>

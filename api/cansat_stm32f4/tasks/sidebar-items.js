@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["blink","gps_irq","idle","read_measurements","send_lora_package","send_meas"]};
+window.SIDEBAR_ITEMS = {"fn":["blink","buzz","gps_irq","idle","read_measurements","send_lora_package","send_meas"]};
