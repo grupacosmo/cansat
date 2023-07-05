@@ -15,6 +15,7 @@ use stm32f4xx_hal::{
 
 pub type Delay = DelayUs<pac::TIM3>;
 pub type Led = gpio::PC13<gpio::Output>;
+pub type Buzzer = gpio::PA8<gpio::Output>;
 pub type Gps = cansat_gps::Gps<Serial1, 256>;
 pub type GpsError = cansat_gps::Error<serial::Error>;
 pub type Lora = cansat_lora::Lora<Serial6>;
@@ -44,6 +45,7 @@ pub fn init(ctx: app::init::Context) -> (app::Shared, app::Local) {
     });
 
     app::blink::spawn().unwrap();
+    app::buzz::spawn().unwrap();
     app::send_meas::spawn().unwrap();
 
     let shared = app::Shared {
@@ -53,6 +55,7 @@ pub fn init(ctx: app::init::Context) -> (app::Shared, app::Local) {
     let local = app::Local {
         delay: cansat.delay,
         led: cansat.led,
+        buzzer: cansat.buzzer,
         sd_logger: cansat.sd_logger,
         tracker: cansat.tracker,
         i2c1_devices: cansat.i2c1_devices,
@@ -65,6 +68,7 @@ pub fn init(ctx: app::init::Context) -> (app::Shared, app::Local) {
 struct Drivers {
     pub delay: Delay,
     pub led: Led,
+    pub buzzer: Buzzer,
     pub gps: Gps,
     pub lora: Option<Lora>,
     pub sd_logger: Option<SdLogger>,
@@ -80,6 +84,7 @@ pub struct I2c1Devices {
 struct Board {
     pub delay: Delay,
     pub led: Led,
+    pub buzzer: Buzzer,
     pub i2c1: I2c1,
     pub serial1: Serial1,
     pub serial6: Serial6,
@@ -133,6 +138,7 @@ fn init_drivers(mut board: Board, statik: &'static mut Statik) -> Result<Drivers
     Ok(Drivers {
         delay: board.delay,
         led: board.led,
+        buzzer: board.buzzer,
         gps,
         lora,
         sd_logger,
@@ -229,6 +235,7 @@ fn init_board(device: pac::Peripherals) -> Board {
     let gpioc = device.GPIOC.split();
 
     let led = gpioc.pc13.into_push_pull_output();
+    let buzzer = gpioa.pa8.into_push_pull_output();
 
     let i2c1 = {
         let scl1 = gpiob
@@ -285,6 +292,7 @@ fn init_board(device: pac::Peripherals) -> Board {
     Board {
         delay,
         led,
+        buzzer,
         i2c1,
         serial1,
         serial6,

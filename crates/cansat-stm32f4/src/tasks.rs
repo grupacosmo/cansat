@@ -146,3 +146,13 @@ pub async fn blink(ctx: app::blink::Context<'_>) {
         Systick::delay(1.secs()).await;
     }
 }
+
+/// Toggle buzzer every second
+pub async fn buzz(ctx: app::buzz::Context<'_>) {
+    let buzzer = ctx.local.buzzer;
+    loop {
+        buzzer.toggle();
+        defmt::debug!("Buzz");
+        Systick::delay(3.secs()).await;
+    }
+}

@@ -13,8 +13,8 @@ mod tasks;
 use heapless::Vec;
 pub use sd_logger::SdLogger;
 pub use startup::{
-    Bme280, Bme280Error, Delay, Gps, I2c1Devices, Led, Lis3dh, Lis3dhError, Lora, LoraError,
-    SdmmcController, SdmmcError,
+    Bme280, Bme280Error, Buzzer, Delay, Gps, I2c1Devices, Led, Lis3dh, Lis3dhError, Lora,
+    LoraError, SdmmcController, SdmmcError,
 };
 
 #[cfg(debug_assertions)]
@@ -41,6 +41,7 @@ mod app {
     pub struct Local {
         pub delay: Delay,
         pub led: Led,
+        pub buzzer: Buzzer,
         pub sd_logger: Option<SdLogger>,
         pub tracker: accelerometer::Tracker,
         pub i2c1_devices: I2c1Devices,
@@ -66,5 +67,7 @@ mod app {
 
         #[task(local = [led], priority = 1)]
         async fn blink(ctx: blink::Context);
+        #[task(local = [buzzer], priority = 1)]
+        async fn buzz(ctx: buzz::Context);
     }
 }
