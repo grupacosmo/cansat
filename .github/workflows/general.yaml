@@ -25,12 +25,11 @@ jobs:
             ~/.cargo/git
             target
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-      - name: Install stable toolchain
-        uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: stable
-          target: thumbv7em-none-eabihf
-          override: true
+          toolchain: nightly-2023-06-01
+          targets: "thumbv7em-none-eabihf"
+      - run: sudo apt-get install libudev-dev
       - uses: actions-rs/cargo@v1
         with:
           command: xtask
@@ -44,10 +43,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: stable
-          override: true
+          toolchain: nightly-2023-06-01
           components: rustfmt
       - uses: actions-rs/cargo@v1
         with:
@@ -67,12 +65,11 @@ jobs:
             ~/.cargo/git
             target
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-      - uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: stable
-          target: thumbv7em-none-eabihf
-          override: true
+          toolchain: nightly-2023-06-01
           components: clippy
+      - run: sudo apt-get install libudev-dev
       - uses: actions-rs/cargo@v1
         with:
           command: clippy

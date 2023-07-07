@@ -53,6 +53,7 @@ impl<SerialError> From<SerialError> for Error<SerialError> {
     }
 }
 
+#[cfg(feature = "defmt")]
 impl<SerialError> defmt::Format for Error<SerialError>
 where
     SerialError: Display,

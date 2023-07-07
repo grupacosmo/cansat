@@ -5,5 +5,7 @@ members = [
     "crates/cansat-stm32f4",
     "crates/cansat-test-utils",
     "crates/cansat-lora",
+    "tools/lora-cli",
     "xtask"
 ]
+resolver = "2"

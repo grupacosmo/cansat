@@ -1,5 +1,6 @@
 [alias]
-xtask = "run --package xtask --"
+xtask = "run --package xtask --release --"
+lora-cli = "run --package lora-cli --release --"
 
 [env]
 CARGO_WORKSPACE_DIR = { value = "", relative = true }
