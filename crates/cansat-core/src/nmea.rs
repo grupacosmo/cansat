@@ -14,7 +14,7 @@ pub struct NmeaGga(GgaData);
 
 impl NmeaGga {
     pub fn try_new(bytes: &[u8]) -> Result<NmeaGga, Error> {
-        let ParseResult::GGA(gga) = nmea::parse_bytes(bytes).map_err(|e| Error::ParsingFailed(e))? else {
+        let ParseResult::GGA(gga) = nmea::parse_bytes(bytes).map_err(Error::ParsingFailed)? else {
             return Err(Error::InvalidCommand)
         };
 
