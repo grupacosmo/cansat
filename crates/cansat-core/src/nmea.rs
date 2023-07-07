@@ -1,11 +1,15 @@
-use defmt::Format;
-pub use nmea::sentences::{FixType, GgaData};
+use nmea::sentences::{FixType, GgaData};
 use nmea::ParseResult;
 use serde::Serialize;
 
-#[derive(Format)]
+#[cfg(feature = "defmt")]
+use defmt::Format;
+
+#[cfg_attr(feature = "defmt", derive(Format))]
+#[derive(Debug)]
 pub enum Error<'a> {
-    ParsingFailed(#[defmt(Debug2Format)] nmea::Error<'a>),
+    //#[cfg_attr(feature = "defmt", defmt(Debug2Format))]
+    ParsingFailed(#[cfg_attr(feature = "defmt", defmt(Debug2Format))] nmea::Error<'a>),
     InvalidCommand,
 }
 
@@ -29,6 +33,7 @@ impl NmeaGga {
     }
 }
 
+#[cfg(feature = "defmt")]
 impl Format for NmeaGga {
     fn format(&self, fmt: defmt::Formatter) {
         defmt::write!(

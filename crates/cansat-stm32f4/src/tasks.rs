@@ -80,7 +80,10 @@ fn read_measurements(ctx: &mut app::idle::Context) -> Measurements {
                 data.nmea = Some(gga);
             }
             Err(e) => {
-                defmt::error!("Could not read NMEA GGA command: {}", e);
+                defmt::error!(
+                    "Could not read NMEA GGA command: {}",
+                    defmt::Debug2Format(&e)
+                );
             }
         }
     }
