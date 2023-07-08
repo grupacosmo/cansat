@@ -8,7 +8,6 @@ use defmt::Format;
 #[cfg_attr(feature = "defmt", derive(Format))]
 #[derive(Debug)]
 pub enum Error<'a> {
-    //#[cfg_attr(feature = "defmt", defmt(Debug2Format))]
     ParsingFailed(#[cfg_attr(feature = "defmt", defmt(Debug2Format))] nmea::Error<'a>),
     InvalidCommand,
 }
