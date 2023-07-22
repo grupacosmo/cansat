@@ -18,9 +18,7 @@ heapless-bytes = "0.3.0"
 defmt = { version = "0.3.4", optional = true }
 
 [dependencies.nmea]
-git = "https://github.com/grupacosmo/nmea.git"
-branch = "serde_support"
-version = "0.5.0"
+git = "https://github.com/AeroRust/nmea"
 default-features = false
 features = ["serde"]
 
