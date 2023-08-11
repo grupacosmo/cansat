@@ -28,7 +28,7 @@ pub fn idle(mut ctx: app::idle::Context) -> ! {
                 takeoff_detection_readings = 0;
             }
 
-            if takeoff_detection_readings == 1 {
+            if takeoff_detection_readings == 3 {
                 defmt::info!("Cansat has taken off.");
                 takeoff_detection_readings = -1;
             } else {
