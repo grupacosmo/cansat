@@ -7,7 +7,7 @@ use std::{
 use clap::Parser;
 use eyre::{eyre, Result, WrapErr};
 use once_cell::sync::Lazy;
-use regex::{Regex};
+use regex::Regex;
 use serialport::{SerialPort, SerialPortType, UsbPortInfo};
 
 #[derive(Debug, clap::Parser)]
@@ -135,10 +135,8 @@ fn receive(args: PortArgs) -> Result<()> {
     Ok(())
 }
 
-fn process_message(msg : &String) {
-    let parsed =
-        parse_received_message(&msg)
-            .unwrap_or_else(|e| e.to_string());
+fn process_message(msg: &str) {
+    let parsed = parse_received_message(msg).unwrap_or_else(|e| e.to_string());
 
     eprintln!("{parsed}");
 }
@@ -228,19 +226,19 @@ fn parse_received_message(input: &str) -> Result<String> {
         .wrap_err("Failed to decode rx hex")?;
 
     let message = bytes
-        .map(|bytes| String::from_utf8(bytes))
+        .map(String::from_utf8)
         .transpose()
         .wrap_err("Failed to parse rx")?;
 
     let mut msg = String::new();
 
-    if signal_strength_dBm != None && signal_to_noise_dB != None {
+    if signal_strength_dBm.is_some() && signal_to_noise_dB.is_some() {
         msg = format!(
             "Signal strength: {} dBm, Noise level: {} dB",
             signal_strength_dBm.unwrap(),
             signal_to_noise_dB.unwrap()
         )
-    } else if message != None {
+    } else if message.is_some() {
         // TODO: if ID matches config, use println! to save this to file
         // Do it here or in format_cansat_data()
         // println!("{message:?}");
@@ -254,8 +252,8 @@ fn parse_received_message(input: &str) -> Result<String> {
     Ok(msg)
 }
 
-fn format_cansat_data(data: &String) -> Result<String> {
-    let measurements = decode_cansat_data_from_string(&data)?;
+fn format_cansat_data(data: &str) -> Result<String> {
+    let measurements = decode_cansat_data_from_string(data)?;
 
     let formatted = format!(
         "{}°C | {}Pa | {}m npm | nmea: {}",
@@ -267,11 +265,11 @@ fn format_cansat_data(data: &String) -> Result<String> {
 
     Ok(formatted)
 }
-fn decode_cansat_data_from_string(data: &String) -> Result<Measurements> {
+fn decode_cansat_data_from_string(data: &str) -> Result<Measurements> {
     // TODO replace to Regex or csv parser
     //      Bartuś requested stupid split option bc he does not understand regex
 
-    let split : Vec<&str> = data.splitn(4, ",").collect();
+    let split: Vec<&str> = data.splitn(4, ',').collect();
     if split.len() != 4 {
         return Err(eyre!("Unknown data format"));
     }
@@ -288,12 +286,11 @@ fn decode_cansat_data_from_string(data: &String) -> Result<Measurements> {
 
 fn non_empty_text(text: &str) -> Option<f32> {
     if text.is_empty() {
-        return None
+        return None;
     }
 
     text.parse().ok()
 }
-
 
 pub struct Measurements {
     pub temperature: Option<f32>,
@@ -350,13 +347,21 @@ mod test {
     #[test]
     fn test_parse_received_message_strength() {
         let msg1 = parse_received_message("+TEST: LEN:250, RSSI:-106, SNR:10\r\n");
-        assert_eq!(msg1.unwrap(), "Signal strength: -106 dBm, Noise level: 10 dB");
+        assert_eq!(
+            msg1.unwrap(),
+            "Signal strength: -106 dBm, Noise level: 10 dB"
+        );
     }
 
     #[test]
     fn test_parse_received_message_rx() {
-        let msg2 = parse_received_message("+TEST: RX \"32362E3139333631392C39393537312E38322C3134342E39333932392C2C2C2C2C\"\r\n");
-        assert_eq!(msg2.unwrap(), "26°C   | 99Pa   | 144.93929m npm | nmea: ,,,,"); // unknown data format
+        let msg2 = parse_received_message(
+            "+TEST: RX \"32362E3139333631392C39393537312E38322C3134342E39333932392C2C2C2C2C\"\r\n",
+        );
+        assert_eq!(
+            msg2.unwrap(),
+            "26°C   | 99Pa   | 144.93929m npm | nmea: ,,,,"
+        );
     }
 
     #[test]
