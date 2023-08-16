@@ -227,7 +227,7 @@ fn parse_received_message(input: &str) -> Result<String> {
 
     let mut msg = String::new();
 
-    if signal_strength_dbm.is_some() && signal_to_noise_db.is_some() {
+    if signal_strength_dBm != None && signal_to_noise_dB != None {
         msg = format!(
             "Signal strength: {} dBm, Noise level: {} dB",
             signal_strength_dbm.unwrap(),
@@ -248,8 +248,7 @@ fn parse_received_message(input: &str) -> Result<String> {
 }
 
 fn format_cansat_data(data: &String) -> Result<String> {
-    println!("raw str: {}", data);
-    let measurements = decode_cansat_data_from_string(data)?;
+    let measurements = decode_cansat_data_from_string(&data)?;
 
     let formatted = format!(
         "{}°C | {}Pa | {}m npm | nmea: {}",
@@ -351,13 +350,8 @@ mod test {
 
     #[test]
     fn test_parse_received_message_rx() {
-        let msg2 = parse_received_message(
-            "+TEST: RX \"32362E3139333631392C39393537312E38322C3134342E39333932392C2C2C2C2C\"\r\n",
-        );
-        assert_eq!(
-            msg2.unwrap(),
-            "26°C   | 99Pa   | 144.93929m npm | nmea: ,,,,"
-        ); // unknown data format
+        let msg2 = parse_received_message("+TEST: RX \"32362E3139333631392C39393537312E38322C3134342E39333932392C2C2C2C2C\"\r\n");
+        assert_eq!(msg2.unwrap(), "26°C   | 99Pa   | 144.93929m npm | nmea: ,,,,"); // unknown data format
     }
 
     #[test]
