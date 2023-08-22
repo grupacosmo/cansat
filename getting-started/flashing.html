@@ -159,9 +159,38 @@
 <p align="center">
 <img src="assets/mcu-stlink-pins.png">
 </p>
-<p>Connect the ST-Link and the MCU into your PC using USB cables and run the following command from command-line:</p>
-<pre><code>cargo xtask embed cansat-stm32f4
+<p>Connect the ST-Link and the MCU into your PC using USB cables and run the following command from command-line inside cansat repository:</p>
+<pre><code>cargo xtask embed
 </code></pre>
+<h2 id="using-standalone-st-link"><a class="header" href="#using-standalone-st-link">Using standalone ST-LINK</a></h2>
+<ol>
+<li>Connect the vires according to schematic below:</li>
+</ol>
+<p>
+<img src="https://github.com/grupacosmo/cansat/assets/92270288/cedabacc-694a-4266-8d2e-87d94bb18612">
+</p>
+<ol start="2">
+<li>Connect the ST-Link and the MCU into your PC using USB cables and run the following command from command-line inside cansat repository:</li>
+</ol>
+<pre><code>cargo xtask embed
+</code></pre>
+<h2 id="using-dfu"><a class="header" href="#using-dfu">Using DFU</a></h2>
+<p>This should work right away on Linux.
+On windows you have to download LibusbK (you can pick it in Zadig program).</p>
+<p><strong>Info: libusb-win32 did not work when testing</strong></p>
+<p>Run:</p>
+<pre><code>cargo install cargo-dfu
+</code></pre>
+<p>Connect your board to USB, hold BOOT0 button, press NRST button and release BOOT0 button. This should run the MCU in bootloader mode.
+<strong>The blue LED will not flash when inside this mode. Red LED will be on constantly</strong></p>
+<p>Change directory to the project you want to flash, e.g</p>
+<pre><code>cd crates/cansat-stm32f4
+</code></pre>
+<p>and run </p>
+<pre><code>cargo dfu
+</code></pre>
+<h3 id="troubleshooting"><a class="header" href="#troubleshooting">Troubleshooting</a></h3>
+<p>If your device is not properly recognized by your system, try to disconnect all serial peripherals and repeat.</p>
 
                     </main>
 

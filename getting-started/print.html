@@ -155,16 +155,20 @@
 <img src="assets/bme280.jpg" width="400px">
 </p>
 <ul>
-<li>MicroSD card reader: <a href="https://www.waveshare.com/micro-sd-storage-board.htm">WaveShare 3947</a></li>
+<li>MicroSD card reader: <a href="https://www.waveshare.com/micro-sd-storage-board.htm">WaveShare 3947</a> 
+Changed to <a href="https://sklep.msalamon.pl/produkt/modul-czytnika-kart-micro-sd/">Mini Micro SD Card Reader</a></li>
 </ul>
 <p align="center">
 <img src="assets/waveshare-3947.webp" width="400px">
+<img src="https://sklep.msalamon.pl/wp-content/uploads/2020/06/sklep_msalamon_MICROSD_READER_SPI_MOD_2.png" width="400px">
 </p>
 <ul>
-<li>Accelerometer: <a href="https://www.st.com/en/mems-and-sensors/lis3dh.html">ST LIS3DH</a></li>
+<li>Accelerometer: <a href="https://www.st.com/en/mems-and-sensors/lis3dh.html">ST LIS3DH</a>
+Changed to <a href="https://invensense.tdk.com/products/motion-tracking/6-axis/mpu-6050/">MPU6050</a></li>
 </ul>
 <p align="center">
 <img src="assets/lis3dh.jpg" width="400px">
+<img src="https://sklep.msalamon.pl/wp-content/uploads/2019/03/sklep_msalamon_MPU6050_MOD.png" width="400px">
 </p>
 <ul>
 <li>LoRa: <a href="https://www.seeedstudio.com/LoRa-E5-mini-STM32WLE5JC-p-4869.html">seeed studio WIo-E5 mini</a></li>
@@ -179,8 +183,9 @@
 <img src="assets/breadboard-mcu.png" width="200px">
 </p>
 <h2 id="connections-schematic"><a class="header" href="#connections-schematic">Connections schematic</a></h2>
+<p>This Schematic is for the 3rd version of PCB</p>
 <p align="center">
-<img src="assets/Schematic_cansat_2023-02-27.png">
+<img src="assets/PCB3.png">
 </p>
 <h2 id="stm32f411ceu6-pinout"><a class="header" href="#stm32f411ceu6-pinout">STM32f411CEU6 Pinout</a></h2>
 <p align="center">
@@ -210,9 +215,38 @@
 <p align="center">
 <img src="assets/mcu-stlink-pins.png">
 </p>
-<p>Connect the ST-Link and the MCU into your PC using USB cables and run the following command from command-line:</p>
-<pre><code>cargo xtask embed cansat-stm32f4
+<p>Connect the ST-Link and the MCU into your PC using USB cables and run the following command from command-line inside cansat repository:</p>
+<pre><code>cargo xtask embed
 </code></pre>
+<h2 id="using-standalone-st-link"><a class="header" href="#using-standalone-st-link">Using standalone ST-LINK</a></h2>
+<ol>
+<li>Connect the vires according to schematic below:</li>
+</ol>
+<p>
+<img src="https://github.com/grupacosmo/cansat/assets/92270288/cedabacc-694a-4266-8d2e-87d94bb18612">
+</p>
+<ol start="2">
+<li>Connect the ST-Link and the MCU into your PC using USB cables and run the following command from command-line inside cansat repository:</li>
+</ol>
+<pre><code>cargo xtask embed
+</code></pre>
+<h2 id="using-dfu"><a class="header" href="#using-dfu">Using DFU</a></h2>
+<p>This should work right away on Linux.
+On windows you have to download LibusbK (you can pick it in Zadig program).</p>
+<p><strong>Info: libusb-win32 did not work when testing</strong></p>
+<p>Run:</p>
+<pre><code>cargo install cargo-dfu
+</code></pre>
+<p>Connect your board to USB, hold BOOT0 button, press NRST button and release BOOT0 button. This should run the MCU in bootloader mode.
+<strong>The blue LED will not flash when inside this mode. Red LED will be on constantly</strong></p>
+<p>Change directory to the project you want to flash, e.g</p>
+<pre><code>cd crates/cansat-stm32f4
+</code></pre>
+<p>and run </p>
+<pre><code>cargo dfu
+</code></pre>
+<h3 id="troubleshooting"><a class="header" href="#troubleshooting">Troubleshooting</a></h3>
+<p>If your device is not properly recognized by your system, try to disconnect all serial peripherals and repeat.</p>
 
                     </main>
 
