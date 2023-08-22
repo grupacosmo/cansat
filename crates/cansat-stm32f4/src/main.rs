@@ -13,7 +13,7 @@ mod tasks;
 use heapless::Vec;
 pub use sd_logger::SdLogger;
 pub use startup::{
-    Bme280, Bme280Error, Buzzer, Delay, Gps, I2c1Devices, Led, Lis3dh, Lis3dhError, Lora,
+    Bme280, Bme280Error, Buzzer, Delay, Gps, I2c1Devices, Led , Lora,
     LoraError, SdmmcController, SdmmcError,
 };
 

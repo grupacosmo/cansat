@@ -16,11 +16,14 @@ pub struct Measurements {
 
     pub nmea: Option<Bytes<256>>,
 
-    #[serde(serialize_with = "option_vector_i16x3")]
-    pub acceleration: Option<vector::I16x3>,
+    #[serde(serialize_with = "option_vector_f32x3")]
+    pub acceleration: Option<vector::F32x3>,
 
-    #[serde(serialize_with = "option_orientation")]
-    pub orientation: Option<Orientation>,
+    #[serde(serialize_with = "option_vector_f32x3")]
+    pub gyro: Option<vector::F32x3>,
+
+    #[serde(serialize_with = "option_vector_f32x2")]
+    pub rollpitch: Option<vector::F32x2>,
 }
 
 fn option_temperature_celsius<S>(v: &Option<Temperature>, s: S) -> Result<S::Ok, S::Error>
@@ -66,6 +69,26 @@ where
     }
 }
 
+fn option_vector_f32x2<S>(v: &Option<vector::F32x2>, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    match v {
+        Some(v) => (v.x, v.y).serialize(serializer),
+        None => ((), ()).serialize(serializer),
+    }
+}
+
+fn option_vector_f32x3<S>(v: &Option<vector::F32x3>, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    match v {
+        Some(v) => (v.x, v.y, v.z).serialize(serializer),
+        None => ((), ()).serialize(serializer),
+    }
+}
+
 fn option_orientation<S>(
     v: &Option<accelerometer::Orientation>,
     serializer: S,
@@ -81,14 +104,35 @@ impl defmt::Format for Measurements {
     fn format(&self, fmt: defmt::Formatter) {
         defmt::write!(
             fmt,
-            "temp: {}, pres: {}, alt: {}, accel: {}, orient: {}, nmea: {}",
+            "temp: {}, pres: {}, alt: {}, nmea: {}, acc: {}, gyro: {}, rollpitch: {}",
             OrError(&self.temperature.map(Celsius)),
             OrError(&self.pressure.map(HectoPascals)),
             OrError(&self.altitude.map(Meters)),
-            OrError(&self.acceleration.map(|v| (v.x, v.y, v.z))),
-            OrError(&self.orientation.as_ref().map(defmt::Debug2Format)),
-            OrError(&self.nmea.as_ref().map(|v| Ascii(v)))
+
+            OrError(&self.nmea.as_ref().map(|v| Ascii(v))),
+
+            OrError(&self.acceleration.map(Vector3)),
+            OrError(&self.gyro.map(Vector3)),
+            OrError(&self.rollpitch.map(Vector2)),
         );
+    }
+}
+
+struct Vector2(pub vector::F32x2);
+
+#[cfg(feature = "defmt")]
+impl defmt::Format for Vector2 {
+    fn format(&self, fmt: defmt::Formatter) {
+        defmt::write!(fmt, "{}, {}", self.0.x, self.0.y);
+    }
+}
+
+struct Vector3(pub vector::F32x3);
+
+#[cfg(feature = "defmt")]
+impl defmt::Format for Vector3 {
+    fn format(&self, fmt: defmt::Formatter) {
+        defmt::write!(fmt, "{}, {}, {}", self.0.x, self.0.y, self.0.z);
     }
 }
 
