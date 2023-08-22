@@ -6,6 +6,8 @@ members = [
     "crates/cansat-test-utils",
     "crates/cansat-lora",
     "tools/lora-cli",
+    "tools/flight-visualizer",
+    "tools/dummy-lora-receiver",
     "xtask"
 ]
 resolver = "2"
