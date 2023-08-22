@@ -140,8 +140,18 @@
 <a href="#140" id="140">140</a>
 <a href="#141" id="141">141</a>
 <a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
+<a href="#147" id="147">147</a>
+<a href="#148" id="148">148</a>
+<a href="#149" id="149">149</a>
+<a href="#150" id="150">150</a>
+<a href="#151" id="151">151</a>
+<a href="#152" id="152">152</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::quantity::{Distance, Pressure, Temperature};
-<span class="kw">use </span>accelerometer::{vector, Orientation};
+<span class="kw">use </span>accelerometer::vector;
 <span class="kw">use </span>heapless_bytes::Bytes;
 <span class="kw">use </span>serde::Serialize;
 
@@ -158,11 +168,14 @@
 
     <span class="kw">pub </span>nmea: <span class="prelude-ty">Option</span>&lt;Bytes&lt;<span class="number">256</span>&gt;&gt;,
 
-    <span class="attr">#[serde(serialize_with = <span class="string">&quot;option_vector_i16x3&quot;</span>)]
-    </span><span class="kw">pub </span>acceleration: <span class="prelude-ty">Option</span>&lt;vector::I16x3&gt;,
+    <span class="attr">#[serde(serialize_with = <span class="string">&quot;option_vector_f32x3&quot;</span>)]
+    </span><span class="kw">pub </span>acceleration: <span class="prelude-ty">Option</span>&lt;vector::F32x3&gt;,
 
-    <span class="attr">#[serde(serialize_with = <span class="string">&quot;option_orientation&quot;</span>)]
-    </span><span class="kw">pub </span>orientation: <span class="prelude-ty">Option</span>&lt;Orientation&gt;,
+    <span class="attr">#[serde(serialize_with = <span class="string">&quot;option_vector_f32x3&quot;</span>)]
+    </span><span class="kw">pub </span>gyro: <span class="prelude-ty">Option</span>&lt;vector::F32x3&gt;,
+
+    <span class="attr">#[serde(serialize_with = <span class="string">&quot;option_vector_f32x2&quot;</span>)]
+    </span><span class="kw">pub </span>rollpitch: <span class="prelude-ty">Option</span>&lt;vector::F32x2&gt;,
 }
 
 <span class="kw">fn </span>option_temperature_celsius&lt;S&gt;(v: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span>&lt;Temperature&gt;, s: S) -&gt; <span class="prelude-ty">Result</span>&lt;S::Ok, S::Error&gt;
@@ -186,36 +199,24 @@
     v.map(|v| v.as_meters()).serialize(s)
 }
 
-<span class="kw">fn </span>orientation_to_str(v: Orientation) -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str {
+<span class="kw">fn </span>option_vector_f32x2&lt;S&gt;(v: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span>&lt;vector::F32x2&gt;, serializer: S) -&gt; <span class="prelude-ty">Result</span>&lt;S::Ok, S::Error&gt;
+<span class="kw">where
+    </span>S: serde::Serializer,
+{
     <span class="kw">match </span>v {
-        Orientation::Unknown =&gt; <span class="string">&quot;unknown&quot;</span>,
-        Orientation::PortraitUp =&gt; <span class="string">&quot;portrait up&quot;</span>,
-        Orientation::PortraitDown =&gt; <span class="string">&quot;portrait down&quot;</span>,
-        Orientation::LandscapeUp =&gt; <span class="string">&quot;landscape up&quot;</span>,
-        Orientation::LandscapeDown =&gt; <span class="string">&quot;landscape down&quot;</span>,
-        Orientation::FaceUp =&gt; <span class="string">&quot;face up&quot;</span>,
-        Orientation::FaceDown =&gt; <span class="string">&quot;face down&quot;</span>,
+        <span class="prelude-val">Some</span>(v) =&gt; (v.x, v.y).serialize(serializer),
+        <span class="prelude-val">None </span>=&gt; ((), ()).serialize(serializer),
     }
 }
 
-<span class="kw">fn </span>option_vector_i16x3&lt;S&gt;(v: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span>&lt;vector::I16x3&gt;, serializer: S) -&gt; <span class="prelude-ty">Result</span>&lt;S::Ok, S::Error&gt;
+<span class="kw">fn </span>option_vector_f32x3&lt;S&gt;(v: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span>&lt;vector::F32x3&gt;, serializer: S) -&gt; <span class="prelude-ty">Result</span>&lt;S::Ok, S::Error&gt;
 <span class="kw">where
     </span>S: serde::Serializer,
 {
     <span class="kw">match </span>v {
         <span class="prelude-val">Some</span>(v) =&gt; (v.x, v.y, v.z).serialize(serializer),
-        <span class="prelude-val">None </span>=&gt; ((), (), ()).serialize(serializer),
+        <span class="prelude-val">None </span>=&gt; ((), ()).serialize(serializer),
     }
-}
-
-<span class="kw">fn </span>option_orientation&lt;S&gt;(
-    v: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span>&lt;accelerometer::Orientation&gt;,
-    serializer: S,
-) -&gt; <span class="prelude-ty">Result</span>&lt;S::Ok, S::Error&gt;
-<span class="kw">where
-    </span>S: serde::Serializer,
-{
-    v.map(orientation_to_str).serialize(serializer)
 }
 
 <span class="attr">#[cfg(feature = <span class="string">&quot;defmt&quot;</span>)]
@@ -223,14 +224,33 @@
     <span class="kw">fn </span>format(<span class="kw-2">&amp;</span><span class="self">self</span>, fmt: defmt::Formatter) {
         <span class="macro">defmt::write!</span>(
             fmt,
-            <span class="string">&quot;temp: {}, pres: {}, alt: {}, accel: {}, orient: {}, nmea: {}&quot;</span>,
+            <span class="string">&quot;temp: {}, pres: {}, alt: {}, nmea: {}, acc: {}, gyro: {}, rollpitch: {}&quot;</span>,
             OrError(<span class="kw-2">&amp;</span><span class="self">self</span>.temperature.map(Celsius)),
             OrError(<span class="kw-2">&amp;</span><span class="self">self</span>.pressure.map(HectoPascals)),
             OrError(<span class="kw-2">&amp;</span><span class="self">self</span>.altitude.map(Meters)),
-            OrError(<span class="kw-2">&amp;</span><span class="self">self</span>.acceleration.map(|v| (v.x, v.y, v.z))),
-            OrError(<span class="kw-2">&amp;</span><span class="self">self</span>.orientation.as_ref().map(defmt::Debug2Format)),
-            OrError(<span class="kw-2">&amp;</span><span class="self">self</span>.nmea.as_ref().map(|v| Ascii(v)))
+            OrError(<span class="kw-2">&amp;</span><span class="self">self</span>.nmea.as_ref().map(|v| Ascii(v))),
+            OrError(<span class="kw-2">&amp;</span><span class="self">self</span>.acceleration.map(Vector3)),
+            OrError(<span class="kw-2">&amp;</span><span class="self">self</span>.gyro.map(Vector3)),
+            OrError(<span class="kw-2">&amp;</span><span class="self">self</span>.rollpitch.map(Vector2)),
         );
+    }
+}
+
+<span class="kw">struct </span>Vector2(<span class="kw">pub </span>vector::F32x2);
+
+<span class="attr">#[cfg(feature = <span class="string">&quot;defmt&quot;</span>)]
+</span><span class="kw">impl </span>defmt::Format <span class="kw">for </span>Vector2 {
+    <span class="kw">fn </span>format(<span class="kw-2">&amp;</span><span class="self">self</span>, fmt: defmt::Formatter) {
+        <span class="macro">defmt::write!</span>(fmt, <span class="string">&quot;{}, {}&quot;</span>, <span class="self">self</span>.<span class="number">0</span>.x, <span class="self">self</span>.<span class="number">0</span>.y);
+    }
+}
+
+<span class="kw">struct </span>Vector3(<span class="kw">pub </span>vector::F32x3);
+
+<span class="attr">#[cfg(feature = <span class="string">&quot;defmt&quot;</span>)]
+</span><span class="kw">impl </span>defmt::Format <span class="kw">for </span>Vector3 {
+    <span class="kw">fn </span>format(<span class="kw-2">&amp;</span><span class="self">self</span>, fmt: defmt::Formatter) {
+        <span class="macro">defmt::write!</span>(fmt, <span class="string">&quot;{}, {}, {}&quot;</span>, <span class="self">self</span>.<span class="number">0</span>.x, <span class="self">self</span>.<span class="number">0</span>.y, <span class="self">self</span>.<span class="number">0</span>.z);
     }
 }
 

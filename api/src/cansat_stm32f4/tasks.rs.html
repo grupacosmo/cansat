@@ -156,8 +156,10 @@
 <a href="#156" id="156">156</a>
 <a href="#157" id="157">157</a>
 <a href="#158" id="158">158</a>
+<a href="#159" id="159">159</a>
+<a href="#160" id="160">160</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{app, error::Error, startup::LoraError};
-<span class="kw">use </span>accelerometer::RawAccelerometer;
+<span class="kw">use </span>accelerometer::vector;
 <span class="kw">use </span>cansat_core::{
     quantity::{Pressure, Temperature},
     Measurements,
@@ -202,7 +204,7 @@
     <span class="kw">let </span>i2c1_devices = <span class="kw-2">&amp;mut </span>ctx.local.i2c1_devices;
     <span class="kw">let </span>delay = <span class="kw-2">&amp;mut </span>ctx.local.delay;
     <span class="kw">let </span>gps = <span class="kw-2">&amp;mut </span>ctx.shared.gps;
-    <span class="kw">let </span>tracker = <span class="kw-2">&amp;mut </span>ctx.local.tracker;
+    <span class="kw">let </span>_tracker = <span class="kw-2">&amp;mut </span>ctx.local.tracker;
 
     <span class="kw">let </span><span class="kw-2">mut </span>data = Measurements::default();
 
@@ -232,17 +234,19 @@
         data.nmea = <span class="prelude-val">Some</span>(nmea.into());
     }
 
-    <span class="kw">if let </span><span class="prelude-val">Some</span>(lis3dh) = <span class="kw-2">&amp;mut </span>i2c1_devices.lis3dh {
-        <span class="kw">match </span>lis3dh.accel_raw() {
-            <span class="prelude-val">Ok</span>(accel) =&gt; {
-                <span class="kw">let </span>orientation = tracker.update(accel);
-                data.acceleration = <span class="prelude-val">Some</span>(accel);
-                data.orientation = <span class="prelude-val">Some</span>(orientation);
-            }
-            <span class="prelude-val">Err</span>(e) =&gt; {
-                <span class="macro">defmt::error!</span>(<span class="string">&quot;Could not read acceleration: {}&quot;</span>, defmt::Debug2Format(<span class="kw-2">&amp;</span>e));
-            }
-        }
+    <span class="kw">if let </span><span class="prelude-val">Some</span>(mpu) = <span class="kw-2">&amp;mut </span>i2c1_devices.mpu {
+        data.rollpitch = mpu
+            .get_acc_angles()
+            .ok()
+            .map(|v| vector::F32x2::new(v.x, v.y));
+        data.gyro = mpu
+            .get_gyro()
+            .ok()
+            .map(|v| vector::F32x3::new(v.x, v.y, v.z));
+        data.acceleration = mpu
+            .get_acc()
+            .ok()
+            .map(|v| vector::F32x3::new(v.x, v.y, v.z));
     }
 
     data

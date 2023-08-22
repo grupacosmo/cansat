@@ -315,11 +315,20 @@
 <a href="#315" id="315">315</a>
 <a href="#316" id="316">316</a>
 <a href="#317" id="317">317</a>
+<a href="#318" id="318">318</a>
+<a href="#319" id="319">319</a>
+<a href="#320" id="320">320</a>
+<a href="#321" id="321">321</a>
+<a href="#322" id="322">322</a>
+<a href="#323" id="323">323</a>
+<a href="#324" id="324">324</a>
+<a href="#325" id="325">325</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::app;
 <span class="kw">use crate</span>::{error::Error, SdLogger};
 <span class="kw">use </span>cansat_lora::ResponseContent;
-<span class="kw">use </span>core::convert::Infallible;
+
 <span class="kw">use </span>heapless::Vec;
+<span class="kw">use </span>mpu6050::<span class="kw-2">*</span>;
 <span class="kw">use </span>stm32f4xx_hal::{
     gpio,
     i2c::{<span class="self">self</span>, I2c1},
@@ -339,10 +348,16 @@
 <span class="kw">pub type </span>SdmmcController =
     embedded_sdmmc::Controller&lt;BlockSpi2, DummyClock, MAX_OPEN_DIRS, MAX_OPEN_FILES&gt;;
 <span class="kw">pub type </span>SdmmcError = embedded_sdmmc::Error&lt;embedded_sdmmc::SdMmcError&gt;;
-<span class="kw">pub type </span>Lis3dh = lis3dh::Lis3dh&lt;lis3dh::Lis3dhI2C&lt;I2c1Proxy&gt;&gt;;
-<span class="kw">pub type </span>Lis3dhError = lis3dh::Error&lt;i2c::Error, Infallible&gt;;
+
 <span class="kw">pub type </span>Bme280 = bme280::i2c::BME280&lt;I2c1Proxy&gt;;
 <span class="kw">pub type </span>Bme280Error = bme280::Error&lt;i2c::Error&gt;;
+
+<span class="comment">//pub type Lis3dh = lis3dh::Lis3dh&lt;lis3dh::Lis3dhI2C&lt;I2c1Proxy&gt;&gt;;
+//pub type Lis3dhError = lis3dh::Error&lt;i2c::Error, Infallible&gt;;
+
+</span><span class="kw">pub type </span>Mpu = mpu6050::Mpu6050&lt;I2c1Proxy&gt;;
+<span class="kw">pub type </span>Mpu6050Error = mpu6050::Mpu6050Error&lt;i2c::Error&gt;;
+
 <span class="kw">pub type </span>LoraError = cansat_lora::Error&lt;serial::Error&gt;;
 
 <span class="kw">type </span>BlockSpi2 = embedded_sdmmc::BlockSpi&lt;<span class="lifetime">&#39;static</span>, Spi2, Cs2&gt;;
@@ -395,7 +410,7 @@
 
 <span class="kw">pub struct </span>I2c1Devices {
     <span class="kw">pub </span>bme280: <span class="prelude-ty">Option</span>&lt;Bme280&gt;,
-    <span class="kw">pub </span>lis3dh: <span class="prelude-ty">Option</span>&lt;Lis3dh&gt;,
+    <span class="kw">pub </span>mpu: <span class="prelude-ty">Option</span>&lt;Mpu&gt;,
 }
 
 <span class="kw">struct </span>Board {
@@ -442,9 +457,10 @@
         .inspect_err(|e| <span class="macro">defmt::error!</span>(<span class="string">&quot;Failed to initialize BME280: {}&quot;</span>, e))
         .ok();
 
-    <span class="kw">let </span>lis3dh = init_lis3dh(shared_i2c1.acquire_i2c())
-        .inspect_err(|e| <span class="macro">defmt::error!</span>(<span class="string">&quot;Failed to initialize LIS3DH: {}&quot;</span>, defmt::Debug2Format(<span class="kw-2">&amp;</span>e)))
+    <span class="kw">let </span>mpu = init_mpu6050(shared_i2c1.acquire_i2c(), <span class="kw-2">&amp;mut </span>board.delay)
+        .inspect_err(|e| <span class="macro">defmt::error!</span>(<span class="string">&quot;Failed to initialize MPU: {}&quot;</span>, defmt::Debug2Format(<span class="kw-2">&amp;</span>e)))
         .ok();
+
     <span class="kw">let </span>tracker = accelerometer::Tracker::new(<span class="number">3932.0</span>);
 
     <span class="kw">let </span>gps = init_gps(board.serial1).map_err(|e| {
@@ -460,7 +476,7 @@
         lora,
         sd_logger,
         tracker,
-        i2c1_devices: I2c1Devices { bme280, lis3dh },
+        i2c1_devices: I2c1Devices { bme280, mpu },
     })
 }
 
@@ -534,12 +550,12 @@
     <span class="prelude-val">Ok</span>(gps)
 }
 
-<span class="kw">fn </span>init_lis3dh(i2c: I2c1Proxy) -&gt; <span class="prelude-ty">Result</span>&lt;Lis3dh, Lis3dhError&gt; {
-    <span class="macro">defmt::info!</span>(<span class="string">&quot;Initializing LIS3DH&quot;</span>);
+<span class="kw">fn </span>init_mpu6050(i2c: I2c1Proxy, delay: <span class="kw-2">&amp;mut </span>Delay) -&gt; <span class="prelude-ty">Result</span>&lt;Mpu, Mpu6050Error&gt; {
+    <span class="macro">defmt::info!</span>(<span class="string">&quot;Initializing MPU6050&quot;</span>);
 
-    <span class="kw">let </span><span class="kw-2">mut </span>lis3dh = Lis3dh::new_i2c(i2c, lis3dh::SlaveAddr::Default)<span class="question-mark">?</span>;
-    lis3dh.set_range(lis3dh::Range::G8)<span class="question-mark">?</span>;
-    <span class="prelude-val">Ok</span>(lis3dh)
+    <span class="kw">let </span><span class="kw-2">mut </span>mpu = Mpu6050::new(i2c);
+    mpu.init(delay)<span class="question-mark">?</span>;
+    <span class="prelude-val">Ok</span>(mpu)
 }
 
 <span class="kw">fn </span>init_board(device: pac::Peripherals) -&gt; Board {
