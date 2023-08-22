@@ -1,7 +1,7 @@
 use crate::app;
 use crate::{error::Error, SdLogger};
 use cansat_lora::ResponseContent;
-use core::convert::Infallible;
+
 use heapless::Vec;
 use mpu6050::*;
 use stm32f4xx_hal::{
@@ -30,7 +30,7 @@ pub type Bme280Error = bme280::Error<i2c::Error>;
 //pub type Lis3dh = lis3dh::Lis3dh<lis3dh::Lis3dhI2C<I2c1Proxy>>;
 //pub type Lis3dhError = lis3dh::Error<i2c::Error, Infallible>;
 
-pub type MPU = mpu6050::Mpu6050<I2c1Proxy>;
+pub type Mpu = mpu6050::Mpu6050<I2c1Proxy>;
 pub type Mpu6050Error = mpu6050::Mpu6050Error<i2c::Error>;
 
 pub type LoraError = cansat_lora::Error<serial::Error>;
@@ -85,7 +85,7 @@ struct Drivers {
 
 pub struct I2c1Devices {
     pub bme280: Option<Bme280>,
-    pub mpu: Option<MPU>,
+    pub mpu: Option<Mpu>,
 }
 
 struct Board {
@@ -132,8 +132,7 @@ fn init_drivers(mut board: Board, statik: &'static mut Statik) -> Result<Drivers
         .inspect_err(|e| defmt::error!("Failed to initialize BME280: {}", e))
         .ok();
 
-
-    let mpu = init_mpu6050(shared_i2c1.acquire_i2c(),  &mut board.delay)
+    let mpu = init_mpu6050(shared_i2c1.acquire_i2c(), &mut board.delay)
         .inspect_err(|e| defmt::error!("Failed to initialize MPU: {}", defmt::Debug2Format(&e)))
         .ok();
 
@@ -226,16 +225,13 @@ fn init_gps(mut serial: Serial1) -> Result<Gps, GpsError> {
     Ok(gps)
 }
 
-
-fn init_mpu6050(i2c: I2c1Proxy, delay: &mut Delay) -> Result<MPU, Mpu6050Error> {
+fn init_mpu6050(i2c: I2c1Proxy, delay: &mut Delay) -> Result<Mpu, Mpu6050Error> {
     defmt::info!("Initializing MPU6050");
 
-  let mut mpu = Mpu6050::new(i2c);
-  mpu.init(delay)?;
-  Ok(mpu)
-
+    let mut mpu = Mpu6050::new(i2c);
+    mpu.init(delay)?;
+    Ok(mpu)
 }
-
 
 fn init_board(device: pac::Peripherals) -> Board {
     let rcc = device.RCC.constrain();

@@ -1,5 +1,5 @@
 use crate::quantity::{Distance, Pressure, Temperature};
-use accelerometer::{vector, Orientation};
+use accelerometer::vector;
 use heapless_bytes::Bytes;
 use serde::Serialize;
 
@@ -47,28 +47,6 @@ where
     v.map(|v| v.as_meters()).serialize(s)
 }
 
-fn orientation_to_str(v: Orientation) -> &'static str {
-    match v {
-        Orientation::Unknown => "unknown",
-        Orientation::PortraitUp => "portrait up",
-        Orientation::PortraitDown => "portrait down",
-        Orientation::LandscapeUp => "landscape up",
-        Orientation::LandscapeDown => "landscape down",
-        Orientation::FaceUp => "face up",
-        Orientation::FaceDown => "face down",
-    }
-}
-
-fn option_vector_i16x3<S>(v: &Option<vector::I16x3>, serializer: S) -> Result<S::Ok, S::Error>
-where
-    S: serde::Serializer,
-{
-    match v {
-        Some(v) => (v.x, v.y, v.z).serialize(serializer),
-        None => ((), (), ()).serialize(serializer),
-    }
-}
-
 fn option_vector_f32x2<S>(v: &Option<vector::F32x2>, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: serde::Serializer,
@@ -89,16 +67,6 @@ where
     }
 }
 
-fn option_orientation<S>(
-    v: &Option<accelerometer::Orientation>,
-    serializer: S,
-) -> Result<S::Ok, S::Error>
-where
-    S: serde::Serializer,
-{
-    v.map(orientation_to_str).serialize(serializer)
-}
-
 #[cfg(feature = "defmt")]
 impl defmt::Format for Measurements {
     fn format(&self, fmt: defmt::Formatter) {
@@ -108,9 +76,7 @@ impl defmt::Format for Measurements {
             OrError(&self.temperature.map(Celsius)),
             OrError(&self.pressure.map(HectoPascals)),
             OrError(&self.altitude.map(Meters)),
-
             OrError(&self.nmea.as_ref().map(|v| Ascii(v))),
-
             OrError(&self.acceleration.map(Vector3)),
             OrError(&self.gyro.map(Vector3)),
             OrError(&self.rollpitch.map(Vector2)),
