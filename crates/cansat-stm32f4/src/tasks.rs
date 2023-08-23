@@ -21,8 +21,12 @@ pub fn idle(mut ctx: app::idle::Context) -> ! {
         let measurements = read_measurements(&mut ctx);
         defmt::info!("{}", measurements);
 
+        let Some(acc) = measurements.acceleration else {
+            panic!("No acceleration data");
+        };
+        
         if takeoff_detection_readings >= 0 {
-            if measurements.acceleration.unwrap().x > 0 {
+            if acc.x < 0.0 {
                 takeoff_detection_readings += 1;
             } else {
                 takeoff_detection_readings = 0;
