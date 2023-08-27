@@ -42,7 +42,7 @@ Build [lora-cli](../lora-cli) (see [README.md](../lora-cli/README.md)) and run:
 ../../target/release/lora-cli | cargo run
 
 # or lora-cli in debug mode
-../../target/release/lora-cli | cargo run
+../../target/debug/lora-cli | cargo run
 ```
 
 ## Without working lora (generated data)
@@ -54,7 +54,7 @@ Build [dummy-lora](../dummy-lora-receiver) (see [README.md](../dummy-lora-receiv
 ../../target/release/dummy-lora-receiver | cargo run
 
 # or dummy-lora-receiver in debug mode
-../../target/release/dummy-lora-receiver | cargo run
+../../target/debug/dummy-lora-receiver | cargo run
 ```
 
 # Code 
