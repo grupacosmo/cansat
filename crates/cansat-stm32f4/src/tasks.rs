@@ -158,3 +158,27 @@ pub async fn buzz(ctx: app::buzz::Context<'_>) {
         Systick::delay(3.secs()).await;
     }
 }
+//turns on the gio pin for 1 second
+
+pub async fn ignite(ctx: app::ignite::Context<'_>, stage: u8) {
+    //this delay is for testing purposes
+    Systick::delay(1.secs()).await;
+    match stage {
+        1 => ctx.local.ignite_pins.pb0.set_low(),
+        2 => ctx.local.ignite_pins.pb1.set_low(),
+        3 => ctx.local.ignite_pins.pb2.set_low(),
+        _ => {
+            defmt::error!("Invalid stage when igniting");
+            return;
+        }
+    }
+    Systick::delay(1.secs()).await;
+    match stage {
+        1 => ctx.local.ignite_pins.pb0.set_high(),
+        2 => ctx.local.ignite_pins.pb1.set_high(),
+        3 => ctx.local.ignite_pins.pb2.set_high(),
+        _ => {
+            defmt::error!("Invalid stage when deigniting");
+        }
+    }
+}

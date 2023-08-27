@@ -13,8 +13,8 @@ mod tasks;
 use heapless::Vec;
 pub use sd_logger::SdLogger;
 pub use startup::{
-    Bme280, Bme280Error, Buzzer, Delay, Gps, I2c1Devices, Led, Lora, LoraError, SdmmcController,
-    SdmmcError,
+    Bme280, Bme280Error, Buzzer, Delay, Gps, I2c1Devices, IgnitePins, Led, Lora, LoraError,
+    SdmmcController, SdmmcError,
 };
 
 #[cfg(debug_assertions)]
@@ -46,6 +46,7 @@ mod app {
         pub tracker: accelerometer::Tracker,
         pub i2c1_devices: I2c1Devices,
         pub lora: Option<Lora>,
+        pub ignite_pins: IgnitePins,
     }
 
     #[init(local = [statik: startup::Statik = startup::Statik::new()])]
@@ -69,5 +70,7 @@ mod app {
         async fn blink(ctx: blink::Context);
         #[task(local = [buzzer], priority = 1)]
         async fn buzz(ctx: buzz::Context);
+        #[task(local = [ignite_pins], priority = 1)]
+        async fn ignite(ctx: ignite::Context, pin: u8);
     }
 }
