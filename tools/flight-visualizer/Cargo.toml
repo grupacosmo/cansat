@@ -9,3 +9,7 @@ edition = "2021"
 eframe = "0.22.0"
 egui = "0.22.0"
 glow = "0.12.3"
+time = { version = "0.3.27", features = ["formatting"] }
+once_cell = "1.17.1"
+derive-new = "0.5.9"
+nalgebra = "0.32.3"

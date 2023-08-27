@@ -1,4 +1,4 @@
-use crate::data::Data;
+use crate::data::{Acceleration, BmeData, Data, DataRecord, Orientation};
 use crate::ui;
 use eframe::Frame;
 use egui::Context;
@@ -7,14 +7,12 @@ use std::time::Duration;
 
 pub struct FlightVisualizerApp {
     data: Arc<Mutex<Data>>,
-    input_processing_thread: Option<std::thread::JoinHandle<()>>,
 }
 
 impl Default for FlightVisualizerApp {
     fn default() -> Self {
         Self {
-            data: Arc::new(Mutex::new(Data::empty())),
-            input_processing_thread: None,
+            data: Arc::new(Mutex::new(Data::new())),
         }
     }
 }
@@ -29,8 +27,7 @@ impl FlightVisualizerApp {
 
     fn spawn_input_consumer(&mut self) {
         let data = Arc::clone(&self.data);
-        let thread = std::thread::spawn(move || Self::consume_input(data));
-        self.input_processing_thread = Some(thread);
+        std::thread::spawn(move || Self::consume_input(data));
     }
 
     fn consume_input(data_arc: Arc<Mutex<Data>>) {
@@ -64,16 +61,22 @@ impl FlightVisualizerApp {
             .as_secs_f64();
 
         let mut data = data_arc.lock().unwrap();
-        data.time = time;
-        data.bme.temperature.push([time, temp]);
-        data.bme.pressure.push([time, pressure]);
-        data.bme.height.push([time, height]);
+        data.push(DataRecord::new(
+            time,
+            BmeData::new(temp, pressure, height),
+            Orientation::new(
+                f64::sin(time / 8.0),
+                f64::sin(time / 15.0),
+                f64::sin(time / 2.0),
+            ),
+            Acceleration::new(0.0, 0.0, 0.0),
+        ));
     }
 }
 impl eframe::App for FlightVisualizerApp {
     fn update(&mut self, ctx: &Context, _frame: &mut Frame) {
         ui::draw_ui(ctx, &self.data.lock().unwrap());
-        ctx.request_repaint_after(Duration::from_millis(33))
+        ctx.request_repaint_after(Duration::from_millis(33));
     }
 }
 
