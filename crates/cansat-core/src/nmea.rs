@@ -30,6 +30,10 @@ impl NmeaGga {
             .map(|ft| FixType::Invalid != ft)
             .unwrap_or(false)
     }
+
+    pub fn get_data(&self) -> &GgaData {
+        &self.0
+    }
 }
 
 #[cfg(feature = "defmt")]
