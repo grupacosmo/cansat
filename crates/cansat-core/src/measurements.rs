@@ -1,7 +1,7 @@
 use crate::nmea::NmeaGga;
 use crate::quantity::{Distance, Pressure, Temperature};
 use accelerometer::vector;
-use heapless_bytes::Bytes;
+
 use serde::Serialize;
 
 #[derive(Default, serde::Serialize)]
