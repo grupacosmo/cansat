@@ -52,7 +52,7 @@
 <a href="#52" id="52">52</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>nmea::sentences::{FixType, GgaData};
 <span class="kw">use </span>nmea::ParseResult;
-<span class="kw">use </span>serde::Serialize;
+<span class="kw">use </span>serde::{Deserialize, Serialize};
 
 <span class="attr">#[cfg(feature = <span class="string">&quot;defmt&quot;</span>)]
 </span><span class="kw">use </span>defmt::Format;
@@ -64,8 +64,8 @@
     InvalidCommand,
 }
 
-<span class="attr">#[derive(Serialize, Debug)]
-</span><span class="kw">pub struct </span>NmeaGga(GgaData);
+<span class="attr">#[derive(Serialize, Deserialize, Debug)]
+</span><span class="kw">pub struct </span>NmeaGga(<span class="kw">pub </span>GgaData);
 
 <span class="kw">impl </span>NmeaGga {
     <span class="kw">pub fn </span>try_new(bytes: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;NmeaGga, Error&gt; {
