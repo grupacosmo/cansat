@@ -22,19 +22,24 @@ STM32f411CEU6 microcontroller doesn't come with a programmer/debugger on board. 
 <img src="assets/mcu-stlink-pins.png">
 </p>
 
-Connect the ST-Link and the MCU into your PC using USB cables and run the following command from command-line inside cansat repository:
+Connect the ST-Link and the MCU to your PC using USB cables. Then in the cansat directory run the following command from command-line
+
 
 ```
 cargo xtask embed
 ```
 
 ## Using standalone ST-LINK
-1. Connect the vires according to schematic below:
+
+1. Connect the wires according to the diagram below:
+
 <p>
 <img src="https://github.com/grupacosmo/cansat/assets/92270288/cedabacc-694a-4266-8d2e-87d94bb18612">
 </p>
 
-2. Connect the ST-Link and the MCU into your PC using USB cables and run the following command from command-line inside cansat repository:
+
+2. Connect the ST-Link and the MCU to your PC using USB cables. Then in the cansat directory run the following command from command-line
+
 
 ```
 cargo xtask embed
@@ -52,7 +57,9 @@ Run:
 cargo install cargo-dfu
 ```
 Connect your board to USB, hold BOOT0 button, press NRST button and release BOOT0 button. This should run the MCU in bootloader mode.
-**The blue LED will not flash when inside this mode. Red LED will be on constantly**
+
+**The blue LED will not flash in this mode. The red LED will be on constantly**
+
 
 Change directory to the project you want to flash, e.g
 ```
@@ -64,7 +71,8 @@ cargo dfu
 ```
 
 ### Troubleshooting
-If your device is not properly recognized by your system, try to disconnect all serial peripherals and repeat.
+
+If your device is not recognized correctly by your system, try disconnecting all serial peripherals and repeat the steps above.
 
 
 
