@@ -1,6 +1,7 @@
 use crate::{app, error::Error, startup::LoraError};
-use accelerometer::RawAccelerometer;
+use accelerometer::vector;
 use cansat_core::{
+    nmea::NmeaGga,
     quantity::{Pressure, Temperature},
     Measurements,
 };
@@ -44,7 +45,7 @@ fn read_measurements(ctx: &mut app::idle::Context) -> Measurements {
     let i2c1_devices = &mut ctx.local.i2c1_devices;
     let delay = &mut ctx.local.delay;
     let gps = &mut ctx.shared.gps;
-    let tracker = &mut ctx.local.tracker;
+    let _tracker = &mut ctx.local.tracker;
 
     let mut data = Measurements::default();
 
@@ -71,20 +72,35 @@ fn read_measurements(ctx: &mut app::idle::Context) -> Measurements {
     if let Some(mut nmea) = gps.lock(|gps| gps.last_nmea()) {
         let clrf_len = 2;
         nmea.truncate(nmea.len().saturating_sub(clrf_len));
-        data.nmea = Some(nmea.into());
-    }
+        let nmea_gga = NmeaGga::try_new(&nmea);
 
-    if let Some(lis3dh) = &mut i2c1_devices.lis3dh {
-        match lis3dh.accel_raw() {
-            Ok(accel) => {
-                let orientation = tracker.update(accel);
-                data.acceleration = Some(accel);
-                data.orientation = Some(orientation);
+        match nmea_gga {
+            Ok(gga) => {
+                ctx.shared.is_fixed.lock(|f: &mut bool| *f = gga.get_fix());
+                data.nmea = Some(gga);
             }
             Err(e) => {
-                defmt::error!("Could not read acceleration: {}", defmt::Debug2Format(&e));
+                defmt::error!(
+                    "Could not read NMEA GGA command: {}",
+                    defmt::Debug2Format(&e)
+                );
             }
         }
+    }
+
+    if let Some(mpu) = &mut i2c1_devices.mpu {
+        data.rollpitch = mpu
+            .get_acc_angles()
+            .ok()
+            .map(|v| vector::F32x2::new(v.x, v.y));
+        data.gyro = mpu
+            .get_gyro()
+            .ok()
+            .map(|v| vector::F32x3::new(v.x, v.y, v.z));
+        data.acceleration = mpu
+            .get_acc()
+            .ok()
+            .map(|v| vector::F32x3::new(v.x, v.y, v.z));
     }
 
     data
@@ -148,11 +164,23 @@ pub async fn blink(ctx: app::blink::Context<'_>) {
 }
 
 /// Toggle buzzer every second
-pub async fn buzz(ctx: app::buzz::Context<'_>) {
+pub async fn buzz(mut ctx: app::buzz::Context<'_>) {
     let buzzer = ctx.local.buzzer;
+    let mut is_fixed = false;
+
     loop {
         buzzer.toggle();
-        defmt::debug!("Buzz");
-        Systick::delay(3.secs()).await;
+
+        ctx.shared.is_fixed.lock(|f| {
+            is_fixed = *f;
+        });
+
+        if is_fixed {
+            defmt::debug!("Buzz with GPS fix");
+            Systick::delay(1.secs()).await;
+        } else {
+            defmt::debug!("Buzz without GPS fix");
+            Systick::delay(3.secs()).await;
+        }
     }
 }

@@ -3,6 +3,7 @@
 #![no_std]
 
 pub mod measurements;
+pub mod nmea;
 pub mod quantity;
 
 pub use measurements::Measurements;
