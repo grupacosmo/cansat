@@ -47,7 +47,7 @@ where
     D: Deserializer<'de>,
 {
     let temperature: Option<f32> = de::Deserialize::deserialize(deserializer)?;
-    return Ok(temperature.map(Temperature::from_celsius));
+    Ok(temperature.map(Temperature::from_celsius))
 }
 
 fn option_pressure_pascals<S>(v: &Option<Pressure>, s: S) -> Result<S::Ok, S::Error>
@@ -64,7 +64,7 @@ where
     D: Deserializer<'de>,
 {
     let pressure: Option<f32> = de::Deserialize::deserialize(deserializer)?;
-    return Ok(pressure.map(Pressure::from_pascals));
+    Ok(pressure.map(Pressure::from_pascals))
 }
 
 fn option_distance_meters<S>(v: &Option<Distance>, s: S) -> Result<S::Ok, S::Error>
@@ -79,7 +79,7 @@ where
     D: Deserializer<'de>,
 {
     let distance: Option<f32> = de::Deserialize::deserialize(deserializer)?;
-    return Ok(distance.map(Distance::from_meters));
+    Ok(distance.map(Distance::from_meters))
 }
 
 fn option_vector_f32x2<S>(v: &Option<vector::F32x2>, serializer: S) -> Result<S::Ok, S::Error>
@@ -97,7 +97,7 @@ where
     D: Deserializer<'de>,
 {
     let opt: Option<(f32, f32)> = de::Deserialize::deserialize(deserializer)?;
-    return Ok(opt.map(|(x, y)| vector::F32x2::new(x, y)));
+    Ok(opt.map(|(x, y)| vector::F32x2::new(x, y)))
 }
 
 fn option_vector_f32x3<S>(v: &Option<vector::F32x3>, serializer: S) -> Result<S::Ok, S::Error>
@@ -115,7 +115,7 @@ where
     D: Deserializer<'de>,
 {
     let opt: Option<(f32, f32, f32)> = de::Deserialize::deserialize(deserializer)?;
-    return Ok(opt.map(|(x, y, z)| vector::F32x3::new(x, y, z)));
+    Ok(opt.map(|(x, y, z)| vector::F32x3::new(x, y, z)))
 }
 
 #[cfg(feature = "defmt")]
