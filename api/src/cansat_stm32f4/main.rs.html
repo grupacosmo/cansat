@@ -71,6 +71,7 @@
 <a href="#71" id="71">71</a>
 <a href="#72" id="72">72</a>
 <a href="#73" id="73">73</a>
+<a href="#74" id="74">74</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Binary crate targeting stm32f4 family microcontrollers.
 </span><span class="attr">#![deny(unsafe_code)]
 #![no_main]
@@ -106,6 +107,7 @@
 
     <span class="attr">#[shared]
     </span><span class="kw">pub struct </span>Shared {
+        <span class="kw">pub </span>is_fixed: bool,
         <span class="kw">pub </span>gps: Gps,
         <span class="kw">pub </span>csv_record: Vec&lt;u8, <span class="number">512</span>&gt;,
     }
@@ -126,7 +128,7 @@
         startup::init(ctx)
     }
 
-    <span class="attr">#[idle(local = [delay, sd_logger, tracker, i2c1_devices]</span>, shared = [gps, csv_record])]
+    <span class="attr">#[idle(local = [delay, sd_logger, tracker, i2c1_devices]</span>, shared = [gps, csv_record, is_fixed])]
     <span class="kw">fn </span>idle(ctx: idle::Context) -&gt; ! {
         tasks::idle(ctx)
     }
@@ -140,7 +142,7 @@
 
         <span class="attr">#[task(local = [led]</span>, priority = <span class="number">1</span>)]
         <span class="kw">async fn </span>blink(ctx: blink::Context);
-        <span class="attr">#[task(local = [buzzer]</span>, priority = <span class="number">1</span>)]
+        <span class="attr">#[task(local = [buzzer]</span>, shared = [is_fixed], priority = <span class="number">1</span>)]
         <span class="kw">async fn </span>buzz(ctx: buzz::Context);
     }
 }

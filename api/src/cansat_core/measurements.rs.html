@@ -150,9 +150,11 @@
 <a href="#150" id="150">150</a>
 <a href="#151" id="151">151</a>
 <a href="#152" id="152">152</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::quantity::{Distance, Pressure, Temperature};
+<a href="#153" id="153">153</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::nmea::NmeaGga;
+<span class="kw">use </span><span class="kw">crate</span>::quantity::{Distance, Pressure, Temperature};
 <span class="kw">use </span>accelerometer::vector;
-<span class="kw">use </span>heapless_bytes::Bytes;
+
 <span class="kw">use </span>serde::Serialize;
 
 <span class="attr">#[derive(Default, serde::Serialize)]
@@ -166,7 +168,7 @@
     <span class="attr">#[serde(serialize_with = <span class="string">&quot;option_distance_meters&quot;</span>)]
     </span><span class="kw">pub </span>altitude: <span class="prelude-ty">Option</span>&lt;Distance&gt;,
 
-    <span class="kw">pub </span>nmea: <span class="prelude-ty">Option</span>&lt;Bytes&lt;<span class="number">256</span>&gt;&gt;,
+    <span class="kw">pub </span>nmea: <span class="prelude-ty">Option</span>&lt;NmeaGga&gt;,
 
     <span class="attr">#[serde(serialize_with = <span class="string">&quot;option_vector_f32x3&quot;</span>)]
     </span><span class="kw">pub </span>acceleration: <span class="prelude-ty">Option</span>&lt;vector::F32x3&gt;,
@@ -228,7 +230,7 @@
             OrError(<span class="kw-2">&amp;</span><span class="self">self</span>.temperature.map(Celsius)),
             OrError(<span class="kw-2">&amp;</span><span class="self">self</span>.pressure.map(HectoPascals)),
             OrError(<span class="kw-2">&amp;</span><span class="self">self</span>.altitude.map(Meters)),
-            OrError(<span class="kw-2">&amp;</span><span class="self">self</span>.nmea.as_ref().map(|v| Ascii(v))),
+            OrError(<span class="kw-2">&amp;</span><span class="self">self</span>.nmea),
             OrError(<span class="kw-2">&amp;</span><span class="self">self</span>.acceleration.map(Vector3)),
             OrError(<span class="kw-2">&amp;</span><span class="self">self</span>.gyro.map(Vector3)),
             OrError(<span class="kw-2">&amp;</span><span class="self">self</span>.rollpitch.map(Vector2)),
