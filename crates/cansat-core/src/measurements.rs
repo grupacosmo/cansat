@@ -2,22 +2,26 @@ use crate::nmea::NmeaGga;
 use crate::quantity::{Distance, Pressure, Temperature};
 use accelerometer::vector;
 
-use serde::Serialize;
+use serde::{de, Deserializer, Serialize};
 
-#[derive(Default, serde::Serialize)]
+#[derive(Default, serde::Serialize, serde::Deserialize)]
 pub struct Measurements {
     #[serde(serialize_with = "option_temperature_celsius")]
+    #[serde(deserialize_with = "option_temperature_celsius_deserialize")]
     pub temperature: Option<Temperature>,
 
     #[serde(serialize_with = "option_pressure_pascals")]
+    #[serde(deserialize_with = "option_pressure_pascals_deserialize")]
     pub pressure: Option<Pressure>,
 
     #[serde(serialize_with = "option_distance_meters")]
+    #[serde(deserialize_with = "option_distance_meters_deserialize")]
     pub altitude: Option<Distance>,
 
     pub nmea: Option<NmeaGga>,
 
     #[serde(serialize_with = "option_vector_f32x3")]
+    #[serde(serialize_with = "option_vector_f32x3_deserialize")]
     pub acceleration: Option<vector::F32x3>,
 
     #[serde(serialize_with = "option_vector_f32x3")]
@@ -34,6 +38,16 @@ where
     v.map(|v| v.as_celsius()).serialize(s)
 }
 
+fn option_temperature_celsius_deserialize<'de, D>(
+    deserializer: D,
+) -> Result<Option<Temperature>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let temperature: Option<f32> = de::Deserialize::deserialize(deserializer)?;
+    return Ok(temperature.map(Temperature::from_celsius));
+}
+
 fn option_pressure_pascals<S>(v: &Option<Pressure>, s: S) -> Result<S::Ok, S::Error>
 where
     S: serde::Serializer,
@@ -41,11 +55,29 @@ where
     v.map(|v| v.as_pascals()).serialize(s)
 }
 
+fn option_pressure_pascals_deserialize<'de, D>(
+    deserializer: D,
+) -> Result<Option<Pressure>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let pressure: Option<f32> = de::Deserialize::deserialize(deserializer)?;
+    return Ok(pressure.map(Pressure::from_pascals));
+}
+
 fn option_distance_meters<S>(v: &Option<Distance>, s: S) -> Result<S::Ok, S::Error>
 where
     S: serde::Serializer,
 {
     v.map(|v| v.as_meters()).serialize(s)
+}
+
+fn option_distance_meters_deserialize<'de, D>(deserializer: D) -> Result<Option<Distance>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let distance: Option<f32> = de::Deserialize::deserialize(deserializer)?;
+    return Ok(distance.map(Distance::from_meters));
 }
 
 fn option_vector_f32x2<S>(v: &Option<vector::F32x2>, serializer: S) -> Result<S::Ok, S::Error>
@@ -58,6 +90,16 @@ where
     }
 }
 
+fn option_vector_f32x2_deserialize<'de, D>(
+    deserializer: D,
+) -> Result<Option<vector::F32x2>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let opt: Option<(f32, f32)> = de::Deserialize::deserialize(deserializer)?;
+    return Ok(opt.map(|(x, y)| vector::F32x2::new(x, y)));
+}
+
 fn option_vector_f32x3<S>(v: &Option<vector::F32x3>, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: serde::Serializer,
@@ -66,6 +108,16 @@ where
         Some(v) => (v.x, v.y, v.z).serialize(serializer),
         None => ((), ()).serialize(serializer),
     }
+}
+
+fn option_vector_f32x3_deserialize<'de, D>(
+    deserializer: D,
+) -> Result<Option<vector::F32x3>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let opt: Option<(f32, f32, f32)> = de::Deserialize::deserialize(deserializer)?;
+    return Ok(opt.map(|(x, y, z)| vector::F32x3::new(x, y, z)));
 }
 
 #[cfg(feature = "defmt")]
