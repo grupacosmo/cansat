@@ -1,6 +1,7 @@
 use crate::nmea::NmeaGga;
 use crate::quantity::{Distance, Pressure, Temperature};
-use accelerometer::{vector, Orientation};
+use accelerometer::vector;
+use heapless_bytes::Bytes;
 use serde::Serialize;
 
 #[derive(Default, serde::Serialize)]
@@ -16,11 +17,14 @@ pub struct Measurements {
 
     pub nmea: Option<NmeaGga>,
 
-    #[serde(serialize_with = "option_vector_i16x3")]
-    pub acceleration: Option<vector::I16x3>,
+    #[serde(serialize_with = "option_vector_f32x3")]
+    pub acceleration: Option<vector::F32x3>,
 
-    #[serde(serialize_with = "option_orientation")]
-    pub orientation: Option<Orientation>,
+    #[serde(serialize_with = "option_vector_f32x3")]
+    pub gyro: Option<vector::F32x3>,
+
+    #[serde(serialize_with = "option_vector_f32x2")]
+    pub rollpitch: Option<vector::F32x2>,
 }
 
 fn option_temperature_celsius<S>(v: &Option<Temperature>, s: S) -> Result<S::Ok, S::Error>
@@ -44,36 +48,24 @@ where
     v.map(|v| v.as_meters()).serialize(s)
 }
 
-fn orientation_to_str(v: Orientation) -> &'static str {
+fn option_vector_f32x2<S>(v: &Option<vector::F32x2>, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
     match v {
-        Orientation::Unknown => "unknown",
-        Orientation::PortraitUp => "portrait up",
-        Orientation::PortraitDown => "portrait down",
-        Orientation::LandscapeUp => "landscape up",
-        Orientation::LandscapeDown => "landscape down",
-        Orientation::FaceUp => "face up",
-        Orientation::FaceDown => "face down",
+        Some(v) => (v.x, v.y).serialize(serializer),
+        None => ((), ()).serialize(serializer),
     }
 }
 
-fn option_vector_i16x3<S>(v: &Option<vector::I16x3>, serializer: S) -> Result<S::Ok, S::Error>
+fn option_vector_f32x3<S>(v: &Option<vector::F32x3>, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: serde::Serializer,
 {
     match v {
         Some(v) => (v.x, v.y, v.z).serialize(serializer),
-        None => ((), (), ()).serialize(serializer),
+        None => ((), ()).serialize(serializer),
     }
-}
-
-fn option_orientation<S>(
-    v: &Option<accelerometer::Orientation>,
-    serializer: S,
-) -> Result<S::Ok, S::Error>
-where
-    S: serde::Serializer,
-{
-    v.map(orientation_to_str).serialize(serializer)
 }
 
 #[cfg(feature = "defmt")]
@@ -81,14 +73,33 @@ impl defmt::Format for Measurements {
     fn format(&self, fmt: defmt::Formatter) {
         defmt::write!(
             fmt,
-            "temp: {}, pres: {}, alt: {}, accel: {}, orient: {}, nmea: {}",
+            "temp: {}, pres: {}, alt: {}, nmea: {}, acc: {}, gyro: {}, rollpitch: {}",
             OrError(&self.temperature.map(Celsius)),
             OrError(&self.pressure.map(HectoPascals)),
             OrError(&self.altitude.map(Meters)),
-            OrError(&self.acceleration.map(|v| (v.x, v.y, v.z))),
-            OrError(&self.orientation.as_ref().map(defmt::Debug2Format)),
-            OrError(&self.nmea)
+            OrError(&self.nmea),
+            OrError(&self.acceleration.map(Vector3)),
+            OrError(&self.gyro.map(Vector3)),
+            OrError(&self.rollpitch.map(Vector2)),
         );
+    }
+}
+
+struct Vector2(pub vector::F32x2);
+
+#[cfg(feature = "defmt")]
+impl defmt::Format for Vector2 {
+    fn format(&self, fmt: defmt::Formatter) {
+        defmt::write!(fmt, "{}, {}", self.0.x, self.0.y);
+    }
+}
+
+struct Vector3(pub vector::F32x3);
+
+#[cfg(feature = "defmt")]
+impl defmt::Format for Vector3 {
+    fn format(&self, fmt: defmt::Formatter) {
+        defmt::write!(fmt, "{}, {}, {}", self.0.x, self.0.y, self.0.z);
     }
 }
 
