@@ -1,5 +1,4 @@
 use crate::{app, error::Error, startup::LoraError};
-use accelerometer::vector;
 use cansat_core::{
     nmea::NmeaGga,
     quantity::{Pressure, Temperature},
@@ -89,18 +88,9 @@ fn read_measurements(ctx: &mut app::idle::Context) -> Measurements {
     }
 
     if let Some(mpu) = &mut i2c1_devices.mpu {
-        data.rollpitch = mpu
-            .get_acc_angles()
-            .ok()
-            .map(|v| vector::F32x2::new(v.x, v.y));
-        data.gyro = mpu
-            .get_gyro()
-            .ok()
-            .map(|v| vector::F32x3::new(v.x, v.y, v.z));
-        data.acceleration = mpu
-            .get_acc()
-            .ok()
-            .map(|v| vector::F32x3::new(v.x, v.y, v.z));
+        data.rollpitch = mpu.get_acc_angles().ok().map(|v| (v.x, v.y));
+        data.gyro = mpu.get_gyro().ok().map(|v| (v.x, v.y, v.z));
+        data.acceleration = mpu.get_acc().ok().map(|v| (v.x, v.y, v.z));
     }
 
     data
