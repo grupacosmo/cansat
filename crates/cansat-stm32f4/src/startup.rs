@@ -27,8 +27,11 @@ pub type SdmmcError = embedded_sdmmc::Error<embedded_sdmmc::SdMmcError>;
 pub type Bme280 = bme280::i2c::BME280<I2c1Proxy>;
 pub type Bme280Error = bme280::Error<i2c::Error>;
 
-//pub type Lis3dh = lis3dh::Lis3dh<lis3dh::Lis3dhI2C<I2c1Proxy>>;
-//pub type Lis3dhError = lis3dh::Error<i2c::Error, Infallible>;
+pub struct IgnitePins {
+    pub pb0: gpio::gpiob::PB0<gpio::Output<gpio::PushPull>>,
+    pub pb1: gpio::gpiob::PB1<gpio::Output<gpio::PushPull>>,
+    pub pb2: gpio::gpiob::PB2<gpio::Output<gpio::PushPull>>,
+}
 
 pub type Mpu = mpu6050::Mpu6050<I2c1Proxy>;
 pub type Mpu6050Error = mpu6050::Mpu6050Error<i2c::Error>;
@@ -54,6 +57,8 @@ pub fn init(ctx: app::init::Context) -> (app::Shared, app::Local) {
     app::blink::spawn().unwrap();
     app::buzz::spawn().unwrap();
     app::send_meas::spawn().unwrap();
+    //this line is for testing purposes
+    app::ignite::spawn(1).unwrap();
 
     let shared = app::Shared {
         gps: cansat.gps,
@@ -68,6 +73,7 @@ pub fn init(ctx: app::init::Context) -> (app::Shared, app::Local) {
         tracker: cansat.tracker,
         i2c1_devices: cansat.i2c1_devices,
         lora: cansat.lora,
+        ignite_pins: cansat.ignite_pins,
     };
 
     (shared, local)
@@ -82,6 +88,7 @@ struct Drivers {
     pub sd_logger: Option<SdLogger>,
     pub tracker: accelerometer::Tracker,
     pub i2c1_devices: I2c1Devices,
+    pub ignite_pins: IgnitePins,
 }
 
 pub struct I2c1Devices {
@@ -98,6 +105,7 @@ struct Board {
     pub serial6: Serial6,
     pub spi2: Spi2,
     pub cs2: Cs2,
+    pub ignite_pins: IgnitePins,
 }
 
 /// Static memory needed for startup.
@@ -153,6 +161,7 @@ fn init_drivers(mut board: Board, statik: &'static mut Statik) -> Result<Drivers
         sd_logger,
         tracker,
         i2c1_devices: I2c1Devices { bme280, mpu },
+        ignite_pins: board.ignite_pins,
     })
 }
 
@@ -245,7 +254,6 @@ fn init_board(device: pac::Peripherals) -> Board {
 
     let led = gpioc.pc13.into_push_pull_output();
     let buzzer = gpioa.pa8.into_push_pull_output();
-
     let i2c1 = {
         let scl1 = gpiob
             .pb8
@@ -298,6 +306,13 @@ fn init_board(device: pac::Peripherals) -> Board {
             .expect("Invalid USART6 config")
     };
 
+    let ignite_pins = {
+        let pb0 = gpiob.pb0.into_push_pull_output();
+        let pb1 = gpiob.pb1.into_push_pull_output();
+        let pb2 = gpiob.pb2.into_push_pull_output();
+        IgnitePins { pb0, pb1, pb2 }
+    };
+
     Board {
         delay,
         led,
@@ -307,6 +322,7 @@ fn init_board(device: pac::Peripherals) -> Board {
         serial6,
         spi2,
         cs2,
+        ignite_pins,
     }
 }
 
