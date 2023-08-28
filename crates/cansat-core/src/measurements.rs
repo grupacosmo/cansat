@@ -21,13 +21,15 @@ pub struct Measurements {
     pub nmea: Option<NmeaGga>,
 
     #[serde(serialize_with = "option_vector_f32x3")]
-    #[serde(serialize_with = "option_vector_f32x3_deserialize")]
+    #[serde(deserialize_with = "option_vector_f32x3_deserialize")]
     pub acceleration: Option<vector::F32x3>,
 
     #[serde(serialize_with = "option_vector_f32x3")]
+    #[serde(deserialize_with = "option_vector_f32x3_deserialize")]
     pub gyro: Option<vector::F32x3>,
 
     #[serde(serialize_with = "option_vector_f32x2")]
+    #[serde(deserialize_with = "option_vector_f32x2_deserialize")]
     pub rollpitch: Option<vector::F32x2>,
 }
 
