@@ -159,18 +159,18 @@
 <p align="center">
 <img src="assets/mcu-stlink-pins.png">
 </p>
-<p>Connect the ST-Link and the MCU into your PC using USB cables and run the following command from command-line inside cansat repository:</p>
+<p>Connect the ST-Link and the MCU to your PC using USB cables. Then in the cansat directory run the following command from command-line</p>
 <pre><code>cargo xtask embed
 </code></pre>
 <h2 id="using-standalone-st-link"><a class="header" href="#using-standalone-st-link">Using standalone ST-LINK</a></h2>
 <ol>
-<li>Connect the vires according to schematic below:</li>
+<li>Connect the wires according to the diagram below:</li>
 </ol>
 <p>
 <img src="https://github.com/grupacosmo/cansat/assets/92270288/cedabacc-694a-4266-8d2e-87d94bb18612">
 </p>
 <ol start="2">
-<li>Connect the ST-Link and the MCU into your PC using USB cables and run the following command from command-line inside cansat repository:</li>
+<li>Connect the ST-Link and the MCU to your PC using USB cables. Then in the cansat directory run the following command from command-line</li>
 </ol>
 <pre><code>cargo xtask embed
 </code></pre>
@@ -181,8 +181,8 @@ On windows you have to download LibusbK (you can pick it in Zadig program).</p>
 <p>Run:</p>
 <pre><code>cargo install cargo-dfu
 </code></pre>
-<p>Connect your board to USB, hold BOOT0 button, press NRST button and release BOOT0 button. This should run the MCU in bootloader mode.
-<strong>The blue LED will not flash when inside this mode. Red LED will be on constantly</strong></p>
+<p>Connect your board to USB, hold BOOT0 button, press NRST button and release BOOT0 button. This should run the MCU in bootloader mode.</p>
+<p><strong>The blue LED will not flash in this mode. The red LED will be on constantly</strong></p>
 <p>Change directory to the project you want to flash, e.g</p>
 <pre><code>cd crates/cansat-stm32f4
 </code></pre>
@@ -190,7 +190,7 @@ On windows you have to download LibusbK (you can pick it in Zadig program).</p>
 <pre><code>cargo dfu
 </code></pre>
 <h3 id="troubleshooting"><a class="header" href="#troubleshooting">Troubleshooting</a></h3>
-<p>If your device is not properly recognized by your system, try to disconnect all serial peripherals and repeat.</p>
+<p>If your device is not recognized correctly by your system, try disconnecting all serial peripherals and repeat the steps above.</p>
 
                     </main>
 
