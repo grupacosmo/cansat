@@ -1,6 +1,6 @@
 use nmea::sentences::{FixType, GgaData};
 use nmea::ParseResult;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "defmt")]
 use defmt::Format;
@@ -12,8 +12,8 @@ pub enum Error<'a> {
     InvalidCommand,
 }
 
-#[derive(Serialize, Debug)]
-pub struct NmeaGga(GgaData);
+#[derive(Serialize, Deserialize, Debug)]
+pub struct NmeaGga(pub GgaData);
 
 impl NmeaGga {
     pub fn try_new(bytes: &[u8]) -> Result<NmeaGga, Error> {
