@@ -1,6 +1,5 @@
 use std::{
     fs::File,
-    fs::File,
     io::{BufRead, BufReader},
     time::Duration,
 };
@@ -228,7 +227,7 @@ fn parse_received_message(input: &str) -> Result<String> {
 
     let mut msg = String::new();
 
-    if signal_strength_dBm != None && signal_to_noise_dB != None {
+    if signal_strength_dbm.is_some() && signal_to_noise_db.is_some() {
         msg = format!(
             "Signal strength: {} dBm, Noise level: {} dB",
             signal_strength_dbm.unwrap(),
@@ -248,8 +247,8 @@ fn parse_received_message(input: &str) -> Result<String> {
     Ok(msg)
 }
 
-fn format_cansat_data(data: &String) -> Result<String> {
-    let measurements = decode_cansat_data_from_string(&data)?;
+fn format_cansat_data(data: &str) -> Result<String> {
+    let measurements = decode_cansat_data_from_string(data)?;
 
     let formatted = format!(
         "{}°C | {}Pa | {}m npm | nmea: {}",
@@ -357,7 +356,7 @@ mod test {
         assert_eq!(
             msg2.unwrap(),
             "26°C   | 99Pa   | 144.93929m npm | nmea: ,,,,"
-        ); 
+        );
     }
 
     #[test]
