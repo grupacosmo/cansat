@@ -7,7 +7,7 @@ use std::{
 use clap::Parser;
 use eyre::{eyre, Result, WrapErr};
 use once_cell::sync::Lazy;
-use regex::{Regex};
+use regex::Regex;
 use serialport::{SerialPort, SerialPortType, UsbPortInfo};
 
 #[derive(Debug, clap::Parser)]
@@ -127,13 +127,18 @@ fn receive(args: PortArgs) -> Result<()> {
     eprintln!("Listening...");
 
     for result in lora.listen()? {
-        // TODO: add parsing function
         match result {
-            Ok(msg) => println!("{msg}"),
+            Ok(msg) => process_message(&msg),
             Err(e) => eprintln!("{e}"),
         }
     }
     Ok(())
+}
+
+fn process_message(msg: &str) {
+    let parsed = parse_received_message(msg).unwrap_or_else(|e| e.to_string());
+
+    eprintln!("{parsed}");
 }
 
 struct Lora {
@@ -185,30 +190,25 @@ impl Lora {
     }
 }
 
-enum Parsed {
-    SignalQuality { rssi: i32, snr: i32 },
-    Data(String),
-}
-
 fn parse_received_message(input: &str) -> Result<String> {
     // let signal_strength_re = r"RSSI:(-?\d+)";
     // let signal_to_noise_re = r"SNR:(-?\d+)";
     // let hex_message_re = r"RX\s*(\w+)";
 
     static RE: Lazy<Regex> =
-        Lazy::new(|| Regex::new(r"RSSI:(-?\d+),\s*SNR:(-?\d+)|RX\s*(\w+)").unwrap());
+        Lazy::new(|| Regex::new(r#"RSSI:(-?\d+),\s*SNR:(-?\d+)|RX\s*"(\w+)""#).unwrap());
 
     let captures = RE
         .captures(input)
         .ok_or_else(|| eyre!("Failed to capture anything"))?;
 
-    let signal_strength_dBm: Option<i32> = captures
+    let signal_strength_dbm: Option<i32> = captures
         .get(1) // Option<Match>
         .map(|rssi| rssi.as_str().parse()) // Option<Result<i32, _>
         .transpose() // Result<Option<i32>, _>
         .wrap_err("Failed to parse rssi")?;
 
-    let signal_to_noise_dB: Option<i32> = captures
+    let signal_to_noise_db: Option<i32> = captures
         .get(2) // Option<Match>
         .map(|snr| snr.as_str().parse()) // Option<Result<i32, _>
         .transpose() // Result<Option<i32>, _>
@@ -221,33 +221,81 @@ fn parse_received_message(input: &str) -> Result<String> {
         .wrap_err("Failed to decode rx hex")?;
 
     let message = bytes
-        .map(|bytes| String::from_utf8(bytes))
+        .map(String::from_utf8)
         .transpose()
         .wrap_err("Failed to parse rx")?;
 
     let mut msg = String::new();
 
-    if signal_strength_dBm != None && signal_to_noise_dB != None {
+    if signal_strength_dbm.is_some() && signal_to_noise_db.is_some() {
         msg = format!(
-            "Signal strength: {signal_strength_dBm:?} dBm, Noise level: {signal_to_noise_dB:?} dB"
+            "Signal strength: {} dBm, Noise level: {} dB",
+            signal_strength_dbm.unwrap(),
+            signal_to_noise_db.unwrap()
         )
-    } else if message != None {
+    } else if message.is_some() {
         // TODO: if ID matches config, use println! to save this to file
         // Do it here or in format_cansat_data()
-        println!("{message:?}");
+        // println!("{message:?}");
 
         // msg = format!("Message: {string_message}");
 
         // TODO: if failed to format cansat data, return string message instead
-        msg = format_cansat_data(message.unwrap())
+        msg = format_cansat_data(&message.unwrap())?;
     }
-    // This is for displaying nice formatted message with live data
-    eprintln!("{msg}");
+
     Ok(msg)
 }
 
-fn format_cansat_data(data: String) -> String {
-    data
+fn format_cansat_data(data: &String) -> Result<String> {
+    println!("raw str: {}", data);
+    let measurements = decode_cansat_data_from_string(data)?;
+
+    let formatted = format!(
+        "{}°C | {}Pa | {}m npm | nmea: {}",
+        measurements.temperature.unwrap_or(f32::NAN),
+        measurements.pressure.unwrap_or(f32::NAN),
+        measurements.altitude.unwrap_or(f32::NAN),
+        measurements.nmea.unwrap_or("missing".to_string())
+    );
+
+    Ok(formatted)
+}
+fn decode_cansat_data_from_string(data: &str) -> Result<Measurements> {
+    // TODO replace to Regex or csv parser
+    //      Bartuś requested stupid split option bc he does not understand regex
+
+    let split: Vec<&str> = data.splitn(4, ',').collect();
+    if split.len() != 4 {
+        return Err(eyre!("Unknown data format"));
+    }
+
+    Ok(Measurements {
+        temperature: non_empty_text(split[0]),
+        pressure: non_empty_text(split[1]),
+        altitude: non_empty_text(split[2]),
+        nmea: Some(split[3].to_string()),
+        acceleration: None,
+        orientation: None,
+    })
+}
+
+fn non_empty_text(text: &str) -> Option<f32> {
+    if text.is_empty() {
+        return None;
+    }
+
+    text.parse().ok()
+}
+
+pub struct Measurements {
+    pub temperature: Option<f32>,
+    pub pressure: Option<f32>,
+    pub altitude: Option<f32>,
+    // TODO: use actual types instead of strings for nmea, acceleration and orientation
+    pub nmea: Option<String>,
+    pub acceleration: Option<String>,
+    pub orientation: Option<String>,
 }
 
 fn parse_lora_error(input: &str) -> Option<i32> {
@@ -293,11 +341,31 @@ mod test {
     }
 
     #[test]
-    fn test_parse_received_message() {
+    fn test_parse_received_message_strength() {
         let msg1 = parse_received_message("+TEST: LEN:250, RSSI:-106, SNR:10\r\n");
-        assert_eq!(msg1.unwrap(), "Signal strength: -106 dBm, Noise level: 10 dB");
+        assert_eq!(
+            msg1.unwrap(),
+            "Signal strength: -106 dBm, Noise level: 10 dB"
+        );
+    }
 
-        let msg2 = parse_received_message("+TEST: RX 48656C6C6F\r\n");
-        assert_eq!(msg2.unwrap(), "Message: Hello");
+    #[test]
+    fn test_parse_received_message_rx() {
+        let msg2 = parse_received_message(
+            "+TEST: RX \"32362E3139333631392C39393537312E38322C3134342E39333932392C2C2C2C2C\"\r\n",
+        );
+        assert_eq!(
+            msg2.unwrap(),
+            "26°C   | 99Pa   | 144.93929m npm | nmea: ,,,,"
+        ); // unknown data format
+    }
+
+    #[test]
+    fn test_decode_cansat_data_from_string() {
+        let data = "26.193619,99571.82,144.93929,,,,,";
+        let measurements = decode_cansat_data_from_string(&data.to_string()).unwrap();
+        assert_eq!(measurements.temperature.unwrap(), 26.193619);
+        assert_eq!(measurements.pressure.unwrap(), 99571.82);
+        assert_eq!(measurements.altitude.unwrap(), 144.93929);
     }
 }
