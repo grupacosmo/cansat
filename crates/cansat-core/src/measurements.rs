@@ -21,15 +21,15 @@ pub struct Measurements {
     pub nmea: Option<NmeaGga>,
 
     #[serde(serialize_with = "option_vector_f32x3")]
-    #[serde(deserialize_with = "touple_as_vector_f32x3")]
+    #[serde(deserialize_with = "tuple_as_vector_f32x3")]
     pub acceleration: Option<vector::F32x3>,
 
     #[serde(serialize_with = "option_vector_f32x3")]
-    #[serde(deserialize_with = "touple_as_vector_f32x3")]
+    #[serde(deserialize_with = "tuple_as_vector_f32x3")]
     pub gyro: Option<vector::F32x3>,
 
     #[serde(serialize_with = "option_vector_f32x2")]
-    #[serde(deserialize_with = "touple_as_vector_f32x2")]
+    #[serde(deserialize_with = "tuple_as_vector_f32x2")]
     pub rollpitch: Option<vector::F32x2>,
 }
 
@@ -92,7 +92,7 @@ where
     }
 }
 
-fn touple_as_vector_f32x2<'de, D>(deserializer: D) -> Result<Option<vector::F32x2>, D::Error>
+fn tuple_as_vector_f32x2<'de, D>(deserializer: D) -> Result<Option<vector::F32x2>, D::Error>
 where
     D: Deserializer<'de>,
 {
@@ -110,7 +110,7 @@ where
     }
 }
 
-fn touple_as_vector_f32x3<'de, D>(deserializer: D) -> Result<Option<vector::F32x3>, D::Error>
+fn tuple_as_vector_f32x3<'de, D>(deserializer: D) -> Result<Option<vector::F32x3>, D::Error>
 where
     D: Deserializer<'de>,
 {
