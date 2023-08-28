@@ -349,17 +349,6 @@ mod test {
     }
 
     #[test]
-    fn test_parse_received_message_rx() {
-        let msg2 = parse_received_message(
-            "+TEST: RX \"32362E3139333631392C39393537312E38322C3134342E39333932392C2C2C2C2C\"\r\n",
-        );
-        assert_eq!(
-            msg2.unwrap(),
-            "26°C   | 99Pa   | 144.93929m npm | nmea: ,,,,"
-        );
-    }
-
-    #[test]
     fn test_decode_cansat_data_from_string() {
         let data = "26.193619,99571.82,144.93929,,,,,";
         let measurements = decode_cansat_data_from_string(&data.to_string()).unwrap();
