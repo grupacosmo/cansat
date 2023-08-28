@@ -1,5 +1,6 @@
 use std::{
     fs::File,
+    fs::File,
     io::{BufRead, BufReader},
     time::Duration,
 };
@@ -350,8 +351,13 @@ mod test {
 
     #[test]
     fn test_parse_received_message_rx() {
-        let msg2 = parse_received_message("+TEST: RX \"32362E3139333631392C39393537312E38322C3134342E39333932392C2C2C2C2C\"\r\n");
-        assert_eq!(msg2.unwrap(), "26°C   | 99Pa   | 144.93929m npm | nmea: ,,,,"); // unknown data format
+        let msg2 = parse_received_message(
+            "+TEST: RX \"32362E3139333631392C39393537312E38322C3134342E39333932392C2C2C2C2C\"\r\n",
+        );
+        assert_eq!(
+            msg2.unwrap(),
+            "26°C   | 99Pa   | 144.93929m npm | nmea: ,,,,"
+        ); 
     }
 
     #[test]
