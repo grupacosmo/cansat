@@ -1,6 +1,7 @@
+use crate::nmea::NmeaGga;
 use crate::quantity::{Distance, Pressure, Temperature};
 use accelerometer::vector;
-use heapless_bytes::Bytes;
+
 use serde::Serialize;
 
 #[derive(Default, serde::Serialize)]
@@ -14,7 +15,7 @@ pub struct Measurements {
     #[serde(serialize_with = "option_distance_meters")]
     pub altitude: Option<Distance>,
 
-    pub nmea: Option<Bytes<256>>,
+    pub nmea: Option<NmeaGga>,
 
     #[serde(serialize_with = "option_vector_f32x3")]
     pub acceleration: Option<vector::F32x3>,
@@ -76,7 +77,7 @@ impl defmt::Format for Measurements {
             OrError(&self.temperature.map(Celsius)),
             OrError(&self.pressure.map(HectoPascals)),
             OrError(&self.altitude.map(Meters)),
-            OrError(&self.nmea.as_ref().map(|v| Ascii(v))),
+            OrError(&self.nmea),
             OrError(&self.acceleration.map(Vector3)),
             OrError(&self.gyro.map(Vector3)),
             OrError(&self.rollpitch.map(Vector2)),

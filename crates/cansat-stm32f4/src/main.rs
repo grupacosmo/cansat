@@ -33,6 +33,7 @@ mod app {
 
     #[shared]
     pub struct Shared {
+        pub is_fixed: bool,
         pub gps: Gps,
         pub csv_record: Vec<u8, 512>,
     }
@@ -53,7 +54,7 @@ mod app {
         startup::init(ctx)
     }
 
-    #[idle(local = [delay, sd_logger, tracker, i2c1_devices], shared = [gps, csv_record])]
+    #[idle(local = [delay, sd_logger, tracker, i2c1_devices], shared = [gps, csv_record, is_fixed])]
     fn idle(ctx: idle::Context) -> ! {
         tasks::idle(ctx)
     }
@@ -67,7 +68,7 @@ mod app {
 
         #[task(local = [led], priority = 1)]
         async fn blink(ctx: blink::Context);
-        #[task(local = [buzzer], priority = 1)]
+        #[task(local = [buzzer], shared = [is_fixed], priority = 1)]
         async fn buzz(ctx: buzz::Context);
     }
 }
