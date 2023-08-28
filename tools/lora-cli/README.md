@@ -1,0 +1,1 @@
+Default UART configuration "9600, 8, n,1" (8 bits data, no parity, 1 stop bit);
