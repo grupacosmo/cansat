@@ -13,7 +13,7 @@ pub enum Error<'a> {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct NmeaGga(GgaData);
+pub struct NmeaGga(pub GgaData);
 
 impl NmeaGga {
     pub fn try_new(bytes: &[u8]) -> Result<NmeaGga, Error> {
@@ -29,10 +29,6 @@ impl NmeaGga {
             .fix_type
             .map(|ft| FixType::Invalid != ft)
             .unwrap_or(false)
-    }
-
-    pub fn get_data(&self) -> &GgaData {
-        &self.0
     }
 }
 
