@@ -174,18 +174,7 @@
 <a href="#174" id="174">174</a>
 <a href="#175" id="175">175</a>
 <a href="#176" id="176">176</a>
-<a href="#177" id="177">177</a>
-<a href="#178" id="178">178</a>
-<a href="#179" id="179">179</a>
-<a href="#180" id="180">180</a>
-<a href="#181" id="181">181</a>
-<a href="#182" id="182">182</a>
-<a href="#183" id="183">183</a>
-<a href="#184" id="184">184</a>
-<a href="#185" id="185">185</a>
-<a href="#186" id="186">186</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{app, error::Error, startup::LoraError};
-<span class="kw">use </span>accelerometer::vector;
 <span class="kw">use </span>cansat_core::{
     nmea::NmeaGga,
     quantity::{Pressure, Temperature},
@@ -275,18 +264,9 @@
     }
 
     <span class="kw">if let </span><span class="prelude-val">Some</span>(mpu) = <span class="kw-2">&amp;mut </span>i2c1_devices.mpu {
-        data.rollpitch = mpu
-            .get_acc_angles()
-            .ok()
-            .map(|v| vector::F32x2::new(v.x, v.y));
-        data.gyro = mpu
-            .get_gyro()
-            .ok()
-            .map(|v| vector::F32x3::new(v.x, v.y, v.z));
-        data.acceleration = mpu
-            .get_acc()
-            .ok()
-            .map(|v| vector::F32x3::new(v.x, v.y, v.z));
+        data.rollpitch = mpu.get_acc_angles().ok().map(|v| (v.x, v.y));
+        data.gyro = mpu.get_gyro().ok().map(|v| (v.x, v.y, v.z));
+        data.acceleration = mpu.get_acc().ok().map(|v| (v.x, v.y, v.z));
     }
 
     data
