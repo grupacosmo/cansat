@@ -7,6 +7,7 @@ use cansat_core::{
 use cansat_lora::ResponseContent;
 use mpu6050::PI;
 use rtic::Mutex;
+use accelerometer::vector;
 use rtic_monotonics::systick::Systick;
 use stm32f4xx_hal::prelude::*;
 use libm::{self};
@@ -65,13 +66,13 @@ pub fn idle(mut ctx: app::idle::Context) -> ! {
             defmt::info!("{}/{} measurements", _i, calibration_precision);
         }
 
-        error_a_x += measurements.acceleration.unwrap().x;
-        error_a_y += measurements.acceleration.unwrap().y;
-        error_a_z += measurements.acceleration.unwrap().z;
+        error_a_x += measurements.acceleration.unwrap().0;
+        error_a_y += measurements.acceleration.unwrap().1;
+        error_a_z += measurements.acceleration.unwrap().2;
 
-        error_g_x += measurements.gyro.unwrap().x;
-        error_g_y += measurements.gyro.unwrap().y;
-        error_g_z += measurements.gyro.unwrap().z;
+        error_g_x += measurements.gyro.unwrap().0;
+        error_g_y += measurements.gyro.unwrap().1;
+        error_g_z += measurements.gyro.unwrap().2;
     }
     error_a_x /= f32::from(calibration_precision);
     error_a_y /= f32::from(calibration_precision);
@@ -154,12 +155,12 @@ pub fn idle(mut ctx: app::idle::Context) -> ! {
         };
 
         // kf - kalman filter
-        let kf_acc_x = acc.z;
-        let kf_acc_y = -acc.y;
-        let kf_acc_z = -acc.x;
-        let kf_gyro_x = -(gyro.z - error_g_z) * RAD_TO_DEG;
-        let kf_gyro_y = (gyro.y - error_g_y) * RAD_TO_DEG;
-        let kf_gyro_z = gyro.x - error_g_x;
+        let kf_acc_x = acc.2;
+        let kf_acc_y = -acc.1;
+        let kf_acc_z = -acc.0;
+        let kf_gyro_x = -(gyro.2 - error_g_z) * RAD_TO_DEG;
+        let kf_gyro_y = (gyro.1 - error_g_y) * RAD_TO_DEG;
+        let kf_gyro_z = gyro.0 - error_g_x;
 
         kf_acc_rot_x =
             libm::atanf(kf_acc_y / libm::sqrtf(kf_acc_x * kf_acc_x + kf_acc_z * kf_acc_z))
@@ -246,7 +247,7 @@ pub fn idle(mut ctx: app::idle::Context) -> ! {
             kf_acc_z
         );
         defmt::info!(
-            "rotated error vector:  {{{}, {}, {}}}",
+            "rotated error vector:  {{{}, {}, {}}}",   
             acc_err_vec.x,
             acc_err_vec.y,
             acc_err_vec.z
