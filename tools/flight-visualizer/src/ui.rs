@@ -1,14 +1,14 @@
 use crate::data::{Data, DataRecord};
 use eframe::egui;
 use eframe::egui::Context;
-use egui::plot::{Line, Plot, PlotPoints};
+use egui::plot::{Line, Plot, PlotPoints, Points};
 use egui::{Color32, Pos2, Stroke, Ui, Vec2};
 use nalgebra::{Matrix3, Vector2, Vector3};
 use once_cell::sync::Lazy;
 use time::format_description::FormatItem;
 use time::OffsetDateTime;
 
-type DataRecordFieldGetter = fn(&DataRecord) -> f64;
+type DataRecordFieldGetter = fn(&DataRecord) -> Option<f64>;
 
 pub fn draw_ui(ctx: &Context, data: &Data) {
     // ctx.set_debug_on_hover(true);
@@ -50,7 +50,7 @@ fn ui_left_panel(ui: &mut Ui, data: &Data) {
             ui,
             "dXY",
             data,
-            |d| d.acceleration.x + d.acceleration.y,
+            extract_horizontal_velocity,
             UiGraphSettings::new_with_height(0.0, 0.0, full_height * 0.25),
         );
     });
@@ -79,19 +79,19 @@ fn ui_info_box(ui: &mut Ui, data: &Data) {
     let available_width = ui.available_width();
     ui.vertical(|ui| {
         ui.set_width(available_width * 0.5);
-        ui.label(format!("Signal strength: {:?}", data.get_signal_strength()));
+        ui.label(format!("Signal strength: {:?}", data.signal_strength()));
         ui.separator();
 
-        let last_data = data.get_last_data();
+        let last_data = data.last_data();
         if last_data.is_none() {
             ui.label("No data");
             return;
         }
         let last_data = last_data.unwrap();
         ui.label(format!("Time: {}", timestamp_formatter(last_data.time)));
-        ui.label(format!("Temperature: {}", last_data.bme.temperature));
-        ui.label(format!("Pressure: {}", last_data.bme.pressure));
-        ui.label(format!("Height: {}", last_data.bme.height));
+        ui.label(format!("Temperature: {:?}", last_data.bme.temperature));
+        ui.label(format!("Pressure: {:?}", last_data.bme.pressure));
+        ui.label(format!("Height: {:?}", last_data.bme.height));
         ui.label(format!("{:?}", last_data.orientation));
         ui.label(format!("{:?}", last_data.acceleration));
     });
@@ -134,7 +134,7 @@ fn ui_3d_panel(ui: &mut Ui, data: &Data) {
     let rect = response.rect;
     painter.rect_filled(rect, 0.0, Color32::from_rgb(0, 0, 0));
 
-    let last_data = data.get_last_data();
+    let last_data = data.last_data();
     if last_data.is_none() {
         return;
     }
@@ -152,9 +152,9 @@ fn ui_3d_panel(ui: &mut Ui, data: &Data) {
     ]
     .map(|p| p - Vector3::new(0.5, 0.5, 0.5));
 
-    let rot_z = last_data.orientation.z;
-    let rot_x = last_data.orientation.x;
-    let rot_y = last_data.orientation.y;
+    let rot_z = last_data.orientation.z.unwrap_or(0.0);
+    let rot_x = last_data.orientation.x.unwrap_or(0.0);
+    let rot_y = last_data.orientation.y.unwrap_or(0.0);
 
     // transform points
     let r1 = Matrix3::from([
@@ -245,7 +245,7 @@ fn draw_graph(
 
         ui.horizontal(|ui| {
             ui.label(name);
-            let value = data.get_last_data().map(field_getter).unwrap_or(f64::NAN);
+            let value = data.last_data().and_then(field_getter).unwrap_or(f64::NAN);
             ui.label(format!("{:.2}", value));
         });
 
@@ -259,15 +259,17 @@ fn draw_graph(
 
         plot.show(ui, |plot_ui| {
             let value_iter = data
-                .get_data_iter()
+                .data_iter()
+                .filter(|d| field_getter(d).is_some())
                 .map(|d| data_to_point(d, &field_getter));
-            plot_ui.line(Line::new(PlotPoints::from_iter(value_iter)).name(name))
+
+            plot_ui.line(Line::new(PlotPoints::from_iter(value_iter)).name(name));
         });
     });
 }
 
 fn data_to_point(data: &DataRecord, field_getter: &DataRecordFieldGetter) -> [f64; 2] {
-    [data.time, field_getter(data)]
+    [data.time, field_getter(data).unwrap()]
 }
 
 fn timestamp_formatter(sec: f64) -> String {
@@ -276,6 +278,13 @@ fn timestamp_formatter(sec: f64) -> String {
     let datetime = OffsetDateTime::from_unix_timestamp(sec as i64).unwrap();
 
     datetime.format(&FORMAT).unwrap()
+}
+
+fn extract_horizontal_velocity(d: &DataRecord) -> Option<f64> {
+    match (d.acceleration.x, d.acceleration.y) {
+        (Some(x), Some(y)) => Some(x + y),
+        _ => None,
+    }
 }
 
 struct UiGraphSettings {

@@ -7,3 +7,6 @@ edition = "2021"
 
 [dependencies]
 noise = "0.8.2"
+cansat-core = { path = "../../crates/cansat-core" }
+csv-core = "0.1.10"
+serde-csv-core = { version = "0.2.0" }

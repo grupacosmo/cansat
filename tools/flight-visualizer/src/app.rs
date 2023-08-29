@@ -1,5 +1,6 @@
 use crate::data::{Acceleration, BmeData, Data, DataRecord, Orientation};
 use crate::ui;
+use cansat_core::Measurements;
 use eframe::Frame;
 use egui::Context;
 use std::sync::{Arc, Mutex};
@@ -12,7 +13,7 @@ pub struct FlightVisualizerApp {
 impl Default for FlightVisualizerApp {
     fn default() -> Self {
         Self {
-            data: Arc::new(Mutex::new(Data::new())),
+            data: Arc::new(Mutex::new(Data::default())),
         }
     }
 }
@@ -40,43 +41,47 @@ impl FlightVisualizerApp {
     }
 
     fn process_input_line(data_arc: &Arc<Mutex<Data>>, line: String) {
-        if !line.starts_with(">|") {
-            println!("[STDIN][ IGNORED ]### {}", line);
-            return;
-        }
-        println!("[STDIN][PROCESSED]### {}", line);
+        println!("[STDIN][PROCESSING]### {}", line);
 
-        let line_split: Vec<&str> = line.split('|').collect();
-        if line_split.len() < 3 {
-            println!("wrong data: {}", line);
-            return;
+        let mut reader = serde_csv_core::Reader::<200>::new();
+        match reader.deserialize_from_slice::<Measurements>(line.as_bytes()) {
+            Ok((measurements, _)) => {
+                Self::process_measurements(data_arc, measurements);
+            }
+            Err(e) => {
+                println!("[STDIN][  ERROR   ]### {}", e);
+            }
         }
-        let temp: f64 = line_split[1].parse().unwrap();
-        let pressure: f64 = line_split[2].parse().unwrap();
-        let height: f64 = line_split[3].parse().unwrap();
+    }
 
+    fn process_measurements(data_arc: &Arc<Mutex<Data>>, measurements: Measurements) {
         let time = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
             .as_secs_f64();
 
         let mut data = data_arc.lock().unwrap();
+
         data.push(DataRecord::new(
             time,
-            BmeData::new(temp, pressure, height),
-            Orientation::new(
-                f64::sin(time / 8.0),
-                f64::sin(time / 15.0),
-                f64::sin(time / 2.0),
+            BmeData::new(
+                measurements.temperature.map(|v| v.as_celsius() as f64),
+                measurements.pressure.map(|v| v.as_pascals() as f64),
+                measurements.altitude.map(|v| v.as_meters() as f64),
             ),
-            Acceleration::new(0.0, 0.0, 0.0),
+            Orientation::new(
+                Some(f64::sin(time / 8.0)),
+                Some(f64::sin(time / 15.0)),
+                Some(f64::sin(time / 2.0)),
+            ),
+            Acceleration::new(Some(0.0), Some(0.0), Some(0.0)),
         ));
     }
 }
 impl eframe::App for FlightVisualizerApp {
     fn update(&mut self, ctx: &Context, _frame: &mut Frame) {
         ui::draw_ui(ctx, &self.data.lock().unwrap());
-        ctx.request_repaint_after(Duration::from_millis(33));
+        ctx.request_repaint_after(Duration::from_millis(1000));
     }
 }
 

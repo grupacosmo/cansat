@@ -1,9 +1,10 @@
 use derive_new::new;
 use std::collections::VecDeque;
 
-const MAX_DATA_POINTS: usize = 10;
+pub const DEFAULT_CAPACITY: usize = 20;
 
 pub struct Data {
+    data_points: usize,
     data_records: VecDeque<DataRecord>,
     signal_strength: SignalStrength,
 }
@@ -24,63 +25,165 @@ pub struct SignalStrength {
 
 #[derive(new, Debug)]
 pub struct BmeData {
-    pub temperature: f64,
-    pub pressure: f64,
-    pub height: f64,
+    pub temperature: Option<f64>,
+    pub pressure: Option<f64>,
+    pub height: Option<f64>,
 }
 
 #[derive(new, Debug)]
 pub struct Orientation {
-    pub x: f64,
-    pub y: f64,
-    pub z: f64,
+    pub x: Option<f64>,
+    pub y: Option<f64>,
+    pub z: Option<f64>,
 }
 
 #[derive(new, Debug)]
 pub struct Acceleration {
-    pub x: f64,
-    pub y: f64,
-    pub z: f64,
+    pub x: Option<f64>,
+    pub y: Option<f64>,
+    pub z: Option<f64>,
 }
 
 impl Data {
-    pub fn new() -> Self {
+    pub fn new(data_points: usize) -> Self {
         Self {
-            data_records: VecDeque::new(),
+            data_points,
+            data_records: VecDeque::with_capacity(data_points),
             signal_strength: SignalStrength::new(0, 0),
         }
     }
 
     pub fn push(&mut self, data_record: DataRecord) {
         self.data_records.push_back(data_record);
-        if self.data_records.len() > MAX_DATA_POINTS {
+        if self.data_records.len() > self.data_points {
             self.data_records.pop_front();
         }
     }
 
-    pub fn get_last_data(&self) -> Option<&DataRecord> {
+    pub fn last_data(&self) -> Option<&DataRecord> {
         self.data_records.back()
     }
 
-    pub fn get_nth_element(&self, n: usize) -> Option<&DataRecord> {
+    pub fn nth_element(&self, n: usize) -> Option<&DataRecord> {
         self.data_records.get(n)
     }
 
-    pub fn get_data_iter(&self) -> impl Iterator<Item = &DataRecord> {
+    pub fn data_iter(&self) -> impl Iterator<Item = &DataRecord> {
         self.data_records.iter()
+    }
+
+    pub fn data_windows(&self) -> impl Iterator<Item = [&DataRecord; 2]> {
+        self.data_records
+            .iter()
+            .zip(self.data_records.iter().skip(1))
+            .map(|t| [t.0, t.1])
     }
 
     pub fn set_signal_strength(&mut self, signal_strength: SignalStrength) {
         self.signal_strength = signal_strength;
     }
 
-    pub fn get_signal_strength(&self) -> &SignalStrength {
+    pub fn signal_strength(&self) -> &SignalStrength {
         &self.signal_strength
     }
 }
 
 impl Default for Data {
     fn default() -> Self {
-        Self::new()
+        Self::new(DEFAULT_CAPACITY)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    fn new_test_data(test_value: f64) -> DataRecord {
+        DataRecord::new(
+            0.0,
+            BmeData::new(Some(test_value), Some(test_value), Some(test_value)),
+            Orientation::new(Some(test_value), Some(test_value), Some(test_value)),
+            Acceleration::new(Some(test_value), Some(test_value), Some(test_value)),
+        )
+    }
+
+    fn test_data_getter(data_record: &DataRecord) -> Option<f64> {
+        data_record.bme.temperature
+    }
+
+    fn test_data_getter_arr(data_record: [&DataRecord; 2]) -> [Option<f64>; 2] {
+        [
+            data_record[0].bme.temperature,
+            data_record[1].bme.temperature,
+        ]
+    }
+
+    #[test]
+    fn test_data_nth_element() {
+        let mut data = Data::new(3);
+
+        data.push(new_test_data(1.0));
+        data.push(new_test_data(2.0));
+        data.push(new_test_data(3.0));
+        assert_eq!(test_data_getter(&data.nth_element(0).unwrap()), Some(1.0));
+        assert_eq!(test_data_getter(&data.nth_element(1).unwrap()), Some(2.0));
+        assert_eq!(test_data_getter(&data.nth_element(2).unwrap()), Some(3.0));
+
+        data.push(new_test_data(4.0));
+        assert_eq!(test_data_getter(&data.nth_element(0).unwrap()), Some(2.0));
+        assert_eq!(test_data_getter(&data.nth_element(1).unwrap()), Some(3.0));
+        assert_eq!(test_data_getter(&data.nth_element(2).unwrap()), Some(4.0));
+
+        data.push(new_test_data(5.0));
+        assert_eq!(test_data_getter(&data.nth_element(0).unwrap()), Some(3.0));
+        assert_eq!(test_data_getter(&data.nth_element(1).unwrap()), Some(4.0));
+        assert_eq!(test_data_getter(&data.nth_element(2).unwrap()), Some(5.0));
+    }
+
+    #[test]
+    fn test_data_iter() {
+        let mut data = Data::new(3);
+
+        data.push(new_test_data(1.0));
+        data.push(new_test_data(2.0));
+        data.push(new_test_data(3.0));
+        {
+            let mut iter = data.data_iter();
+            assert_eq!(iter.next().map(test_data_getter), Some(Some(1.0)));
+            assert_eq!(iter.next().map(test_data_getter), Some(Some(2.0)));
+            assert_eq!(iter.next().map(test_data_getter), Some(Some(3.0)));
+            assert_eq!(iter.next().map(test_data_getter), None);
+        }
+        {
+            let mut iter = data.data_windows();
+            assert_eq!(
+                iter.next().map(test_data_getter_arr),
+                Some([Some(1.0), Some(2.0)])
+            );
+            assert_eq!(
+                iter.next().map(test_data_getter_arr),
+                Some([Some(2.0), Some(3.0)])
+            );
+            assert_eq!(iter.next().map(test_data_getter_arr), None);
+        }
+
+        data.push(new_test_data(4.0));
+        data.push(new_test_data(5.0));
+        let mut iter = data.data_iter();
+        assert_eq!(iter.next().map(test_data_getter), Some(Some(3.0)));
+        assert_eq!(iter.next().map(test_data_getter), Some(Some(4.0)));
+        assert_eq!(iter.next().map(test_data_getter), Some(Some(5.0)));
+        assert_eq!(iter.next().map(test_data_getter), None);
+
+        let mut iter = data.data_windows();
+        assert_eq!(
+            iter.next().map(test_data_getter_arr),
+            Some([Some(3.0), Some(4.0)])
+        );
+        assert_eq!(
+            iter.next().map(test_data_getter_arr),
+            Some([Some(4.0), Some(5.0)])
+        );
+        assert_eq!(iter.next().map(test_data_getter_arr), None);
     }
 }
