@@ -1,29 +1,32 @@
+use crate::nmea::NmeaGga;
 use crate::quantity::{Distance, Pressure, Temperature};
-use accelerometer::vector;
-use heapless_bytes::Bytes;
-use serde::Serialize;
 
-#[derive(Default, serde::Serialize)]
+use serde::{de, Deserializer, Serialize};
+
+#[derive(Default, serde::Serialize, serde::Deserialize)]
 pub struct Measurements {
     #[serde(serialize_with = "option_temperature_celsius")]
+    #[serde(deserialize_with = "f32_as_optional_temperature_in_celcius")]
     pub temperature: Option<Temperature>,
 
     #[serde(serialize_with = "option_pressure_pascals")]
+    #[serde(deserialize_with = "f32_as_optional_pressure_in_pascals")]
     pub pressure: Option<Pressure>,
 
     #[serde(serialize_with = "option_distance_meters")]
+    #[serde(deserialize_with = "f32_as_optional_distance_in_meters")]
     pub altitude: Option<Distance>,
 
-    pub nmea: Option<Bytes<256>>,
+    pub nmea: Option<NmeaGga>,
 
-    #[serde(serialize_with = "option_vector_f32x3")]
-    pub acceleration: Option<vector::F32x3>,
+    #[serde(serialize_with = "option_tuple_f32x3")]
+    pub acceleration: Option<(f32, f32, f32)>,
 
-    #[serde(serialize_with = "option_vector_f32x3")]
-    pub gyro: Option<vector::F32x3>,
+    #[serde(serialize_with = "option_tuple_f32x3")]
+    pub gyro: Option<(f32, f32, f32)>,
 
-    #[serde(serialize_with = "option_vector_f32x2")]
-    pub rollpitch: Option<vector::F32x2>,
+    #[serde(serialize_with = "option_tuple_f32x2")]
+    pub rollpitch: Option<(f32, f32)>,
 }
 
 fn option_temperature_celsius<S>(v: &Option<Temperature>, s: S) -> Result<S::Ok, S::Error>
@@ -33,11 +36,31 @@ where
     v.map(|v| v.as_celsius()).serialize(s)
 }
 
+fn f32_as_optional_temperature_in_celcius<'de, D>(
+    deserializer: D,
+) -> Result<Option<Temperature>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let temperature: Option<f32> = de::Deserialize::deserialize(deserializer)?;
+    Ok(temperature.map(Temperature::from_celsius))
+}
+
 fn option_pressure_pascals<S>(v: &Option<Pressure>, s: S) -> Result<S::Ok, S::Error>
 where
     S: serde::Serializer,
 {
     v.map(|v| v.as_pascals()).serialize(s)
+}
+
+fn f32_as_optional_pressure_in_pascals<'de, D>(
+    deserializer: D,
+) -> Result<Option<Pressure>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let pressure: Option<f32> = de::Deserialize::deserialize(deserializer)?;
+    Ok(pressure.map(Pressure::from_pascals))
 }
 
 fn option_distance_meters<S>(v: &Option<Distance>, s: S) -> Result<S::Ok, S::Error>
@@ -47,22 +70,30 @@ where
     v.map(|v| v.as_meters()).serialize(s)
 }
 
-fn option_vector_f32x2<S>(v: &Option<vector::F32x2>, serializer: S) -> Result<S::Ok, S::Error>
+fn f32_as_optional_distance_in_meters<'de, D>(deserializer: D) -> Result<Option<Distance>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let distance: Option<f32> = de::Deserialize::deserialize(deserializer)?;
+    Ok(distance.map(Distance::from_meters))
+}
+
+fn option_tuple_f32x2<S>(v: &Option<(f32, f32)>, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: serde::Serializer,
 {
     match v {
-        Some(v) => (v.x, v.y).serialize(serializer),
+        Some((x, y)) => (x, y).serialize(serializer),
         None => ((), ()).serialize(serializer),
     }
 }
 
-fn option_vector_f32x3<S>(v: &Option<vector::F32x3>, serializer: S) -> Result<S::Ok, S::Error>
+fn option_tuple_f32x3<S>(v: &Option<(f32, f32, f32)>, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: serde::Serializer,
 {
     match v {
-        Some(v) => (v.x, v.y, v.z).serialize(serializer),
+        Some((x, y, z)) => (x, y, z).serialize(serializer),
         None => ((), ()).serialize(serializer),
     }
 }
@@ -76,29 +107,11 @@ impl defmt::Format for Measurements {
             OrError(&self.temperature.map(Celsius)),
             OrError(&self.pressure.map(HectoPascals)),
             OrError(&self.altitude.map(Meters)),
-            OrError(&self.nmea.as_ref().map(|v| Ascii(v))),
-            OrError(&self.acceleration.map(Vector3)),
-            OrError(&self.gyro.map(Vector3)),
-            OrError(&self.rollpitch.map(Vector2)),
+            OrError(&self.nmea),
+            OrError(&self.acceleration),
+            OrError(&self.gyro),
+            OrError(&self.rollpitch),
         );
-    }
-}
-
-struct Vector2(pub vector::F32x2);
-
-#[cfg(feature = "defmt")]
-impl defmt::Format for Vector2 {
-    fn format(&self, fmt: defmt::Formatter) {
-        defmt::write!(fmt, "{}, {}", self.0.x, self.0.y);
-    }
-}
-
-struct Vector3(pub vector::F32x3);
-
-#[cfg(feature = "defmt")]
-impl defmt::Format for Vector3 {
-    fn format(&self, fmt: defmt::Formatter) {
-        defmt::write!(fmt, "{}, {}, {}", self.0.x, self.0.y, self.0.z);
     }
 }
 

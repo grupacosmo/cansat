@@ -1,7 +1,7 @@
 [package]
+edition = "2021"
 name = "cansat-core"
 version = "0.1.0"
-edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -18,9 +18,15 @@ heapless-bytes = "0.3.0"
 defmt = { version = "0.3.4", optional = true }
 mpu6050 = { version = "0.1.0"}
 
+[dependencies.nmea]
+git = "https://github.com/AeroRust/nmea"
+default-features = false
+features = ["serde", "GGA"]
+
 [dependencies.derive_more]
-version = "0.99.17"
 default-features = false
 features = [
-    "add", "mul",
+  "add",
+  "mul",
 ]
+version = "0.99.17"

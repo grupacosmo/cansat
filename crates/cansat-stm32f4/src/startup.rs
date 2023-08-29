@@ -58,6 +58,7 @@ pub fn init(ctx: app::init::Context) -> (app::Shared, app::Local) {
     let shared = app::Shared {
         gps: cansat.gps,
         csv_record: Vec::new(),
+        is_fixed: false,
     };
     let local = app::Local {
         delay: cansat.delay,
