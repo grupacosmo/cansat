@@ -15,9 +15,30 @@ pub fn idle(mut ctx: app::idle::Context) -> ! {
         .quote(b'\'')
         .build();
 
+    let mut takeoff_detection_readings = 0;
+
     loop {
         let measurements = read_measurements(&mut ctx);
         defmt::info!("{}", measurements);
+
+        let Some(acc) = measurements.acceleration else {
+            panic!("No acceleration data");
+        };
+
+        if takeoff_detection_readings >= 0 {
+            if acc.x < 0 {
+                takeoff_detection_readings += 1;
+            } else {
+                takeoff_detection_readings = 0;
+            }
+
+            if takeoff_detection_readings == 3 {
+                defmt::info!("Cansat has taken off.");
+                takeoff_detection_readings = -1;
+            } else {
+                defmt::info!("Cansat has not yet taken off.");
+            }
+        }
 
         let csv_record = match serde_csv_core::to_vec(&mut writer, &measurements) {
             Ok(r) => r,
