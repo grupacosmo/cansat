@@ -1,5 +1,3 @@
-//use core::{ops::Deref, time::Duration};
-
 use crate::{app, error::Error, startup::LoraError};
 use cansat_core::{
     nmea::NmeaGga,
@@ -11,12 +9,7 @@ use mpu6050::PI;
 use rtic::Mutex;
 use rtic_monotonics::systick::Systick;
 use stm32f4xx_hal::prelude::*;
-
-use libm::{self, atan2f};
-
-//pub fn rotate(x_: f32, y_: f32, alpha: f32) -> vector::F32x2{
-//    return vector::F32x2{x: x_*alpha.cos() - y_*alpha.sin(), y: x_*alpha.sin() + y_*alpha.cos()};
-//}
+use libm::{self};
 
 const RAD_TO_DEG: f32 = 180.0f32 / PI;
 const DEG_TO_RAD: f32 = PI / 180.0f32;
@@ -50,8 +43,8 @@ pub fn idle(mut ctx: app::idle::Context) -> ! {
         .quote(b'\'')
         .build();
 
-    let mut angle_x = 0.0f32;
-    let mut angle_y = 0.0f32;
+    let mut angle_x: f32;
+    let mut angle_y: f32;
     let mut angle_z = 0.0f32;
 
     let mut error_a_x = 0.0f32;
@@ -71,8 +64,6 @@ pub fn idle(mut ctx: app::idle::Context) -> ! {
         if _i % 10 == 0 {
             defmt::info!("{}/{} measurements", _i, calibration_precision);
         }
-
-        //defmt::info!("{}", measurements);
 
         error_a_x += measurements.acceleration.unwrap().x;
         error_a_y += measurements.acceleration.unwrap().y;
@@ -124,8 +115,8 @@ pub fn idle(mut ctx: app::idle::Context) -> ! {
     let mut kf_angle_y = 0.0f32;
     let mut kf_bias_x = 0.0f32;
     let mut kf_bias_y = 0.0f32;
-    let mut kf_rate_x = 0.0f32;
-    let mut kf_rate_y = 0.0f32;
+    let mut kf_rate_x: f32;
+    let mut kf_rate_y : f32;
 
     let mut kf_err_mat_x_00 = 0.0f32;
     let mut kf_err_mat_x_01 = 0.0f32;
@@ -136,16 +127,13 @@ pub fn idle(mut ctx: app::idle::Context) -> ! {
     let mut kf_err_mat_y_10 = 0.0f32;
     let mut kf_err_mat_y_11 = 0.0f32;
 
-    let mut kf_acc_rot_x = 0.0f32;
-    let mut kf_acc_rot_y = 0.0f32;
-    let mut kf_gyro_rot_x = 0.0f32;
-    let mut kf_gyro_rot_y = 0.0f32;
+    let mut kf_acc_rot_x: f32;
+    let mut kf_acc_rot_y: f32;
 
     let mut takeoff_detection_readings = 0;
 
     loop {
         let measurements = read_measurements(&mut ctx);
-        //defmt::info!("{}", measurements);
 
         let curr_measurement =
             <rtic_monotonics::systick::Systick as rtic_monotonics::Monotonic>::now();
@@ -158,8 +146,6 @@ pub fn idle(mut ctx: app::idle::Context) -> ! {
         let milliseconds = u16::try_from(dur.to_millis()).unwrap();
         let dt: f32 = f32::from(milliseconds) / 1000.0f32;
 
-        //defmt::info!("since last measurement: {}", dur);
-
         let Some(acc) = measurements.acceleration else {
             panic!("No acceleration data");
         };
@@ -167,36 +153,13 @@ pub fn idle(mut ctx: app::idle::Context) -> ! {
             panic!("No gyro data");
         };
 
-        //defmt::info!("acc: {}, {}, {}", acc.x, acc.y, acc.z);
-
-        // rotated measurements for complementary filter
-        /*
-        let cf_acc_x = -acc.z;
-        let cf_acc_y = acc.y;
-        let cf_acc_z = acc.x;
-        let cf_gyro_x = -gyro.z;
-        let cf_gyro_y = gyro.y;
-        let cf_gyro_z = gyro.x;
-        let cf_gyro_err_x = -error_g_z;
-        let cf_gyro_err_y = error_g_y;
-        let cf_gyro_err_z = error_g_x;
-
-        let cf_acc_rot_x = libm::atanf(cf_acc_y / libm::sqrtf(cf_acc_x*cf_acc_x + cf_acc_z*cf_acc_z));
-        let cf_acc_rot_y = -libm::atanf(cf_acc_x / libm::sqrtf(cf_acc_y*cf_acc_y + cf_acc_z*cf_acc_z));
-        const CF_ALPHA: f32 = 0.98f32;
-
-        angle_x = CF_ALPHA*(angle_x + (cf_gyro_x - cf_gyro_err_x*0.)*dt) + (1.0f32 - CF_ALPHA)*cf_acc_rot_x;
-        angle_y = CF_ALPHA*(angle_y + (cf_gyro_y - cf_gyro_err_y*0.)*dt) + (1.0f32 - CF_ALPHA)*cf_acc_rot_y;
-        angle_z += (cf_gyro_z - cf_gyro_err_z)*dt;
-        */
-
         // kf - kalman filter
         let kf_acc_x = acc.z;
         let kf_acc_y = -acc.y;
         let kf_acc_z = -acc.x;
         let kf_gyro_x = -(gyro.z - error_g_z) * RAD_TO_DEG;
         let kf_gyro_y = (gyro.y - error_g_y) * RAD_TO_DEG;
-        let kf_gyro_z = (gyro.x - error_g_x); // * RAD_TO_DEG;
+        let kf_gyro_z = gyro.x - error_g_x;
 
         kf_acc_rot_x =
             libm::atanf(kf_acc_y / libm::sqrtf(kf_acc_x * kf_acc_x + kf_acc_z * kf_acc_z))
@@ -304,7 +267,6 @@ pub fn idle(mut ctx: app::idle::Context) -> ! {
 
             if takeoff_detection_readings == 20 {
                 defmt::info!("Cansat has taken off.");
-                //loop{}
                 takeoff_detection_readings = -1;
             } else {
                 defmt::info!("Cansat has not yet taken off.");
