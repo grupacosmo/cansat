@@ -9,12 +9,13 @@ pub struct Data {
     signal_strength: SignalStrength,
 }
 
-#[derive(new)]
+#[derive(new, Debug)]
 pub struct DataRecord {
     pub time: f64,
     pub bme: BmeData,
     pub orientation: Orientation,
     pub acceleration: Acceleration,
+    pub rollpitch: RollPitch,
 }
 
 #[derive(new, Debug)]
@@ -42,6 +43,12 @@ pub struct Acceleration {
     pub x: Option<f64>,
     pub y: Option<f64>,
     pub z: Option<f64>,
+}
+
+#[derive(new, Debug)]
+pub struct RollPitch {
+    pub roll: Option<f64>,
+    pub pitch: Option<f64>
 }
 
 impl Data {
@@ -91,6 +98,37 @@ impl Data {
 impl Default for Data {
     fn default() -> Self {
         Self::new(DEFAULT_CAPACITY)
+    }
+}
+
+impl Orientation {
+    pub fn new_none() -> Self {
+        Self::new(None, None, None)
+    }
+
+    pub fn new_some(x: f64, y: f64, z: f64) -> Self {
+        Self::new(Some(x), Some(y), Some(z))
+    }
+}
+
+
+impl Acceleration {
+    pub fn new_none() -> Self {
+        Self::new(None, None, None)
+    }
+
+    pub fn new_some(x: f64, y: f64, z: f64) -> Self {
+        Self::new(Some(x), Some(y), Some(z))
+    }
+}
+
+impl RollPitch {
+    pub fn new_none() -> Self {
+        Self::new(None, None)
+    }
+
+    pub fn new_some(roll: f64, pitch: f64) -> Self {
+        Self::new(Some(roll), Some(pitch))
     }
 }
 

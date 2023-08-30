@@ -79,7 +79,7 @@ fn ui_info_box(ui: &mut Ui, data: &Data) {
     let available_width = ui.available_width();
     ui.vertical(|ui| {
         ui.set_width(available_width * 0.5);
-        ui.label(format!("Signal strength: {:?}", data.signal_strength()));
+        ui.label(format!("{:?}", data.signal_strength()));
         ui.separator();
 
         let last_data = data.last_data();
@@ -94,6 +94,8 @@ fn ui_info_box(ui: &mut Ui, data: &Data) {
         ui.label(format!("Height: {:?}", last_data.bme.height));
         ui.label(format!("{:?}", last_data.orientation));
         ui.label(format!("{:?}", last_data.acceleration));
+        ui.label(format!("Roll {:?}", last_data.rollpitch.roll));
+        ui.label(format!("Pitch {:?}", last_data.rollpitch.pitch));
     });
 }
 
@@ -152,9 +154,9 @@ fn ui_3d_panel(ui: &mut Ui, data: &Data) {
     ]
     .map(|p| p - Vector3::new(0.5, 0.5, 0.5));
 
-    let rot_z = last_data.orientation.z.unwrap_or(0.0);
-    let rot_x = last_data.orientation.x.unwrap_or(0.0);
-    let rot_y = last_data.orientation.y.unwrap_or(0.0);
+    let rot_z = last_data.rollpitch.roll.unwrap_or(0.0);
+    let rot_x = last_data.rollpitch.pitch.unwrap_or(0.0) + std::f64::consts::PI / 2.0;
+    let rot_y = 0.0f64;
 
     // transform points
     let r1 = Matrix3::from([
