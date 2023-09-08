@@ -54,6 +54,7 @@ pub fn init(ctx: app::init::Context) -> (app::Shared, app::Local) {
     app::blink::spawn().unwrap();
     app::buzz::spawn().unwrap();
     app::send_meas::spawn().unwrap();
+    app::measure::spawn().unwrap();
 
     let shared = app::Shared {
         gps: cansat.gps,

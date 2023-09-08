@@ -54,12 +54,10 @@ mod app {
         startup::init(ctx)
     }
 
-    #[idle(local = [delay, sd_logger, tracker, i2c1_devices], shared = [gps, csv_record, is_fixed])]
-    fn idle(ctx: idle::Context) -> ! {
-        tasks::idle(ctx)
-    }
-
     extern "Rust" {
+        #[task(local = [delay, sd_logger, tracker, i2c1_devices], shared = [gps, csv_record, is_fixed], priority = 0)]
+        async fn measure(ctx: measure::Context);
+
         #[task(local = [lora], shared = [csv_record], priority = 1)]
         async fn send_meas(ctx: send_meas::Context);
 

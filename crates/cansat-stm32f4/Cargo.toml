@@ -34,3 +34,4 @@ csv-core = "0.1.10"
 derive_more = { version = "0.99.17", default-features = false, features = ["from"] }
 panic-reset = { version = "0.1.1", optional = true }
 mpu6050 = { version = "0.1.0"}
+futures = { version = "0.3.28", default-features = false, features = ["async-await"] }

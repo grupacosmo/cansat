@@ -17,8 +17,6 @@ pub struct Measurements {
     #[serde(deserialize_with = "f32_as_optional_distance_in_meters")]
     pub altitude: Option<Distance>,
 
-    pub nmea: Option<NmeaGga>,
-
     #[serde(serialize_with = "option_tuple_f32x3")]
     pub acceleration: Option<(f32, f32, f32)>,
 
@@ -27,6 +25,8 @@ pub struct Measurements {
 
     #[serde(serialize_with = "option_tuple_f32x2")]
     pub rollpitch: Option<(f32, f32)>,
+
+    pub nmea: Option<NmeaGga>,
 }
 
 fn option_temperature_celsius<S>(v: &Option<Temperature>, s: S) -> Result<S::Ok, S::Error>

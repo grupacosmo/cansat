@@ -8,39 +8,48 @@ use cansat_lora::ResponseContent;
 use rtic::Mutex;
 use rtic_monotonics::systick::Systick;
 use stm32f4xx_hal::prelude::*;
+use futures::FutureExt as _;
 
-pub fn idle(mut ctx: app::idle::Context) -> ! {
-    let mut writer = csv_core::WriterBuilder::new()
-        .delimiter(b',')
-        .quote(b'\'')
-        .build();
-
+pub async fn measure(mut ctx: app::measure::Context<'_>) {
     loop {
-        let measurements = read_measurements(&mut ctx);
-        defmt::info!("{}", measurements);
+        let future = async {
+            let mut writer = csv_core::WriterBuilder::new()
+                .delimiter(b',')
+                .quote(b'\'')
+                .build();
 
-        let csv_record = match serde_csv_core::to_vec(&mut writer, &measurements) {
-            Ok(r) => r,
-            Err(e) => {
-                defmt::error!(
-                    "Failed to create csv byte record: {}",
-                    defmt::Display2Format(&e)
-                );
-                continue;
-            }
+            let measurements = read_measurements(&mut ctx);
+            defmt::info!("{}", measurements);
+
+            let csv_record = match serde_csv_core::to_vec(&mut writer, &measurements) {
+                Ok(r) => r,
+                Err(e) => {
+                    defmt::error!(
+                        "Failed to create csv byte record: {}",
+                        defmt::Display2Format(&e)
+                    );
+                    return;
+                }
+            };
+            ctx.shared.csv_record.lock(|csv| {
+                *csv = csv_record;
+                let sd_logger = &mut ctx.local.sd_logger;
+
+                if let Some(sd_logger) = sd_logger {
+                    sd_logger.write(csv).unwrap();
+                }
+            });
+            Systick::delay(250.millis()).await;
         };
-        ctx.shared.csv_record.lock(|csv| {
-            *csv = csv_record;
-            let sd_logger = &mut ctx.local.sd_logger;
-
-            if let Some(sd_logger) = sd_logger {
-                sd_logger.write(csv).unwrap();
-            }
-        });
+        // timeout
+        futures::select_biased! {
+            _ = future.fuse() => {},
+            _ = Systick::delay(10.secs()).fuse() => {}
+        };
     }
 }
 
-fn read_measurements(ctx: &mut app::idle::Context) -> Measurements {
+fn read_measurements(ctx: &mut app::measure::Context) -> Measurements {
     let i2c1_devices = &mut ctx.local.i2c1_devices;
     let delay = &mut ctx.local.delay;
     let gps = &mut ctx.shared.gps;
