@@ -43,6 +43,9 @@ Build [lora-cli](../lora-cli) (see [README.md](../lora-cli/README.md)) and run:
 
 # or lora-cli in debug mode
 ../../target/debug/lora-cli | cargo run
+
+# with log file (release)
+../../target/release/lora-cli | tee /tmp/cansat.log | cargo run
 ```
 
 ## Without working lora (generated data)
