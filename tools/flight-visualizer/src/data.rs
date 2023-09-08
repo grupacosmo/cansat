@@ -48,7 +48,7 @@ pub struct Acceleration {
 #[derive(new, Debug)]
 pub struct RollPitch {
     pub roll: Option<f64>,
-    pub pitch: Option<f64>
+    pub pitch: Option<f64>,
 }
 
 impl Data {
@@ -110,7 +110,6 @@ impl Orientation {
         Self::new(Some(x), Some(y), Some(z))
     }
 }
-
 
 impl Acceleration {
     pub fn new_none() -> Self {

@@ -1,12 +1,14 @@
-use crate::data::{Acceleration, BmeData, Data, DataRecord, Orientation, RollPitch, SignalStrength};
+use crate::data::{
+    Acceleration, BmeData, Data, DataRecord, Orientation, RollPitch, SignalStrength,
+};
 use crate::ui;
 use cansat_core::Measurements;
 use eframe::Frame;
 use egui::Context;
-use std::sync::{Arc, Mutex};
-use std::time::Duration;
 use once_cell::sync::Lazy;
 use regex::Regex;
+use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 pub struct FlightVisualizerApp {
     data: Arc<Mutex<Data>>,
@@ -50,41 +52,41 @@ impl FlightVisualizerApp {
             Ok((measurements, _)) => {
                 Self::process_measurements(data_arc, measurements);
             }
-            Err(_) => {
+            Err(ee) => {
                 match Self::process_signal_strength(line) {
                     Ok((signal_strength, noise_level)) =>
                         data_arc.lock().unwrap().set_signal_strength(SignalStrength::new(
                             signal_strength,
                             noise_level,
                         )),
-                    Err(e) => println!("[STDIN][  ERROR   ]### this is not a measurements or signal strength: {}", e)
+                    Err(e) => println!("[STDIN][  ERROR   ]### this is not a measurements or signal strength: {}  ### {}", e, ee)
                 }
             }
         }
     }
 
-    fn process_signal_strength(line: String) -> Result<(i32, i32),String> {
-        static SIGNAL_REGEX: Lazy<Regex> =
-            Lazy::new(|| Regex::new(r#"Signal strength: (-?[0-9]+) dBm, Noise level: (-?[0-9]+) dB"#).unwrap());
+    fn process_signal_strength(line: String) -> Result<(i32, i32), String> {
+        static SIGNAL_REGEX: Lazy<Regex> = Lazy::new(|| {
+            Regex::new(r#"Signal strength: (-?[0-9]+) dBm, Noise level: (-?[0-9]+) dB"#).unwrap()
+        });
 
-        let captures =
-            SIGNAL_REGEX.captures(&line).ok_or("Failed to capture signal strength")?;
+        let captures = SIGNAL_REGEX
+            .captures(&line)
+            .ok_or("Failed to capture signal strength")?;
 
-        let signal_strength:i32 =
-            captures
-                .get(1)
-                .map(|g| g.as_str().parse())
-                .transpose()
-                .map_err(|_| "Failed to parse signal strength".to_string())?
-                .unwrap();
+        let signal_strength: i32 = captures
+            .get(1)
+            .map(|g| g.as_str().parse())
+            .transpose()
+            .map_err(|_| "Failed to parse signal strength".to_string())?
+            .unwrap();
 
-        let noise_level:i32 =
-            captures
-                .get(2)
-                .map(|g| g.as_str().parse())
-                .transpose()
-                .map_err(|_| "Failed to parse noise level".to_string())?
-                .unwrap();
+        let noise_level: i32 = captures
+            .get(2)
+            .map(|g| g.as_str().parse())
+            .transpose()
+            .map_err(|_| "Failed to parse noise level".to_string())?
+            .unwrap();
 
         Ok((signal_strength, noise_level))
     }
@@ -104,13 +106,16 @@ impl FlightVisualizerApp {
                 measurements.pressure.map(|v| v.as_pascals() as f64),
                 measurements.altitude.map(|v| v.as_meters() as f64),
             ),
-            measurements.gyro
+            measurements
+                .gyro
                 .map(|g| Orientation::new_some(g.0 as f64, g.1 as f64, g.2 as f64))
                 .unwrap_or(Orientation::new_none()),
-            measurements.acceleration
+            measurements
+                .acceleration
                 .map(|a| Acceleration::new_some(a.0 as f64, a.1 as f64, a.2 as f64))
                 .unwrap_or(Acceleration::new_none()),
-            measurements.rollpitch
+            measurements
+                .rollpitch
                 .map(|rp| RollPitch::new_some(rp.0 as f64, rp.1 as f64))
                 .unwrap_or(RollPitch::new_none()),
         ));

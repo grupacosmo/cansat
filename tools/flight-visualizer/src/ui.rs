@@ -1,7 +1,7 @@
 use crate::data::{Data, DataRecord};
 use eframe::egui;
 use eframe::egui::Context;
-use egui::plot::{Line, Plot, PlotPoints, Points};
+use egui::plot::{Line, Plot, PlotPoints};
 use egui::{Color32, Pos2, Stroke, Ui, Vec2};
 use nalgebra::{Matrix3, Vector2, Vector3};
 use once_cell::sync::Lazy;
@@ -153,9 +153,33 @@ fn ui_3d_panel(ui: &mut Ui, data: &Data) {
         Vector3::new(1.0, 0.0, 0.0),
     ]
     .map(|p| p - Vector3::new(0.5, 0.5, 0.5));
+    let paint_lines = [
+        // cone
+        [0, 1],
+        [0, 2],
+        [0, 3],
+        [0, 4],
+        // base
+        [1, 2],
+        [2, 3],
+        [3, 4],
+        [4, 1],
+    ];
+    let lines_colors = [
+        // cone
+        Color32::from_rgb(255, 0, 0),
+        Color32::from_rgb(255, 0, 0),
+        Color32::from_rgb(255, 0, 0),
+        Color32::from_rgb(255, 0, 0),
+        // base
+        Color32::from_rgb(255, 0, 0),
+        Color32::from_rgb(255, 0, 150),
+        Color32::from_rgb(255, 0, 200),
+        Color32::from_rgb(255, 0, 255),
+    ];
 
     let rot_z = last_data.rollpitch.roll.unwrap_or(0.0);
-    let rot_x = last_data.rollpitch.pitch.unwrap_or(0.0) + std::f64::consts::PI / 2.0;
+    let rot_x = -last_data.rollpitch.pitch.unwrap_or(0.0) + std::f64::consts::PI / 2.0;
     let rot_y = 0.0f64;
 
     // transform points
@@ -175,29 +199,32 @@ fn ui_3d_panel(ui: &mut Ui, data: &Data) {
         [-rot_y.sin(), 0.0, rot_y.cos()],
     ]);
 
-    // transform 3d -> 2d
-    let r = r1 * r2 * r3;
+    // 3d transform model
+    let r = r2 * r1 * r3;
     let offset = Vector3::new(5.0, 0.0, 0.0);
-    let scale2d = 150.0;
-    let offset2d = Vector2::new(rect.min.x as f64 + 250.0, rect.min.y as f64 + 100.0);
     let points = points.map(|p| r * p + offset);
+    // 3d -> 2d
+    let viewport_min = Vector2::new(rect.min.x as f64, rect.min.y as f64);
+    let viewport_max = Vector2::new(rect.max.x as f64, rect.max.y as f64);
+    let viewport_size = viewport_max - viewport_min;
+
+    let smaller_axis = f64::min(viewport_size.x, viewport_size.y);
+    let scale2d = smaller_axis;
+    let offset2d = viewport_min + viewport_size / 2.0;
     let points2d = points.map(|p| (p.yz() / p.x) * scale2d + offset2d);
 
     // drawing
-    let stroke = Stroke::new(1.0, Color32::from_rgb(255, 0, 0));
-    for point_a in &points2d {
-        for point_b in &points2d {
-            if point_a == point_b {
-                continue;
-            }
-            painter.line_segment(
-                [
-                    Pos2::new(point_a.x as f32, point_a.y as f32),
-                    Pos2::new(point_b.x as f32, point_b.y as f32),
-                ],
-                stroke,
-            );
-        }
+    for line_index in 0..paint_lines.len() {
+        let line = paint_lines[line_index];
+        let point_a = points2d[line[0]].map(|v| v as f32);
+        let point_b = points2d[line[1]].map(|v| v as f32);
+        painter.line_segment(
+            [
+                Pos2::new(point_a.x, point_a.y),
+                Pos2::new(point_b.x, point_b.y),
+            ],
+            Stroke::new(2.0, lines_colors[line_index]),
+        );
     }
 
     response.mark_changed();
