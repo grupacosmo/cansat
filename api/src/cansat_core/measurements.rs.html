@@ -182,8 +182,6 @@
     #[serde(deserialize_with = <span class="string">&quot;f32_as_optional_distance_in_meters&quot;</span>)]
     </span><span class="kw">pub </span>altitude: <span class="prelude-ty">Option</span>&lt;Distance&gt;,
 
-    <span class="kw">pub </span>nmea: <span class="prelude-ty">Option</span>&lt;NmeaGga&gt;,
-
     <span class="attr">#[serde(serialize_with = <span class="string">&quot;option_tuple_f32x3&quot;</span>)]
     </span><span class="kw">pub </span>acceleration: <span class="prelude-ty">Option</span>&lt;(f32, f32, f32)&gt;,
 
@@ -192,6 +190,8 @@
 
     <span class="attr">#[serde(serialize_with = <span class="string">&quot;option_tuple_f32x2&quot;</span>)]
     </span><span class="kw">pub </span>rollpitch: <span class="prelude-ty">Option</span>&lt;(f32, f32)&gt;,
+
+    <span class="kw">pub </span>nmea: <span class="prelude-ty">Option</span>&lt;NmeaGga&gt;,
 }
 
 <span class="kw">fn </span>option_temperature_celsius&lt;S&gt;(v: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span>&lt;Temperature&gt;, s: S) -&gt; <span class="prelude-ty">Result</span>&lt;S::Ok, S::Error&gt;

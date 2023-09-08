@@ -174,6 +174,15 @@
 <a href="#174" id="174">174</a>
 <a href="#175" id="175">175</a>
 <a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
+<a href="#182" id="182">182</a>
+<a href="#183" id="183">183</a>
+<a href="#184" id="184">184</a>
+<a href="#185" id="185">185</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{app, error::Error, startup::LoraError};
 <span class="kw">use </span>cansat_core::{
     nmea::NmeaGga,
@@ -184,39 +193,48 @@
 <span class="kw">use </span>rtic::Mutex;
 <span class="kw">use </span>rtic_monotonics::systick::Systick;
 <span class="kw">use </span>stm32f4xx_hal::prelude::<span class="kw-2">*</span>;
+<span class="kw">use </span>futures::FutureExt <span class="kw">as _</span>;
 
-<span class="kw">pub fn </span>idle(<span class="kw-2">mut </span>ctx: app::idle::Context) -&gt; ! {
-    <span class="kw">let </span><span class="kw-2">mut </span>writer = csv_core::WriterBuilder::new()
-        .delimiter(<span class="string">b&#39;,&#39;</span>)
-        .quote(<span class="string">b&#39;\&#39;&#39;</span>)
-        .build();
-
+<span class="kw">pub async fn </span>measure(<span class="kw-2">mut </span>ctx: app::measure::Context&lt;<span class="lifetime">&#39;_</span>&gt;) {
     <span class="kw">loop </span>{
-        <span class="kw">let </span>measurements = read_measurements(<span class="kw-2">&amp;mut </span>ctx);
-        <span class="macro">defmt::info!</span>(<span class="string">&quot;{}&quot;</span>, measurements);
+        <span class="kw">let </span>future = <span class="kw">async </span>{
+            <span class="kw">let </span><span class="kw-2">mut </span>writer = csv_core::WriterBuilder::new()
+                .delimiter(<span class="string">b&#39;,&#39;</span>)
+                .quote(<span class="string">b&#39;\&#39;&#39;</span>)
+                .build();
 
-        <span class="kw">let </span>csv_record = <span class="kw">match </span>serde_csv_core::to_vec(<span class="kw-2">&amp;mut </span>writer, <span class="kw-2">&amp;</span>measurements) {
-            <span class="prelude-val">Ok</span>(r) =&gt; r,
-            <span class="prelude-val">Err</span>(e) =&gt; {
-                <span class="macro">defmt::error!</span>(
-                    <span class="string">&quot;Failed to create csv byte record: {}&quot;</span>,
-                    defmt::Display2Format(<span class="kw-2">&amp;</span>e)
-                );
-                <span class="kw">continue</span>;
-            }
+            <span class="kw">let </span>measurements = read_measurements(<span class="kw-2">&amp;mut </span>ctx);
+            <span class="macro">defmt::info!</span>(<span class="string">&quot;{}&quot;</span>, measurements);
+
+            <span class="kw">let </span>csv_record = <span class="kw">match </span>serde_csv_core::to_vec(<span class="kw-2">&amp;mut </span>writer, <span class="kw-2">&amp;</span>measurements) {
+                <span class="prelude-val">Ok</span>(r) =&gt; r,
+                <span class="prelude-val">Err</span>(e) =&gt; {
+                    <span class="macro">defmt::error!</span>(
+                        <span class="string">&quot;Failed to create csv byte record: {}&quot;</span>,
+                        defmt::Display2Format(<span class="kw-2">&amp;</span>e)
+                    );
+                    <span class="kw">return</span>;
+                }
+            };
+            ctx.shared.csv_record.lock(|csv| {
+                <span class="kw-2">*</span>csv = csv_record;
+                <span class="kw">let </span>sd_logger = <span class="kw-2">&amp;mut </span>ctx.local.sd_logger;
+
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(sd_logger) = sd_logger {
+                    sd_logger.write(csv).unwrap();
+                }
+            });
+            Systick::delay(<span class="number">250</span>.millis()).<span class="kw">await</span>;
         };
-        ctx.shared.csv_record.lock(|csv| {
-            <span class="kw-2">*</span>csv = csv_record;
-            <span class="kw">let </span>sd_logger = <span class="kw-2">&amp;mut </span>ctx.local.sd_logger;
-
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(sd_logger) = sd_logger {
-                sd_logger.write(csv).unwrap();
-            }
-        });
+        <span class="comment">// timeout
+        </span><span class="macro">futures::select_biased! </span>{
+            <span class="kw">_ </span>= future.fuse() =&gt; {},
+            <span class="kw">_ </span>= Systick::delay(<span class="number">10</span>.secs()).fuse() =&gt; {}
+        };
     }
 }
 
-<span class="kw">fn </span>read_measurements(ctx: <span class="kw-2">&amp;mut </span>app::idle::Context) -&gt; Measurements {
+<span class="kw">fn </span>read_measurements(ctx: <span class="kw-2">&amp;mut </span>app::measure::Context) -&gt; Measurements {
     <span class="kw">let </span>i2c1_devices = <span class="kw-2">&amp;mut </span>ctx.local.i2c1_devices;
     <span class="kw">let </span>delay = <span class="kw-2">&amp;mut </span>ctx.local.delay;
     <span class="kw">let </span>gps = <span class="kw-2">&amp;mut </span>ctx.shared.gps;

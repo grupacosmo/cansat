@@ -70,8 +70,6 @@
 <a href="#70" id="70">70</a>
 <a href="#71" id="71">71</a>
 <a href="#72" id="72">72</a>
-<a href="#73" id="73">73</a>
-<a href="#74" id="74">74</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Binary crate targeting stm32f4 family microcontrollers.
 </span><span class="attr">#![deny(unsafe_code)]
 #![no_main]
@@ -128,12 +126,10 @@
         startup::init(ctx)
     }
 
-    <span class="attr">#[idle(local = [delay, sd_logger, tracker, i2c1_devices]</span>, shared = [gps, csv_record, is_fixed])]
-    <span class="kw">fn </span>idle(ctx: idle::Context) -&gt; ! {
-        tasks::idle(ctx)
-    }
-
     <span class="kw">extern </span><span class="string">&quot;Rust&quot; </span>{
+        <span class="attr">#[task(local = [delay, sd_logger, tracker, i2c1_devices]</span>, shared = [gps, csv_record, is_fixed], priority = <span class="number">0</span>)]
+        <span class="kw">async fn </span>measure(ctx: measure::Context);
+
         <span class="attr">#[task(local = [lora]</span>, shared = [csv_record], priority = <span class="number">1</span>)]
         <span class="kw">async fn </span>send_meas(ctx: send_meas::Context);
 
