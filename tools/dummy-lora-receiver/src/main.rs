@@ -1,6 +1,6 @@
-use noise::{NoiseFn, Perlin};
-use cansat_core::{Measurements};
 use cansat_core::quantity::{Distance, Pressure, Temperature};
+use cansat_core::Measurements;
+use noise::{NoiseFn, Perlin};
 
 const TEMPERATURE_SEED: f32 = 10000.0;
 const PRESSURE_SEED: f32 = 1993.0;
@@ -53,19 +53,16 @@ fn main() {
         height += height_inc;
 
         let measurements = Measurements {
-            temperature:
-                if (inc % 3) == 0 {
-                    None
-                } else {
-                    Some(Temperature::from_celsius(temperature))
-                },
-            pressure:
-                if (inc % 4) != 0 {
-                    None
-                }
-                else {
-                    Some(Pressure::from_pascals(pressure))
-                },
+            temperature: if (inc % 3) == 0 {
+                None
+            } else {
+                Some(Temperature::from_celsius(temperature))
+            },
+            pressure: if (inc % 4) != 0 {
+                None
+            } else {
+                Some(Pressure::from_pascals(pressure))
+            },
             altitude: Some(Distance::from_meters(height)),
             nmea: None,
             acceleration: None,
@@ -78,7 +75,10 @@ fn main() {
 
         let mut data = [0u8; 200];
         let len = writer.serialize_to_slice(&measurements, &mut data).unwrap();
-        print!("{}", &data[..len].iter().map(|b| *b as char).collect::<String>());
+        print!(
+            "{}",
+            &data[..len].iter().map(|b| *b as char).collect::<String>()
+        );
         std::thread::sleep(std::time::Duration::from_millis(DELAY));
     }
 }

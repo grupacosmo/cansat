@@ -89,14 +89,44 @@ fn ui_info_box(ui: &mut Ui, data: &Data) {
         }
         let last_data = last_data.unwrap();
         ui.label(format!("Time: {}", timestamp_formatter(last_data.time)));
-        ui.label(format!("Temperature: {:?}", last_data.bme.temperature));
-        ui.label(format!("Pressure: {:?}", last_data.bme.pressure));
-        ui.label(format!("Height: {:?}", last_data.bme.height));
-        ui.label(format!("{:?}", last_data.orientation));
-        ui.label(format!("{:?}", last_data.acceleration));
-        ui.label(format!("Roll {:?}", last_data.rollpitch.roll));
-        ui.label(format!("Pitch {:?}", last_data.rollpitch.pitch));
+        label_if_present(ui, "Temperature", last_data.bme.temperature);
+        label_if_present(ui, "Pressure", last_data.bme.pressure);
+        label_if_present(ui, "Height", last_data.bme.height);
+        label_if_present(ui, "Roll", last_data.rollpitch.roll);
+        label_if_present(ui, "Pitch", last_data.rollpitch.pitch);
+
+        ui.label(format!(
+            "Orientation:  {:?}",
+            last_data.orientation.unwrap_or_nan()
+        ));
+        ui.label(format!(
+            "Acceleration: {:?}",
+            last_data.acceleration.unwrap_or_nan()
+        ));
+        if let Some(gga_data) = last_data.nmea.as_ref().map(|n| &n.0) {
+            label_if_present(ui, "nmea", Some(""));
+            label_if_present(ui, "  fix time", gga_data.fix_time);
+            label_if_present(ui, "  fix type", gga_data.fix_type);
+            label_if_present(ui, "  hdop", gga_data.hdop);
+            label_if_present(ui, "  Longitude ", gga_data.longitude);
+            label_if_present(ui, "  Latitude  ", gga_data.latitude);
+            label_if_present(ui, "  altitude          ", gga_data.altitude);
+            label_if_present(ui, "  Geoid separation  ", gga_data.geoid_separation);
+        } else {
+            label_if_present(ui, "nmea", Some("None"));
+        }
     });
+}
+
+fn label_if_present<T>(ui: &mut Ui, text: &str, optional_value: Option<T>)
+where
+    T: std::fmt::Debug,
+{
+    if optional_value.is_some() {
+        ui.label(format!("{}: {:?}", text, optional_value.unwrap()));
+    } else {
+        ui.label(format!("{}: None", text));
+    }
 }
 
 fn ui_orientation_box(ui: &mut Ui, data: &Data) {

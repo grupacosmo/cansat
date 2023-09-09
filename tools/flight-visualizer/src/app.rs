@@ -118,6 +118,7 @@ impl FlightVisualizerApp {
                 .rollpitch
                 .map(|rp| RollPitch::new_some(rp.0 as f64, rp.1 as f64))
                 .unwrap_or(RollPitch::new_none()),
+            measurements.nmea,
         ));
     }
 }

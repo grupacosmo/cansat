@@ -1,3 +1,4 @@
+use cansat_core::nmea::NmeaGga;
 use derive_new::new;
 use std::collections::VecDeque;
 
@@ -16,6 +17,7 @@ pub struct DataRecord {
     pub orientation: Orientation,
     pub acceleration: Acceleration,
     pub rollpitch: RollPitch,
+    pub nmea: Option<NmeaGga>,
 }
 
 #[derive(new, Debug)]
@@ -109,6 +111,14 @@ impl Orientation {
     pub fn new_some(x: f64, y: f64, z: f64) -> Self {
         Self::new(Some(x), Some(y), Some(z))
     }
+
+    pub fn unwrap_or_nan(&self) -> (f64, f64, f64) {
+        (
+            self.x.unwrap_or(f64::NAN),
+            self.y.unwrap_or(f64::NAN),
+            self.z.unwrap_or(f64::NAN),
+        )
+    }
 }
 
 impl Acceleration {
@@ -118,6 +128,14 @@ impl Acceleration {
 
     pub fn new_some(x: f64, y: f64, z: f64) -> Self {
         Self::new(Some(x), Some(y), Some(z))
+    }
+
+    pub fn unwrap_or_nan(&self) -> (f64, f64, f64) {
+        (
+            self.x.unwrap_or(f64::NAN),
+            self.y.unwrap_or(f64::NAN),
+            self.z.unwrap_or(f64::NAN),
+        )
     }
 }
 
