@@ -147,9 +147,7 @@ fn send_lora_package(lora: &mut crate::Lora, csv: &[u8]) -> Result<(), Error> {
 /// USART3 interrupt handler that reads data into the gps working buffer
 pub fn gps_irq(ctx: app::gps_irq::Context) {
     let mut gps = ctx.shared.gps;
-    if let Err(e) = gps.lock(|gps| gps.read_serial()) {
-        defmt::error!("Failed to read gps' serial: {}", e);
-    };
+    gps.lock(|gps| gps.read_serial()).expect("Failed to read gps' serial");
 }
 
 /// Toggles led every second
