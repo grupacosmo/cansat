@@ -140,6 +140,7 @@ fn init_drivers(mut board: Board, statik: &'static mut Statik) -> Result<Drivers
 
     let tracker = accelerometer::Tracker::new(3932.0);
 
+    // it's important to init gps at the end since it starts listening on uart interrupt
     let gps = init_gps(board.serial1).map_err(|e| {
         defmt::error!("Failed to initialize GPS: {}", defmt::Debug2Format(&e));
         Error::CriticalDevice
@@ -200,10 +201,9 @@ fn init_bme280(i2c: I2c1Proxy, delay: &mut Delay) -> Result<Bme280, Bme280Error>
     Ok(bme280)
 }
 
-fn init_gps(mut serial: Serial1) -> Result<Gps, GpsError> {
+fn init_gps(serial: Serial1) -> Result<Gps, GpsError> {
     defmt::info!("Initializing GPS");
 
-    serial.listen(serial::Event::Rxne);
     let mut gps = Gps::new(serial);
 
     let set_gll_output_rate = b"$PUBX,40,GLL,0,0,0,0,0,0*5C\r\n";
@@ -223,6 +223,8 @@ fn init_gps(mut serial: Serial1) -> Result<Gps, GpsError> {
 
     let set_rmc_output_rate = b"$PUBX,40,RMC,0,0,0,0,0,0*47\r\n";
     gps.send(set_rmc_output_rate)?;
+
+    gps.serial_mut().listen(serial::Event::Rxne);
 
     Ok(gps)
 }

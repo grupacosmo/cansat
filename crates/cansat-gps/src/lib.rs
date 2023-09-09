@@ -80,6 +80,18 @@ impl<Serial, const MAX_NMEA_LEN: usize> Gps<Serial, MAX_NMEA_LEN> {
     pub fn last_nmea(&self) -> Option<Vec<u8, MAX_NMEA_LEN>> {
         self.has_nmea.then(|| self.bufs.read().clone())
     }
+
+    pub fn serial_mut(&mut self) -> &mut Serial {
+        &mut self.serial
+    }
+
+    pub fn serial(&mut self) -> &Serial {
+        &self.serial
+    }
+
+    pub fn into_serial(self) -> Serial {
+        self.serial
+    }
 }
 
 impl<Serial, const MAX_NMEA_LEN: usize> Gps<Serial, MAX_NMEA_LEN>

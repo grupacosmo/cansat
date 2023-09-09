@@ -5,10 +5,10 @@ use cansat_core::{
     Measurements,
 };
 use cansat_lora::ResponseContent;
+use futures::FutureExt as _;
 use rtic::Mutex;
 use rtic_monotonics::systick::Systick;
 use stm32f4xx_hal::prelude::*;
-use futures::FutureExt as _;
 
 pub async fn measure(mut ctx: app::measure::Context<'_>) {
     loop {
