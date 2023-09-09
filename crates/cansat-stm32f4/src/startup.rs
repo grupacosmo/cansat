@@ -9,7 +9,7 @@ use stm32f4xx_hal::{
     i2c::{self, I2c1},
     pac,
     prelude::*,
-    serial::{self, Serial1, Serial6},
+    serial::{self, Serial1, Serial2, Serial6},
     spi::{self, Spi2},
     timer::DelayUs,
 };
@@ -17,7 +17,7 @@ use stm32f4xx_hal::{
 pub type Delay = DelayUs<pac::TIM3>;
 pub type Led = gpio::PC13<gpio::Output>;
 pub type Buzzer = gpio::PA8<gpio::Output>;
-pub type Gps = cansat_gps::Gps<Serial1, 256>;
+pub type Gps = cansat_gps::Gps<Serial2, 256>;
 pub type GpsError = cansat_gps::Error<serial::Error>;
 pub type Lora = cansat_lora::Lora<Serial6>;
 pub type SdmmcController =
@@ -96,6 +96,7 @@ struct Board {
     pub buzzer: Buzzer,
     pub i2c1: I2c1,
     pub serial1: Serial1,
+    pub serial2: Serial2,
     pub serial6: Serial6,
     pub spi2: Spi2,
     pub cs2: Cs2,
@@ -140,8 +141,7 @@ fn init_drivers(mut board: Board, statik: &'static mut Statik) -> Result<Drivers
 
     let tracker = accelerometer::Tracker::new(3932.0);
 
-    // it's important to init gps at the end since it starts listening on uart interrupt
-    let gps = init_gps(board.serial1).map_err(|e| {
+    let gps = init_gps(board.serial2).map_err(|e| {
         defmt::error!("Failed to initialize GPS: {}", defmt::Debug2Format(&e));
         Error::CriticalDevice
     })?;
@@ -201,9 +201,10 @@ fn init_bme280(i2c: I2c1Proxy, delay: &mut Delay) -> Result<Bme280, Bme280Error>
     Ok(bme280)
 }
 
-fn init_gps(serial: Serial1) -> Result<Gps, GpsError> {
+fn init_gps(mut serial: Serial2) -> Result<Gps, GpsError> {
     defmt::info!("Initializing GPS");
 
+    serial.listen(serial::Event::Rxne);
     let mut gps = Gps::new(serial);
 
     let set_gll_output_rate = b"$PUBX,40,GLL,0,0,0,0,0,0*5C\r\n";
@@ -223,8 +224,6 @@ fn init_gps(serial: Serial1) -> Result<Gps, GpsError> {
 
     let set_rmc_output_rate = b"$PUBX,40,RMC,0,0,0,0,0,0*47\r\n";
     gps.send(set_rmc_output_rate)?;
-
-    gps.serial_mut().listen(serial::Event::Rxne);
 
     Ok(gps)
 }
@@ -291,6 +290,16 @@ fn init_board(device: pac::Peripherals) -> Board {
             .expect("Invalid USART1 config")
     };
 
+    let serial2 = {
+        let tx2 = gpioa.pa2.into_alternate();
+        let rx2 = gpioa.pa3.into_alternate();
+        let config = serial::Config::default().baudrate(9600.bps());
+        device
+            .USART2
+            .serial((tx2, rx2), config, &clocks)
+            .expect("Invalid USART2 config")
+    };
+
     let serial6 = {
         let tx6 = gpioa.pa11.into_alternate();
         let rx6 = gpioa.pa12.into_alternate();
@@ -307,6 +316,7 @@ fn init_board(device: pac::Peripherals) -> Board {
         buzzer,
         i2c1,
         serial1,
+        serial2,
         serial6,
         spi2,
         cs2,

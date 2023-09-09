@@ -147,7 +147,7 @@ fn send_lora_package(lora: &mut crate::Lora, csv: &[u8]) -> Result<(), Error> {
 /// USART3 interrupt handler that reads data into the gps working buffer
 pub fn gps_irq(ctx: app::gps_irq::Context) {
     let mut gps = ctx.shared.gps;
-    gps.lock(|gps| gps.read_serial()).expect("Failed to read gps' serial");
+    gps.lock(|gps| gps.read_serial()).unwrap();
 }
 
 /// Toggles led every second
@@ -166,18 +166,28 @@ pub async fn buzz(mut ctx: app::buzz::Context<'_>) {
     let mut is_fixed = false;
 
     loop {
-        buzzer.toggle();
+        
 
         ctx.shared.is_fixed.lock(|f| {
             is_fixed = *f;
         });
 
         if is_fixed {
+            buzzer.toggle();
             defmt::debug!("Buzz with GPS fix");
-            Systick::delay(1.secs()).await;
+            Systick::delay(50.millis()).await;
+            buzzer.toggle();
+            Systick::delay(500.millis()).await;
+            buzzer.toggle();
+            Systick::delay(50.millis()).await;
+            buzzer.toggle();
+            Systick::delay(2.secs()).await;
         } else {
             defmt::debug!("Buzz without GPS fix");
-            Systick::delay(3.secs()).await;
+            buzzer.toggle();
+            Systick::delay(500.millis()).await;
+            buzzer.toggle();
+            Systick::delay(4.secs()).await;
         }
     }
 }

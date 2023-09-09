@@ -61,7 +61,7 @@ mod app {
         #[task(local = [lora], shared = [csv_record], priority = 1)]
         async fn send_meas(ctx: send_meas::Context);
 
-        #[task(binds = USART1, shared = [gps], priority = 2)]
+        #[task(binds = USART2, shared = [gps], priority = 2)]
         fn gps_irq(ctx: gps_irq::Context);
 
         #[task(local = [led], priority = 1)]
