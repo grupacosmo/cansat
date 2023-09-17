@@ -5,10 +5,11 @@ use cansat_core::{
     Measurements,
 };
 use cansat_lora::ResponseContent;
+use cortex_m::delay;
+use futures::FutureExt as _;
 use rtic::Mutex;
 use rtic_monotonics::systick::Systick;
 use stm32f4xx_hal::prelude::*;
-use futures::FutureExt as _;
 
 pub async fn measure(mut ctx: app::measure::Context<'_>) {
     loop {
@@ -54,7 +55,7 @@ fn read_measurements(ctx: &mut app::measure::Context) -> Measurements {
     let delay = &mut ctx.local.delay;
     let gps = &mut ctx.shared.gps;
     let _tracker = &mut ctx.local.tracker;
-
+    let counter = &mut ctx.local.counter;
     let mut data = Measurements::default();
 
     if let Some(bme280) = &mut i2c1_devices.bme280 {
@@ -91,7 +92,13 @@ fn read_measurements(ctx: &mut app::measure::Context) -> Measurements {
                 defmt::error!(
                     "Could not read NMEA GGA command: {}",
                     defmt::Debug2Format(&e)
+                    
                 );
+                **counter +=1;
+                    if **counter > 20 {
+                       **counter = 0;
+                        panic!()
+                    }
             }
         }
     }
@@ -146,9 +153,12 @@ fn send_lora_package(lora: &mut crate::Lora, csv: &[u8]) -> Result<(), Error> {
 
 /// USART3 interrupt handler that reads data into the gps working buffer
 pub fn gps_irq(ctx: app::gps_irq::Context) {
+    //let mut counter = ctx.local.counter;
     let mut gps = ctx.shared.gps;
     if let Err(e) = gps.lock(|gps| gps.read_serial()) {
-        defmt::error!("Failed to read gps' serial: {}", e);
+        defmt::info!("Failed to read gps' serial: {}", e);
+
+        //panic
     };
 }
 
