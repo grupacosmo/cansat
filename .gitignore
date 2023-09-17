@@ -2,5 +2,6 @@
 /.idea
 /target
 /.idea
+/logs
 gyffhks
 package-lock.json

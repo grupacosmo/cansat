@@ -2,15 +2,16 @@ use crate::data::{Data, DataRecord};
 use eframe::egui;
 use eframe::egui::Context;
 use egui::plot::{Line, Plot, PlotPoints};
-use egui::{Color32, Pos2, Stroke, Ui, Vec2};
+use egui::{Color32, PointerButton, Pos2, Stroke, Ui, Vec2};
 use nalgebra::{Matrix3, Vector2, Vector3};
 use once_cell::sync::Lazy;
 use time::format_description::FormatItem;
 use time::OffsetDateTime;
+use walkers::{Map, Position};
 
 type DataRecordFieldGetter = fn(&DataRecord) -> Option<f64>;
 
-pub fn draw_ui(ctx: &Context, data: &Data) {
+pub fn draw_ui(ctx: &Context, data: &mut Data) {
     // ctx.set_debug_on_hover(true);
     egui::CentralPanel::default().show(ctx, |ui| {
         let available_height = ui.available_height();
@@ -34,7 +35,12 @@ fn ui_left_panel(ui: &mut Ui, data: &Data) {
             ui,
             "height",
             data,
-            |d| d.bme.height,
+            |d| {
+                d.nmea
+                    .as_ref()
+                    .map(|n| &n.0)
+                    .map(|n| n.altitude.unwrap_or(0.0) as f64)
+            },
             UiGraphSettings::new_with_height(f64::NAN, f64::NAN, full_height * 0.5),
         );
 
@@ -56,11 +62,16 @@ fn ui_left_panel(ui: &mut Ui, data: &Data) {
     });
 }
 
-fn ui_right_panel(ui: &mut Ui, data: &Data) {
+fn ui_right_panel(ui: &mut Ui, data: &mut Data) {
     ui.vertical(|ui| {
         ui.set_width(ui.available_width());
         ui_right_top_info_panel(ui, data);
-        ui_3d_panel(ui, data);
+        let map_and_3d_panel_height = ui.available_height() * 0.75;
+        ui.horizontal(|ui| {
+            let w = ui.available_width();
+            ui_3d_panel(ui, w / 2.0, map_and_3d_panel_height, data);
+            ui_map_panel(ui, w / 2.0, map_and_3d_panel_height, data);
+        });
         ui_right_bottom_info_panel(ui, data);
     });
 }
@@ -158,11 +169,8 @@ fn ui_orientation_box(ui: &mut Ui, data: &Data) {
     });
 }
 
-fn ui_3d_panel(ui: &mut Ui, data: &Data) {
-    let h = ui.available_height() * 0.75;
-
-    let (mut response, painter) =
-        ui.allocate_painter(Vec2::new(ui.available_width(), h), egui::Sense::click());
+fn ui_3d_panel(ui: &mut Ui, w: f32, h: f32, data: &Data) {
+    let (mut response, painter) = ui.allocate_painter(Vec2::new(w, h), egui::Sense::click());
     let rect = response.rect;
     painter.rect_filled(rect, 0.0, Color32::from_rgb(0, 0, 0));
 
@@ -258,6 +266,40 @@ fn ui_3d_panel(ui: &mut Ui, data: &Data) {
     }
 
     response.mark_changed();
+}
+
+fn ui_map_panel(ui: &mut Ui, w: f32, h: f32, data: &mut Data) {
+    let last_data = data.last_data();
+    if last_data.is_none() {
+        return;
+    }
+    let last_data = last_data.unwrap();
+    let (x, y) = last_data
+        .nmea
+        .as_ref()
+        .map(|n| &n.0)
+        .map(|n| (n.latitude.unwrap_or(0.0), n.longitude.unwrap_or(0.0)))
+        .unwrap_or((0.0, 0.0));
+
+    // let (mut response, painter) =
+    //     ui.allocate_painter(Vec2::new(w, h), egui::Sense::click());
+    // let rect = response.rect;
+    // painter.rect_filled(rect, 0.0, Color32::from_rgb(0, 0, 0));
+
+    let response = ui.add_sized(
+        Vec2::new(w, h),
+        Map::new(
+            Some(&mut data.tiles),
+            &mut data.map_memory,
+            Position::new(y, x),
+        ),
+    );
+
+    if response.clicked_by(PointerButton::Primary) {
+        let _ = data.map_memory.zoom.zoom_in();
+    } else if response.clicked_by(PointerButton::Secondary) {
+        let _ = data.map_memory.zoom.zoom_out();
+    }
 }
 
 fn ui_right_bottom_info_panel(ui: &mut Ui, data: &Data) {

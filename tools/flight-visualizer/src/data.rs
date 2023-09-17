@@ -1,10 +1,13 @@
 use cansat_core::nmea::NmeaGga;
 use derive_new::new;
 use std::collections::VecDeque;
+use walkers::{MapMemory, Tiles};
 
-pub const DEFAULT_CAPACITY: usize = 20;
+pub const DEFAULT_CAPACITY: usize = 50;
 
 pub struct Data {
+    pub tiles: Tiles,
+    pub map_memory: MapMemory,
     data_points: usize,
     data_records: VecDeque<DataRecord>,
     signal_strength: SignalStrength,
@@ -54,8 +57,10 @@ pub struct RollPitch {
 }
 
 impl Data {
-    pub fn new(data_points: usize) -> Self {
+    pub fn new(tiles: Tiles, data_points: usize) -> Self {
         Self {
+            tiles,
+            map_memory: MapMemory::default(),
             data_points,
             data_records: VecDeque::with_capacity(data_points),
             signal_strength: SignalStrength::new(0, 0),
@@ -94,12 +99,6 @@ impl Data {
 
     pub fn signal_strength(&self) -> &SignalStrength {
         &self.signal_strength
-    }
-}
-
-impl Default for Data {
-    fn default() -> Self {
-        Self::new(DEFAULT_CAPACITY)
     }
 }
 

@@ -1,7 +1,7 @@
 use crate::data::{
     Acceleration, BmeData, Data, DataRecord, Orientation, RollPitch, SignalStrength,
 };
-use crate::ui;
+use crate::{data, ui};
 use cansat_core::Measurements;
 use eframe::Frame;
 use egui::Context;
@@ -9,22 +9,22 @@ use once_cell::sync::Lazy;
 use regex::Regex;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
+use walkers::providers::openstreetmap;
+use walkers::Tiles;
 
 pub struct FlightVisualizerApp {
     data: Arc<Mutex<Data>>,
 }
 
-impl Default for FlightVisualizerApp {
-    fn default() -> Self {
-        Self {
-            data: Arc::new(Mutex::new(Data::default())),
-        }
-    }
-}
-
 impl FlightVisualizerApp {
-    pub fn new(_cc: &eframe::CreationContext<'_>) -> Self {
-        let mut slf: Self = Default::default();
+    pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
+        let data = Data::new(
+            Tiles::new(openstreetmap, cc.egui_ctx.clone()),
+            data::DEFAULT_CAPACITY,
+        );
+        let mut slf: Self = FlightVisualizerApp {
+            data: Arc::new(Mutex::new(data)),
+        };
         slf.spawn_input_consumer();
 
         slf
@@ -124,7 +124,7 @@ impl FlightVisualizerApp {
 }
 impl eframe::App for FlightVisualizerApp {
     fn update(&mut self, ctx: &Context, _frame: &mut Frame) {
-        ui::draw_ui(ctx, &self.data.lock().unwrap());
+        ui::draw_ui(ctx, &mut self.data.lock().unwrap());
         ctx.request_repaint_after(Duration::from_millis(33));
     }
 }

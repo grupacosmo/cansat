@@ -17,3 +17,4 @@ cansat-core = { path = "../../crates/cansat-core" }
 csv-core = "0.1.10"
 serde-csv-core = { version = "0.2.0" }
 regex = "1.8.1"
+walkers = "0.7.0"
