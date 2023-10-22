@@ -4,6 +4,7 @@ use cansat_lora::ResponseContent;
 
 use heapless::Vec;
 use mpu6050::*;
+use stm32f4xx_hal::serial::Serial2;
 use stm32f4xx_hal::{
     gpio,
     i2c::{self, I2c1},
@@ -201,7 +202,7 @@ fn init_bme280(i2c: I2c1Proxy, delay: &mut Delay) -> Result<Bme280, Bme280Error>
     Ok(bme280)
 }
 
-fn init_gps(mut serial: Serial1) -> Result<Gps, GpsError> {
+fn init_gps(mut serial: Serial2) -> Result<Gps, GpsError> {
     defmt::info!("Initializing GPS");
 
     serial.listen(serial::Event::Rxne);

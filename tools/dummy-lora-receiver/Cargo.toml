@@ -1,0 +1,12 @@
+[package]
+name = "dummy-lora-receiver"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+noise = "0.8.2"
+cansat-core = { path = "../../crates/cansat-core" }
+csv-core = "0.1.10"
+serde-csv-core = { version = "0.2.0" }

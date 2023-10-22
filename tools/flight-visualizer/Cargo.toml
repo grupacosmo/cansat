@@ -1,0 +1,20 @@
+[package]
+name = "flight-visualizer"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+eframe = "0.22.0"
+egui = "0.22.0"
+glow = "0.12.3"
+time = { version = "0.3.27", features = ["formatting"] }
+once_cell = "1.17.1"
+derive-new = "0.5.9"
+nalgebra = "0.32.3"
+cansat-core = { path = "../../crates/cansat-core" }
+csv-core = "0.1.10"
+serde-csv-core = { version = "0.2.0" }
+regex = "1.8.1"
+walkers = "0.7.0"

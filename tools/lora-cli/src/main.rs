@@ -138,7 +138,7 @@ fn receive(args: PortArgs) -> Result<()> {
 fn process_message(msg: &str) {
     let parsed = parse_received_message(msg).unwrap_or_else(|e| e.to_string());
 
-    eprintln!("{parsed}");
+    println!("{parsed}");
 }
 
 struct Lora {
@@ -248,6 +248,10 @@ fn parse_received_message(input: &str) -> Result<String> {
 }
 
 fn format_cansat_data(data: &str) -> Result<String> {
+    if true {
+        return Ok(data.to_string());
+    }
+
     let measurements = decode_cansat_data_from_string(data)?;
 
     let formatted = format!(

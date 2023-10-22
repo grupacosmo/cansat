@@ -3,7 +3,7 @@ use crate::quantity::{Distance, Pressure, Temperature};
 
 use serde::{de, Deserializer, Serialize};
 
-#[derive(Default, serde::Serialize, serde::Deserialize)]
+#[derive(Default, serde::Serialize, serde::Deserialize, Debug)]
 pub struct Measurements {
     #[serde(serialize_with = "option_temperature_celsius")]
     #[serde(deserialize_with = "f32_as_optional_temperature_in_celcius")]
