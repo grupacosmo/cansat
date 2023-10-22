@@ -5,47 +5,57 @@ use cansat_core::{
     Measurements,
 };
 use cansat_lora::ResponseContent;
+use cortex_m::delay;
+use futures::FutureExt as _;
 use rtic::Mutex;
 use rtic_monotonics::systick::Systick;
 use stm32f4xx_hal::prelude::*;
 
-pub fn idle(mut ctx: app::idle::Context) -> ! {
-    let mut writer = csv_core::WriterBuilder::new()
-        .delimiter(b',')
-        .quote(b'\'')
-        .build();
-
+pub async fn measure(mut ctx: app::measure::Context<'_>) {
     loop {
-        let measurements = read_measurements(&mut ctx);
-        defmt::info!("{}", measurements);
+        let future = async {
+            let mut writer = csv_core::WriterBuilder::new()
+                .delimiter(b',')
+                .quote(b'\'')
+                .build();
 
-        let csv_record = match serde_csv_core::to_vec(&mut writer, &measurements) {
-            Ok(r) => r,
-            Err(e) => {
-                defmt::error!(
-                    "Failed to create csv byte record: {}",
-                    defmt::Display2Format(&e)
-                );
-                continue;
-            }
+            let measurements = read_measurements(&mut ctx);
+            defmt::info!("{}", measurements);
+
+            let csv_record = match serde_csv_core::to_vec(&mut writer, &measurements) {
+                Ok(r) => r,
+                Err(e) => {
+                    defmt::error!(
+                        "Failed to create csv byte record: {}",
+                        defmt::Display2Format(&e)
+                    );
+                    return;
+                }
+            };
+            ctx.shared.csv_record.lock(|csv| {
+                *csv = csv_record;
+                let sd_logger = &mut ctx.local.sd_logger;
+
+                if let Some(sd_logger) = sd_logger {
+                    sd_logger.write(csv).unwrap();
+                }
+            });
+            Systick::delay(250.millis()).await;
         };
-        ctx.shared.csv_record.lock(|csv| {
-            *csv = csv_record;
-            let sd_logger = &mut ctx.local.sd_logger;
-
-            if let Some(sd_logger) = sd_logger {
-                sd_logger.write(csv).unwrap();
-            }
-        });
+        // timeout
+        futures::select_biased! {
+            _ = future.fuse() => {},
+            _ = Systick::delay(10.secs()).fuse() => {}
+        };
     }
 }
 
-fn read_measurements(ctx: &mut app::idle::Context) -> Measurements {
+fn read_measurements(ctx: &mut app::measure::Context) -> Measurements {
     let i2c1_devices = &mut ctx.local.i2c1_devices;
     let delay = &mut ctx.local.delay;
     let gps = &mut ctx.shared.gps;
     let _tracker = &mut ctx.local.tracker;
-
+    let counter = &mut ctx.local.counter;
     let mut data = Measurements::default();
 
     if let Some(bme280) = &mut i2c1_devices.bme280 {
@@ -82,7 +92,13 @@ fn read_measurements(ctx: &mut app::idle::Context) -> Measurements {
                 defmt::error!(
                     "Could not read NMEA GGA command: {}",
                     defmt::Debug2Format(&e)
+                    
                 );
+                **counter +=1;
+                    if **counter > 20 {
+                       **counter = 0;
+                        panic!()
+                    }
             }
         }
     }
@@ -137,9 +153,12 @@ fn send_lora_package(lora: &mut crate::Lora, csv: &[u8]) -> Result<(), Error> {
 
 /// USART3 interrupt handler that reads data into the gps working buffer
 pub fn gps_irq(ctx: app::gps_irq::Context) {
+    //let mut counter = ctx.local.counter;
     let mut gps = ctx.shared.gps;
     if let Err(e) = gps.lock(|gps| gps.read_serial()) {
-        defmt::error!("Failed to read gps' serial: {}", e);
+        defmt::info!("Failed to read gps' serial: {}", e);
+
+        //panic
     };
 }
 

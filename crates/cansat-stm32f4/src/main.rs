@@ -47,6 +47,7 @@ mod app {
         pub tracker: accelerometer::Tracker,
         pub i2c1_devices: I2c1Devices,
         pub lora: Option<Lora>,
+        pub counter: i32,
     }
 
     #[init(local = [statik: startup::Statik = startup::Statik::new()])]
@@ -54,16 +55,14 @@ mod app {
         startup::init(ctx)
     }
 
-    #[idle(local = [delay, sd_logger, tracker, i2c1_devices], shared = [gps, csv_record, is_fixed])]
-    fn idle(ctx: idle::Context) -> ! {
-        tasks::idle(ctx)
-    }
-
     extern "Rust" {
+        #[task(local = [delay, sd_logger, tracker, i2c1_devices, counter], shared = [gps, csv_record, is_fixed], priority = 0)]
+        async fn measure(ctx: measure::Context);
+
         #[task(local = [lora], shared = [csv_record], priority = 1)]
         async fn send_meas(ctx: send_meas::Context);
 
-        #[task(binds = USART1, shared = [gps], priority = 2)]
+        #[task(binds = USART1, shared = [gps] , priority = 2)]
         fn gps_irq(ctx: gps_irq::Context);
 
         #[task(local = [led], priority = 1)]
